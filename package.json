@@ -1,0 +1,9 @@
+{
+  "name": "homestay-auth",
+  "private": true,
+  "scripts": {
+    "install:all": "dotnet restore backend && npm install --prefix frontend",
+    "dev": "concurrently \"dotnet run --project backend\" \"npm run dev --prefix frontend\""
+  },
+  "devDependencies": { "concurrently": "^9.1.2" }
+}
