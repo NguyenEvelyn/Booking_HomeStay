@@ -17,8 +17,7 @@ docs/          Tài liệu yêu cầu và kiến trúc
 
 - .NET SDK 9
 - Node.js và npm hoặc pnpm
-- Azure SQL Database đã chạy script tạo bảng
-- IP của máy phát triển đã được thêm vào firewall của Azure SQL Server
+- PostgreSQL trên Neon đã chạy [`database/init.sql`](database/init.sql)
 
 ## Cấu hình sau khi clone
 
@@ -30,20 +29,15 @@ Copy-Item backend/.env.example backend/.env
 Copy-Item frontend/.env.example frontend/.env
 ```
 
-Mở `backend/.env` và điền thông tin Azure SQL của bạn:
+Mở `backend/.env` và điền chuỗi kết nối PostgreSQL. Khi deploy, không cần upload
+file `.env`: chỉ tạo secret/biến môi trường này trong phần cấu hình của backend cloud.
 
 ```env
 PORT=5000
 NODE_ENV=development
 CLIENT_URL=http://localhost:5173
 
-DB_HOST=your-server.database.windows.net
-DB_PORT=1433
-DB_NAME=your_database_name
-DB_USER=your_sql_username
-DB_PASSWORD=your_sql_password
-DB_ENCRYPT=true
-DB_TRUST_SERVER_CERTIFICATE=false
+DATABASE_URL=postgresql://your_user:your_password@your-host/neondb?sslmode=require
 
 JWT_SECRET=replace_with_a_long_random_secret
 JWT_EXPIRES_HOURS=24
@@ -51,6 +45,9 @@ COOKIE_MAX_AGE_MS=86400000
 ```
 
 Không ghi mật khẩu thật vào `.env.example` và không commit file `.env`.
+
+Biến `DATABASE_URL` được ưu tiên. Backend chỉ đọc biến này; frontend không bao
+giờ nhận thông tin database. Dùng chuỗi pooled connection từ Neon khi deploy.
 
 Nội dung `frontend/.env` khi chạy trên máy cá nhân:
 
@@ -99,17 +96,15 @@ Mở ứng dụng tại http://localhost:5173.
 Luồng kết nối của hệ thống:
 
 ```text
-React frontend → ASP.NET Core API → Azure SQL Database
+React frontend → ASP.NET Core API → PostgreSQL (Neon)
 ```
 
-Frontend không kết nối trực tiếp và không được chứa tài khoản hoặc mật khẩu Azure SQL.
+Frontend không kết nối trực tiếp và không được chứa tài khoản hoặc mật khẩu PostgreSQL.
 
-## Lỗi kết nối Azure SQL thường gặp
+## Lỗi kết nối Neon/PostgreSQL thường gặp
 
 - `Thiếu biến môi trường ...`: kiểm tra file `backend/.env` và chạy lại backend.
-- Lỗi firewall: vào Azure SQL Server → Networking → thêm IP hiện tại của máy rồi lưu.
-- Lỗi đăng nhập SQL: kiểm tra `DB_USER` và `DB_PASSWORD`.
-- Lỗi chứng chỉ hoặc mã hóa: giữ `DB_ENCRYPT=true` và `DB_TRUST_SERVER_CERTIFICATE=false` khi kết nối Azure SQL.
+- Lỗi kết nối: kiểm tra lại toàn bộ `DATABASE_URL` từ Neon, đặc biệt mật khẩu và `SSL Mode=Require`.
 - Sau khi đổi `.env`, phải dừng và chạy lại backend hoặc frontend.
 
 ## API xác thực
@@ -118,6 +113,27 @@ Frontend không kết nối trực tiếp và không được chứa tài khoả
 - `POST /api/auth/login` — đăng nhập và nhận cookie HttpOnly.
 - `GET /api/auth/me` — kiểm tra phiên đăng nhập.
 - `POST /api/auth/logout` — xóa cookie và đăng xuất.
+- `GET /api/auth/external/google` — bắt đầu đăng nhập Google.
+- `GET /api/auth/external/facebook` — bắt đầu đăng nhập Facebook.
+
+## Cấu hình Google và Facebook OAuth
+
+Tạo OAuth app ở Google Cloud Console và Meta for Developers, sau đó điền bốn
+biến sau trong `backend/.env` (không commit file này):
+
+```env
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+FACEBOOK_APP_ID=
+FACEBOOK_APP_SECRET=
+```
+
+Khai báo callback URL trong trang quản trị của từng nhà cung cấp:
+
+- Google: `http://localhost:5000/signin-google`
+- Facebook: `http://localhost:5000/signin-facebook`
+
+Khi deploy, thay `localhost:5000` bằng domain HTTPS của backend.
 
 ## Vai trò và phân quyền
 

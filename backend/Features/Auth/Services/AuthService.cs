@@ -16,6 +16,8 @@ public class AuthService(AppDbContext db) : IAuthService
     {
         var email = request.Email.Trim().ToLowerInvariant();
         if (await db.Users.AnyAsync(x => x.Email == email)) return null;
+        var phoneNumber = string.IsNullOrWhiteSpace(request.PhoneNumber) ? null : request.PhoneNumber.Trim().Replace(" ", "");
+        if (phoneNumber is not null && await db.Users.AnyAsync(x => x.PhoneNumber == phoneNumber)) return null;
         var role = request.Role.Trim();
         if (!role.Equals("Customer", StringComparison.OrdinalIgnoreCase) &&
             !role.Equals("Host", StringComparison.OrdinalIgnoreCase))
@@ -26,8 +28,10 @@ public class AuthService(AppDbContext db) : IAuthService
         {
             FullName = request.FullName.Trim(),
             Email = email,
+            PhoneNumber = phoneNumber,
             PasswordHash = HashPassword(request.Password),
             Role = role,
+            Status = "Active",
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -38,9 +42,33 @@ public class AuthService(AppDbContext db) : IAuthService
 
     public async Task<(UserResponse User, string Token)?> LoginAsync(LoginRequest request)
     {
-        var email = request.Email.Trim().ToLowerInvariant();
+        var identifier = request.Identifier.Trim().ToLowerInvariant().Replace(" ", "");
+        var user = await db.Users.SingleOrDefaultAsync(x => x.Email == identifier || x.PhoneNumber == identifier);
+        if (user is null || user.Status != "Active" || string.IsNullOrWhiteSpace(user.PasswordHash)
+            || !VerifyPassword(request.Password, user.PasswordHash)) return null;
+        return (ToResponse(user), CreateToken(user));
+    }
+
+    public async Task<(UserResponse User, string Token)> ExternalLoginAsync(string email, string fullName)
+    {
+        email = email.Trim().ToLowerInvariant();
         var user = await db.Users.SingleOrDefaultAsync(x => x.Email == email);
-        if (user is null || !VerifyPassword(request.Password, user.PasswordHash)) return null;
+        if (user is null)
+        {
+            user = new User
+            {
+                FullName = string.IsNullOrWhiteSpace(fullName) ? email.Split('@')[0] : fullName.Trim(),
+                Email = email,
+                PasswordHash = null,
+                Role = "Customer",
+                Status = "Active",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            db.Users.Add(user);
+            await db.SaveChangesAsync();
+        }
+        if (user.Status != "Active") throw new InvalidOperationException("Tài khoản đã bị khóa.");
         return (ToResponse(user), CreateToken(user));
     }
 
@@ -59,10 +87,11 @@ public class AuthService(AppDbContext db) : IAuthService
         return $"{Convert.ToBase64String(salt)}.{Convert.ToBase64String(hash)}";
     }
 
-    private static bool VerifyPassword(string password, string stored)
+    private static bool VerifyPassword(string password, string? stored)
     {
         try
         {
+            if (string.IsNullOrWhiteSpace(stored)) return false;
             var parts = stored.Split('.');
             var salt = Convert.FromBase64String(parts[0]);
             var expected = Convert.FromBase64String(parts[1]);

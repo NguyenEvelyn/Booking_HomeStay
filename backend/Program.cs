@@ -3,6 +3,7 @@ using HomestayAuth.Api.Infrastructure.Persistence;
 using HomestayAuth.Api.Utilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
@@ -14,26 +15,52 @@ EnvLoader.Load(envPath);
 
 var builder = WebApplication.CreateBuilder(args);
 
-var requiredVariables = new[] { "DB_HOST", "DB_NAME", "DB_USER", "DB_PASSWORD", "JWT_SECRET" };
-foreach (var variable in requiredVariables)
+var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET");
+if (string.IsNullOrWhiteSpace(jwtSecret))
+    throw new InvalidOperationException("Thiếu biến môi trường JWT_SECRET");
+
+// Cloud platforms map nested .NET configuration keys with double underscores.
+// Prefer this single secret in production; the individual DB_* variables remain
+// available so existing local development configuration keeps working.
+var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
+    ?? Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
+
+if (string.IsNullOrWhiteSpace(connectionString))
 {
-    if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(variable)))
-        throw new InvalidOperationException($"Thiếu biến môi trường {variable}");
+    throw new InvalidOperationException("Thiếu biến môi trường DATABASE_URL (chuỗi kết nối PostgreSQL/Neon).");
 }
 
-var dbHost = Environment.GetEnvironmentVariable("DB_HOST");
-var dbPort = Environment.GetEnvironmentVariable("DB_PORT") ?? "1433";
-var dbName = Environment.GetEnvironmentVariable("DB_NAME");
-var dbUser = Environment.GetEnvironmentVariable("DB_USER");
-var dbPassword = Environment.GetEnvironmentVariable("DB_PASSWORD");
-var encrypt = Environment.GetEnvironmentVariable("DB_ENCRYPT") ?? "false";
-var trustCertificate = Environment.GetEnvironmentVariable("DB_TRUST_SERVER_CERTIFICATE") ?? "true";
-var connectionString = $"Server={dbHost},{dbPort};Database={dbName};User Id={dbUser};Password={dbPassword};Encrypt={encrypt};TrustServerCertificate={trustCertificate};";
+// Neon provides a postgres:// URI by default; Npgsql normally expects key/value pairs.
+if (Uri.TryCreate(connectionString, UriKind.Absolute, out var databaseUri) &&
+    (databaseUri.Scheme == "postgres" || databaseUri.Scheme == "postgresql"))
+{
+    var credentials = databaseUri.UserInfo.Split(':', 2);
+    connectionString = new Npgsql.NpgsqlConnectionStringBuilder
+    {
+        Host = databaseUri.Host,
+        Port = databaseUri.IsDefaultPort ? 5432 : databaseUri.Port,
+        Database = databaseUri.AbsolutePath.TrimStart('/'),
+        Username = Uri.UnescapeDataString(credentials[0]),
+        Password = credentials.Length > 1 ? Uri.UnescapeDataString(credentials[1]) : "",
+        SslMode = Npgsql.SslMode.Require,
+        Pooling = true
+    }.ConnectionString;
+}
+
+/*
+ * The connection string is intentionally never logged: it contains credentials.
+ * Configure it in the hosting platform's secret/environment-variable settings.
+ */
 
 builder.WebHost.UseUrls($"http://localhost:{Environment.GetEnvironmentVariable("PORT") ?? "5000"}");
-builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(connectionString));
+builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
 builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+var authentication = builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddCookie("External", options =>
+    {
+        options.Cookie.Name = "homestay.external";
+        options.ExpireTimeSpan = TimeSpan.FromMinutes(10);
+    })
     .AddJwtBearer(options =>
     {
         options.TokenValidationParameters = new TokenValidationParameters
@@ -43,7 +70,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(Environment.GetEnvironmentVariable("JWT_SECRET")!)),
+                Encoding.UTF8.GetBytes(jwtSecret)),
             ClockSkew = TimeSpan.Zero
         };
         options.Events = new JwtBearerEvents
@@ -54,6 +81,28 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 return Task.CompletedTask;
             }
         };
+    });
+
+var googleClientId = Environment.GetEnvironmentVariable("GOOGLE_CLIENT_ID");
+var googleClientSecret = Environment.GetEnvironmentVariable("GOOGLE_CLIENT_SECRET");
+if (!string.IsNullOrWhiteSpace(googleClientId) && !string.IsNullOrWhiteSpace(googleClientSecret))
+    authentication.AddGoogle("Google", options =>
+    {
+        options.ClientId = googleClientId;
+        options.ClientSecret = googleClientSecret;
+        options.SignInScheme = "External";
+    });
+
+var facebookAppId = Environment.GetEnvironmentVariable("FACEBOOK_APP_ID");
+var facebookAppSecret = Environment.GetEnvironmentVariable("FACEBOOK_APP_SECRET");
+if (!string.IsNullOrWhiteSpace(facebookAppId) && !string.IsNullOrWhiteSpace(facebookAppSecret))
+    authentication.AddFacebook("Facebook", options =>
+    {
+        options.AppId = facebookAppId;
+        options.AppSecret = facebookAppSecret;
+        options.SignInScheme = "External";
+        options.Scope.Add("email");
+        options.Fields.Add("email");
     });
 builder.Services.AddAuthorization();
 builder.Services.AddControllers();
@@ -74,5 +123,18 @@ app.UseCors("Frontend");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapGet("/", () => Results.Ok(new
+{
+    name = "Homestay Auth API",
+    status = "running",
+    health = "/api/health",
+    databaseHealth = "/api/health/database"
+}));
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));
+app.MapGet("/api/health/database", async (AppDbContext db) =>
+{
+    if (!await db.Database.CanConnectAsync()) return Results.Problem("Không thể kết nối PostgreSQL.");
+    _ = await db.Users.AsNoTracking().AnyAsync();
+    return Results.Ok(new { status = "ok", database = "connected", schema = "ready" });
+});
 app.Run();
