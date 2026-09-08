@@ -4,6 +4,7 @@ using HomestayAuth.Api.Features.Auth.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace HomestayAuth.Api.Features.Auth.Controllers;
 
@@ -14,21 +15,49 @@ public class AuthController(IAuthService authService, IWebHostEnvironment enviro
     [HttpPost("register")]
     public async Task<IActionResult> Register(RegisterRequest request)
     {
-        UserResponse? user;
-        try { user = await authService.RegisterAsync(request); }
+        (UserResponse? User, string? VerificationCode) result;
+        try { result = await authService.RegisterAsync(request); }
         catch (ArgumentException error) { return BadRequest(new { message = error.Message }); }
-        return user is null
+        return result.User is null
             ? Conflict(new { message = "Email hoặc số điện thoại đã được sử dụng." })
-            : StatusCode(201, new { message = "Đăng ký thành công.", user });
+            : StatusCode(201, new
+            {
+                message = "Đăng ký thành công. Vui lòng nhập mã OTP đã gửi đến email.",
+                user = result.User,
+                requiresVerification = true,
+                developmentOtp = environment.IsDevelopment() ? result.VerificationCode : null
+            });
     }
 
     [HttpPost("login")]
+    [EnableRateLimiting("auth-login")]
     public async Task<IActionResult> Login(LoginRequest request)
     {
         var result = await authService.LoginAsync(request);
-        if (result is null) return Unauthorized(new { message = "Email hoặc mật khẩu không đúng." });
-        Response.Cookies.Append("token", result.Value.Token, CookieOptions());
-        return Ok(new { message = "Đăng nhập thành công.", user = result.Value.User });
+        if (result.User is null) return Unauthorized(new { message = result.Error });
+        Response.Cookies.Append("token", result.Token!, CookieOptions());
+        return Ok(new { message = "Đăng nhập thành công.", user = result.User });
+    }
+
+    [HttpPost("verify-email")]
+    [EnableRateLimiting("auth-login")]
+    public async Task<IActionResult> VerifyEmail(VerifyEmailRequest request) =>
+        await authService.VerifyEmailAsync(request)
+            ? Ok(new { message = "Xác minh email thành công. Bạn có thể đăng nhập." })
+            : BadRequest(new { message = "Mã OTP không đúng hoặc đã hết hạn." });
+
+    [HttpPost("resend-verification")]
+    [EnableRateLimiting("auth-login")]
+    public async Task<IActionResult> ResendVerification(ResendVerificationRequest request)
+    {
+        var code = await authService.ResendVerificationAsync(request.Email);
+        return code is null
+            ? BadRequest(new { message = "Không thể gửi lại mã xác minh." })
+            : Ok(new
+            {
+                message = "Đã gửi lại mã OTP xác minh.",
+                developmentOtp = environment.IsDevelopment() ? code : null
+            });
     }
 
     [HttpGet("me")]

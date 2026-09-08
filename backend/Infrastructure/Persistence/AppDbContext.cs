@@ -22,6 +22,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         user.Property(x => x.PasswordHash).HasColumnName("password_hash").HasMaxLength(255);
         user.Property(x => x.Role).HasColumnName("role").HasMaxLength(20).HasDefaultValue("Customer").IsRequired();
         user.Property(x => x.Status).HasColumnName("status").HasMaxLength(20).HasDefaultValue("Active").IsRequired();
+        user.Property(x => x.EmailVerificationCodeHash).HasColumnName("email_verification_code_hash").HasMaxLength(64);
+        user.Property(x => x.EmailVerificationExpiresAt).HasColumnName("email_verification_expires_at");
+        user.Property(x => x.EmailVerifiedAt).HasColumnName("email_verified_at");
+        user.Property(x => x.FailedLoginAttempts).HasColumnName("failed_login_attempts").HasDefaultValue(0);
+        user.Property(x => x.LockoutEnd).HasColumnName("lockout_end");
         user.Property(x => x.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
         user.Property(x => x.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
     }

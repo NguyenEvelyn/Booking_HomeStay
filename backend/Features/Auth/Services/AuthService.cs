@@ -10,20 +10,32 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace HomestayAuth.Api.Features.Auth.Services;
 
-public class AuthService(AppDbContext db) : IAuthService
+public class AuthService(AppDbContext db, IEmailOtpSender emailSender, IWebHostEnvironment environment) : IAuthService
 {
-    public async Task<UserResponse?> RegisterAsync(RegisterRequest request)
+    public async Task<(UserResponse? User, string? VerificationCode)> RegisterAsync(RegisterRequest request)
     {
         var email = request.Email.Trim().ToLowerInvariant();
-        if (await db.Users.AnyAsync(x => x.Email == email)) return null;
-        var phoneNumber = string.IsNullOrWhiteSpace(request.PhoneNumber) ? null : request.PhoneNumber.Trim().Replace(" ", "");
-        if (phoneNumber is not null && await db.Users.AnyAsync(x => x.PhoneNumber == phoneNumber)) return null;
+        var existingUser = await db.Users.SingleOrDefaultAsync(x => x.Email == email);
+        if (existingUser is not null)
+        {
+            if (existingUser.Status != "Unverified") return (null, null);
+            var retryCode = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
+            existingUser.EmailVerificationCodeHash = HashVerificationCode(retryCode);
+            existingUser.EmailVerificationExpiresAt = DateTime.UtcNow.AddMinutes(10);
+            await db.SaveChangesAsync();
+            try { await emailSender.SendAsync(existingUser.Email, existingUser.FullName, retryCode); }
+            catch when (environment.IsDevelopment()) { }
+            return (ToResponse(existingUser), retryCode);
+        }
+        var phoneNumber = NormalizePhone(request.PhoneNumber);
+        if (await db.Users.AnyAsync(x => x.PhoneNumber == phoneNumber)) return (null, null);
         var role = request.Role.Trim();
         if (!role.Equals("Customer", StringComparison.OrdinalIgnoreCase) &&
             !role.Equals("Host", StringComparison.OrdinalIgnoreCase))
             throw new ArgumentException("Vai trò đăng ký chỉ có thể là Customer hoặc Host.");
         role = role.Equals("Host", StringComparison.OrdinalIgnoreCase) ? "Host" : "Customer";
 
+        var verificationCode = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
         var user = new User
         {
             FullName = request.FullName.Trim(),
@@ -31,22 +43,78 @@ public class AuthService(AppDbContext db) : IAuthService
             PhoneNumber = phoneNumber,
             PasswordHash = HashPassword(request.Password),
             Role = role,
-            Status = "Active",
+            Status = "Unverified",
+            EmailVerificationCodeHash = HashVerificationCode(verificationCode),
+            EmailVerificationExpiresAt = DateTime.UtcNow.AddMinutes(10),
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
         db.Users.Add(user);
         await db.SaveChangesAsync();
-        return ToResponse(user);
+        try { await emailSender.SendAsync(user.Email, user.FullName, verificationCode); }
+        catch when (environment.IsDevelopment()) { /* Mã OTP được trả về để kiểm thử cục bộ. */ }
+        return (ToResponse(user), verificationCode);
     }
 
-    public async Task<(UserResponse User, string Token)?> LoginAsync(LoginRequest request)
+    public async Task<(UserResponse? User, string? Token, string? Error)> LoginAsync(LoginRequest request)
     {
         var identifier = request.Identifier.Trim().ToLowerInvariant().Replace(" ", "");
         var user = await db.Users.SingleOrDefaultAsync(x => x.Email == identifier || x.PhoneNumber == identifier);
-        if (user is null || user.Status != "Active" || string.IsNullOrWhiteSpace(user.PasswordHash)
-            || !VerifyPassword(request.Password, user.PasswordHash)) return null;
-        return (ToResponse(user), CreateToken(user));
+        if (user is null) return (null, null, "Email, số điện thoại hoặc mật khẩu không đúng.");
+
+        if (user.LockoutEnd is not null && user.LockoutEnd > DateTime.UtcNow)
+            return (null, null, "Tài khoản tạm khóa do đăng nhập sai quá 5 lần. Vui lòng thử lại sau 15 phút.");
+
+        if (string.IsNullOrWhiteSpace(user.PasswordHash) || !VerifyPassword(request.Password, user.PasswordHash))
+        {
+            user.FailedLoginAttempts++;
+            if (user.FailedLoginAttempts >= 5)
+            {
+                user.LockoutEnd = DateTime.UtcNow.AddMinutes(15);
+                user.FailedLoginAttempts = 0;
+            }
+            await db.SaveChangesAsync();
+            return (null, null, "Email, số điện thoại hoặc mật khẩu không đúng.");
+        }
+
+        if (user.Status == "Unverified") return (null, null, "Tài khoản chưa xác minh email.");
+        if (user.Status != "Active") return (null, null, "Tài khoản đã bị khóa.");
+
+        user.FailedLoginAttempts = 0;
+        user.LockoutEnd = null;
+        await db.SaveChangesAsync();
+        return (ToResponse(user), CreateToken(user), null);
+    }
+
+    public async Task<bool> VerifyEmailAsync(VerifyEmailRequest request)
+    {
+        var email = request.Email.Trim().ToLowerInvariant();
+        var user = await db.Users.SingleOrDefaultAsync(x => x.Email == email);
+        if (user is null || user.Status != "Unverified" || user.EmailVerificationExpiresAt <= DateTime.UtcNow
+            || !CryptographicOperations.FixedTimeEquals(
+                Encoding.UTF8.GetBytes(user.EmailVerificationCodeHash ?? ""),
+                Encoding.UTF8.GetBytes(HashVerificationCode(request.Code)))) return false;
+
+        user.Status = "Active";
+        user.EmailVerifiedAt = DateTime.UtcNow;
+        user.EmailVerificationCodeHash = null;
+        user.EmailVerificationExpiresAt = null;
+        await db.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<string?> ResendVerificationAsync(string email)
+    {
+        email = email.Trim().ToLowerInvariant();
+        var user = await db.Users.SingleOrDefaultAsync(x => x.Email == email && x.Status == "Unverified");
+        if (user is null) return null;
+        var code = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
+        user.EmailVerificationCodeHash = HashVerificationCode(code);
+        user.EmailVerificationExpiresAt = DateTime.UtcNow.AddMinutes(10);
+        await db.SaveChangesAsync();
+        try { await emailSender.SendAsync(user.Email, user.FullName, code); }
+        catch when (environment.IsDevelopment()) { /* Mã OTP được trả về để kiểm thử cục bộ. */ }
+        return code;
     }
 
     public async Task<(UserResponse User, string Token)> ExternalLoginAsync(string email, string fullName)
@@ -79,6 +147,15 @@ public class AuthService(AppDbContext db) : IAuthService
     }
 
     private static UserResponse ToResponse(User user) => new(user.Id, user.FullName, user.Email, user.Role);
+
+    private static string NormalizePhone(string phone)
+    {
+        var normalized = phone.Trim().Replace(" ", "");
+        return normalized.StartsWith("+84") ? $"0{normalized[3..]}" : normalized;
+    }
+
+    private static string HashVerificationCode(string code) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(code)));
 
     private static string HashPassword(string password)
     {

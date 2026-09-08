@@ -4,6 +4,7 @@ using HomestayAuth.Api.Utilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
@@ -55,6 +56,17 @@ if (Uri.TryCreate(connectionString, UriKind.Absolute, out var databaseUri) &&
 builder.WebHost.UseUrls($"http://localhost:{Environment.GetEnvironmentVariable("PORT") ?? "5000"}");
 builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddSingleton<IEmailOtpSender, EmailOtpSender>();
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddFixedWindowLimiter("auth-login", limiter =>
+    {
+        limiter.PermitLimit = 10;
+        limiter.Window = TimeSpan.FromMinutes(1);
+        limiter.QueueLimit = 0;
+    });
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+});
 var authentication = builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddCookie("External", options =>
     {
@@ -120,6 +132,7 @@ app.UseExceptionHandler(errorApp => errorApp.Run(async context =>
     await context.Response.WriteAsJsonAsync(new { message = "Lỗi máy chủ." });
 }));
 app.UseCors("Frontend");
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

@@ -9,6 +9,11 @@ public class User
     public string? PasswordHash { get; set; }
     public required string Role { get; set; }
     public required string Status { get; set; }
+    public string? EmailVerificationCodeHash { get; set; }
+    public DateTime? EmailVerificationExpiresAt { get; set; }
+    public DateTime? EmailVerifiedAt { get; set; }
+    public int FailedLoginAttempts { get; set; }
+    public DateTime? LockoutEnd { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }

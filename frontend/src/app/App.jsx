@@ -5,12 +5,15 @@ import HomePage from '../features/home/HomePage.jsx';
 import DevelopmentDialog from '../shared/components/DevelopmentDialog.jsx';
 import ErrorPage from '../shared/components/ErrorPage.jsx';
 
+
 export default function App() {
   const [user, setUser] = useState(null);
   const [mode, setMode] = useState('login');
   const [notice, setNotice] = useState(null);
   const [busy, setBusy] = useState(false);
   const [developingFeature, setDevelopingFeature] = useState('');
+  const [showHome, setShowHome] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState('');
   const errorCode = Number(window.location.pathname.slice(1));
   const isErrorPage = [400, 401, 403, 404, 500].includes(errorCode) || !['/', ''].includes(window.location.pathname);
 
@@ -27,14 +30,32 @@ export default function App() {
   const submit = async (form) => {
     setBusy(true); setNotice(null);
     try {
+      if (mode === 'verify') {
+        const result = await authApi.verifyEmail({ email: pendingEmail, code: form.code });
+        setMode('login');
+        setNotice({ type: 'success', text: result.message });
+        return;
+      }
       const result = mode === 'login' ? await authApi.login(form) : await authApi.register(form);
       if (mode === 'login') { setUser(result.user); setNotice({ type: 'success', text: result.message }); }
-      else { setMode('login'); setNotice({ type: 'success', text: 'Đăng ký thành công. Bạn có thể đăng nhập ngay.' }); }
+      else {
+        setPendingEmail(form.email);
+        setMode('verify');
+        setNotice({ type: 'success', text: `${result.message}${result.developmentOtp ? ` Mã kiểm thử: ${result.developmentOtp}` : ''}` });
+      }
+    } catch (error) { setNotice({ type: 'error', text: error.message }); }
+    finally { setBusy(false); }
+  };
+  const resendVerification = async () => {
+    setBusy(true); setNotice(null);
+    try {
+      const result = await authApi.resendVerification({ email: pendingEmail });
+      setNotice({ type: 'success', text: `${result.message}${result.developmentOtp ? ` Mã kiểm thử: ${result.developmentOtp}` : ''}` });
     } catch (error) { setNotice({ type: 'error', text: error.message }); }
     finally { setBusy(false); }
   };
   const logout = async () => { const result = await authApi.logout(); setUser(null); setNotice({ type: 'success', text: result.message }); };
-  const goHome = () => { window.history.pushState({}, '', '/'); window.location.reload(); };
+  const goHome = () => { window.history.pushState({}, '', '/'); setShowHome(true); };
   const showDeveloping = (feature) => setDevelopingFeature(feature);
   const dialog = <DevelopmentDialog open={Boolean(developingFeature)} feature={developingFeature} onClose={() => setDevelopingFeature('')} />;
 
@@ -42,18 +63,21 @@ export default function App() {
 
   if (user) return <><HomePage user={user} onLogout={logout} onDeveloping={showDeveloping} />{dialog}</>;
 
+  if (showHome) return <><HomePage user={{ fullName: 'Khách' }} onLogout={() => setShowHome(false)} onDeveloping={showDeveloping} />{dialog}</>;
+
   return <main className="auth-page"><section className="auth-shell" aria-label="Xác thực tài khoản Tripio">
     <aside className="auth-visual">
-      <a className="logo" href="/" aria-label="Tripio - trang chủ">tripio</a>
-      <a className="home-link" href="/">Về trang chủ <span>→</span></a>
+      <a className="logo" href="/" aria-label="Tripio - trang chủ" onClick={(event) => { event.preventDefault(); goHome(); }}>tripio</a>
+      <a className="home-link" href="/" onClick={(event) => { event.preventDefault(); goHome(); }}>Về trang chủ <span>→</span></a>
       <div className="visual-caption"><p>Nơi Mọi Hành Trình<br />Đáng Nhớ Bắt Đầu</p><div className="slides"><i /><i /><i /><i /></div></div>
     </aside>
     <div className="auth-content">
       <>
-        <header className="form-header"><h1>{mode === 'login' ? 'Đăng nhập vào tài khoản' : 'Tạo tài khoản'}</h1>
-          <p>{mode === 'login' ? 'Chưa có tài khoản?' : 'Bạn đã có tài khoản?'}{' '}<button className="text-button" type="button" onClick={switchMode}>{mode === 'login' ? 'Đăng ký' : 'Đăng nhập'}</button></p>
+        <header className="form-header"><h1>{mode === 'login' ? 'Đăng nhập vào tài khoản' : mode === 'verify' ? 'Xác minh tài khoản' : 'Tạo tài khoản'}</h1>
+          <p>{mode === 'verify' ? `Mã OTP đã được gửi đến ${pendingEmail}` : mode === 'login' ? 'Chưa có tài khoản?' : 'Đã có tài khoản?'}{' '}<button className="text-button" type="button" onClick={switchMode}>{mode === 'login' ? 'Đăng ký' : 'Đăng nhập'}</button></p>
         </header>
         <AuthForm mode={mode} onSubmit={submit} busy={busy} onDeveloping={showDeveloping} />
+        {mode === 'verify' && <button className="resend-button" type="button" disabled={busy} onClick={resendVerification}>Gửi lại mã OTP</button>}
         {notice && <p className={`notice ${notice.type}`} role="status">{notice.text}</p>}
         <div className="divider"><span>Hoặc</span></div>
         <div className="social-row" aria-label="Đăng nhập mạng xã hội">
