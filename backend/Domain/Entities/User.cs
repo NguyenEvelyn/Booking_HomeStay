@@ -11,7 +11,14 @@ public class User
     public required string Status { get; set; }
     public string? EmailVerificationCodeHash { get; set; }
     public DateTime? EmailVerificationExpiresAt { get; set; }
+    public DateTime? EmailVerificationSentAt { get; set; }
     public DateTime? EmailVerifiedAt { get; set; }
+    public int EmailVerificationFailedAttempts { get; set; }
+    public string? PasswordResetCodeHash { get; set; }
+    public DateTime? PasswordResetExpiresAt { get; set; }
+    public DateTime? PasswordResetSentAt { get; set; }
+    public int PasswordResetFailedAttempts { get; set; }
+    public int AuthVersion { get; set; }
     public int FailedLoginAttempts { get; set; }
     public DateTime? LockoutEnd { get; set; }
     public DateTime CreatedAt { get; set; }

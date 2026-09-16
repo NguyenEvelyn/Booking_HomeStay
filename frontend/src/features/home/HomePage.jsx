@@ -18,8 +18,9 @@ import quyNhon from '../../../assets/figma/destination-quynhon.jpg';
 import vungTau from '../../../assets/figma/destination-vungtau.jpg';
 import daNang from '../../../assets/figma/destination-danang.png';
 import haLong from '../../../assets/figma/destination-halong.jpg';
+import { homestayApi } from '../homestays/api/homestayApi.js';
 
-const stays = [
+const fallbackStays = [
   { name: 'The Sunset Residence', location: 'Phú Quốc, Việt Nam', price: '1,456k VND', rating: '4,8', image: sunsetImage },
   { name: 'Azure Bay Retreat', location: 'Đà Nẵng, Việt Nam', price: '1,156k VND', rating: '4,2', image: azureImage },
   { name: 'Ocean Crest Residence', location: 'Quy Nhơn, Việt Nam', price: '2,559k VND', rating: '4,9', image: oceanImage },
@@ -47,8 +48,12 @@ const heroStays = [
 
 const offers = [voucherWeek, voucherHotDeal, voucherSummer, voucherHotDeal, voucherWeek];
 
-export default function HomePage({ user, onLogout, onDeveloping }) {
+export default function HomePage({ user, onLogout, onChangePassword, onBrowseHomestays, onOpenHomestay, onDeveloping }) {
   const [menuScrolled, setMenuScrolled] = useState(false);
+  const [homeStays, setHomeStays] = useState(fallbackStays);
+  const [homestayTotal, setHomestayTotal] = useState(0);
+  const totalReviews = homeStays.reduce((sum, stay) => sum + (stay.reviewCount || 0), 0);
+  const averageRating = totalReviews ? homeStays.reduce((sum, stay) => sum + (stay.ratingValue || 0) * (stay.reviewCount || 0), 0) / totalReviews : 0;
 
   useEffect(() => {
     const updateMenu = () => setMenuScrolled(window.scrollY > 24);
@@ -57,21 +62,32 @@ export default function HomePage({ user, onLogout, onDeveloping }) {
     return () => window.removeEventListener('scroll', updateMenu);
   }, []);
 
+  useEffect(() => {
+    homestayApi.list({ page: 1 }).then(async (result) => {
+      setHomestayTotal(result.total);
+      const items = await Promise.all(result.items.slice(0, 5).map(async (item, index) => {
+        const review = await homestayApi.reviews(item.id).catch(() => ({ average: 0, total: 0 }));
+        return { id: item.id, name: item.name, location: `${item.district}, ${item.province}`, price: item.fromPrice, ratingValue: review.average, reviewCount: review.total, image: item.thumbnailUrl || fallbackStays[index % fallbackStays.length].image };
+      }));
+      if (items.length) setHomeStays(items);
+    }).catch(() => {});
+  }, []);
+
   return <div className="home-page">
     <section className="hero" id="home" style={{ backgroundImage: `url('${heroImage}')` }}>
       <nav className={`home-nav${menuScrolled ? ' is-scrolled' : ''}`}>
         <a className="home-logo" href="#home">tripio</a>
         <div className="nav-links">
-          <a className="active" href="#home">Trang chủ</a><a href="#about">Giới thiệu</a><a href="#stays">Địa điểm</a><a href="#stays">Homestay</a><a href="#offers">Ưu đãi</a><a href="#footer">Tin tức</a>
+          <a className="active" href="#home">Trang chủ</a><a href="#about">Giới thiệu</a><a href="#stays">Địa điểm</a><a href="#stays" onClick={(event) => { event.preventDefault(); onBrowseHomestays(); }}>Homestay</a><a href="#offers">Ưu đãi</a><a href="#footer">Tin tức</a>
         </div>
-        <div className="nav-actions"><button type="button" aria-label="Tài khoản" title={user.fullName}>♙</button><button type="button" aria-label="Tìm kiếm" onClick={() => onDeveloping('Tìm kiếm nhanh')}>⌕</button></div>
+        <div className="nav-actions"><button type="button" aria-label="Đổi mật khẩu" title={`${user.fullName} · Đổi mật khẩu`} onClick={onChangePassword}>♙</button><button type="button" aria-label="Tìm kiếm" onClick={() => onDeveloping('Tìm kiếm nhanh')}>⌕</button></div>
       </nav>
       <div className="hero-shade" />
       <div className="hero-content">
         <h1><strong>FIND YOUR</strong> PERFECT STAY</h1>
         <p>Khám phá những không gian lưu trú tuyệt vời, từ những căn homestay ấm cúng đến các điểm nghỉ dưỡng sang trọng, và bắt đầu hành trình của riêng bạn với những trải nghiệm đáng nhớ</p>
       </div>
-      <div className="hero-picks" aria-label="Gợi ý homestay nổi bật">{heroStays.map(([name, image], index) => <article key={`${name}-${index}`}><img src={image} alt="" /><span>{name}</span><button type="button" aria-label={`Xem ${name}`} onClick={() => onDeveloping(name)}>↗</button></article>)}</div>
+      <div className="hero-picks" aria-label="Gợi ý homestay nổi bật">{homeStays.slice(0, 4).map((stay) => <article key={stay.id || stay.name}><img src={stay.image} alt="" /><span>{stay.name}</span><button type="button" aria-label={`Xem ${stay.name}`} onClick={() => stay.id ? onOpenHomestay(stay.id) : onBrowseHomestays()}>↗</button></article>)}</div>
     </section>
 
     <form className="search-bar" onSubmit={(event) => { event.preventDefault(); onDeveloping('Tìm phòng'); }}>
@@ -85,16 +101,16 @@ export default function HomePage({ user, onLogout, onDeveloping }) {
       <div className="about-image"><img src={aboutImage} alt="Biệt thự nghỉ dưỡng Tripio" /><span>Tripio</span><small>Nơi những chuyến đi bắt đầu</small></div>
       <div className="about-copy"><p className="kicker">VỀ CHÚNG TÔI</p><h2>CÙNG TRIPIO KẾT NỐI NHỮNG<br />HÀNH TRÌNH <em>ĐÁNG NHỚ</em></h2>
         <p>Tripio là nền tảng đặt phòng homestay trực tuyến, giúp bạn dễ dàng tìm kiếm, khám phá và lựa chọn không gian lưu trú phù hợp cho mỗi chuyến đi. Chúng tôi mang đến đa dạng lựa chọn lưu trú cùng trải nghiệm đặt phòng nhanh chóng, tiện lợi và đáng tin cậy.</p>
-        <div className="trust-row"><div className="avatars"><i /><i /><i /></div><span><b>Tin tưởng bởi</b><br />900+ khách hàng</span><span><b>4.8 ⭐⭐⭐⭐⭐</b><br />600+ lượt đánh giá</span></div>
-        <div className="stats"><div><b>1000+</b><span>Chỗ ở chất lượng</span></div><div><b>50+</b><span>Điểm đến hấp dẫn</span></div><div><b>98%</b><span>Khách hàng hài lòng</span></div><div><b>2000+</b><span>Lượt đặt thành công</span></div></div>
+        <div className="trust-row"><div className="avatars"><i /><i /><i /></div><span><b>Dữ liệu thực tế</b><br />Từ hệ thống Tripio</span><span><b>{averageRating ? averageRating.toFixed(1) : 'Mới'} ⭐</b><br />{totalReviews} lượt đánh giá</span></div>
+        <div className="stats"><div><b>{homestayTotal || homeStays.length}</b><span>Homestay đang hoạt động</span></div><div><b>{new Set(homeStays.map((stay) => stay.location)).size}</b><span>Khu vực nổi bật</span></div><div><b>{totalReviews}</b><span>Đánh giá xác thực</span></div><div><b>{homeStays.reduce((sum, stay) => sum + (stay.reviewCount || 0), 0)}</b><span>Trải nghiệm được chia sẻ</span></div></div>
       </div>
     </section>
 
     <section className="stays-section page-section" id="stays">
-      <div className="stays-intro"><p className="kicker dark">DÀNH CHO BẠN</p><h2>HOMESTAY ĐƯỢC<br /><em>YÊU THÍCH</em></h2><p>Khám phá các homestay được nhiều du khách yêu thích và lựa chọn cho hành trình đáng nhớ.</p><button type="button" onClick={() => onDeveloping('Xem tất cả homestay')}>Xem tất cả <span>↗</span></button></div>
-      <div className="stay-grid">{stays.map((stay) => <article className="stay-card" key={stay.name} style={{ backgroundImage: `linear-gradient(180deg,transparent 35%,rgba(3,31,45,.86)),url('${stay.image}')` }}>
-        <div className="stay-top"><span>⌖ {stay.location}</span><button type="button" aria-label="Yêu thích" onClick={() => onDeveloping('Yêu thích homestay')}>♡</button></div>
-        <div><h3>{stay.name}</h3><p>Khám phá điểm dừng chân hoàn hảo với trải nghiệm nghỉ dưỡng tiện nghi.</p><footer><b>{stay.price}</b><button type="button" onClick={() => onDeveloping('Đặt phòng')}>Đặt phòng</button></footer></div>
+      <div className="stays-intro"><p className="kicker dark">DÀNH CHO BẠN</p><h2>HOMESTAY ĐƯỢC<br /><em>YÊU THÍCH</em></h2><p>Khám phá các homestay được nhiều du khách yêu thích và lựa chọn cho hành trình đáng nhớ.</p><button type="button" onClick={onBrowseHomestays}>Xem tất cả <span>↗</span></button></div>
+      <div className="stay-grid">{homeStays.map((stay) => <article className="stay-card" key={stay.id || stay.name} style={{ backgroundImage: `linear-gradient(180deg,transparent 35%,rgba(3,31,45,.86)),url('${stay.image}')` }}>
+        <div className="stay-top"><span>⌖ {stay.location}</span><span>{stay.reviewCount ? `★ ${Number(stay.ratingValue).toFixed(1)} · ${stay.reviewCount} đánh giá` : 'Homestay mới'}</span></div>
+        <div><h3>{stay.name}</h3><p>Khám phá các hạng phòng và tiện ích đang có tại homestay.</p><footer><b>{typeof stay.price === 'number' ? `Từ ${new Intl.NumberFormat('vi-VN').format(stay.price)} đ` : stay.price}</b><button type="button" onClick={() => stay.id ? onOpenHomestay(stay.id) : onBrowseHomestays()}>Xem phòng</button></footer></div>
       </article>)}</div>
     </section>
 
