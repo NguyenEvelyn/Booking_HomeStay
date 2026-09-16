@@ -15,6 +15,9 @@ public class Homestay
     public TimeOnly CheckInTime { get; set; }
     public TimeOnly CheckOutTime { get; set; }
     public required string Status { get; set; }
+    public string? RejectionReason { get; set; }
+    public long? ReviewedBy { get; set; }
+    public DateTime? ReviewedAt { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public ICollection<RoomType> RoomTypes { get; set; } = [];

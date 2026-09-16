@@ -11,4 +11,5 @@ public class Room
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public RoomType RoomType { get; set; } = null!;
+    public ICollection<RoomImage> Images { get; set; } = [];
 }

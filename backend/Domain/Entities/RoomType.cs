@@ -18,4 +18,17 @@ public class RoomType
     public ICollection<Room> Rooms { get; set; } = [];
     public ICollection<RoomTypeImage> Images { get; set; } = [];
     public ICollection<RoomTypeAmenity> RoomTypeAmenities { get; set; } = [];
+    public ICollection<RoomPricePeriod> PricePeriods { get; set; } = [];
+}
+
+public class RoomPricePeriod
+{
+    public long Id { get; set; }
+    public long RoomTypeId { get; set; }
+    public required string Name { get; set; }
+    public DateOnly StartDate { get; set; }
+    public DateOnly EndDate { get; set; }
+    public decimal PricePerNight { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public RoomType RoomType { get; set; } = null!;
 }

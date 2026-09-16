@@ -9,11 +9,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Homestay> Homestays => Set<Homestay>();
     public DbSet<RoomType> RoomTypes => Set<RoomType>();
     public DbSet<Room> Rooms => Set<Room>();
+    public DbSet<RoomPricePeriod> RoomPricePeriods => Set<RoomPricePeriod>();
     public DbSet<Amenity> Amenities => Set<Amenity>();
     public DbSet<HomestayAmenity> HomestayAmenities => Set<HomestayAmenity>();
     public DbSet<RoomTypeAmenity> RoomTypeAmenities => Set<RoomTypeAmenity>();
     public DbSet<HomestayImage> HomestayImages => Set<HomestayImage>();
     public DbSet<RoomTypeImage> RoomTypeImages => Set<RoomTypeImage>();
+    public DbSet<RoomImage> RoomImages => Set<RoomImage>();
     public DbSet<Booking> Bookings => Set<Booking>();
     public DbSet<BookingDetail> BookingDetails => Set<BookingDetail>();
     public DbSet<Payment> Payments => Set<Payment>();
@@ -31,6 +33,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         user.Property(x => x.Email).HasColumnName("email").HasMaxLength(255).IsRequired();
         user.HasIndex(x => x.Email).IsUnique();
         user.Property(x => x.PhoneNumber).HasColumnName("phone_number").HasMaxLength(20);
+        user.Property(x => x.AvatarUrl).HasColumnName("avatar_url").HasMaxLength(500);
+        user.Property(x => x.CoverUrl).HasColumnName("cover_url").HasMaxLength(500);
+        user.Property(x => x.Bio).HasColumnName("bio").HasMaxLength(1000);
+        user.Property(x => x.Address).HasColumnName("address").HasMaxLength(255);
         user.HasIndex(x => x.PhoneNumber).IsUnique();
         user.Property(x => x.PasswordHash).HasColumnName("password_hash").HasMaxLength(255);
         user.Property(x => x.Role).HasColumnName("role").HasMaxLength(20).HasDefaultValue("Customer").IsRequired();
@@ -66,9 +72,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         homestay.Property(x => x.CheckInTime).HasColumnName("check_in_time");
         homestay.Property(x => x.CheckOutTime).HasColumnName("check_out_time");
         homestay.Property(x => x.Status).HasColumnName("status").HasMaxLength(30).IsRequired();
+        homestay.Property(x => x.RejectionReason).HasColumnName("rejection_reason").HasMaxLength(500);
+        homestay.Property(x => x.ReviewedBy).HasColumnName("reviewed_by");
+        homestay.Property(x => x.ReviewedAt).HasColumnName("reviewed_at");
         homestay.Property(x => x.CreatedAt).HasColumnName("created_at");
         homestay.Property(x => x.UpdatedAt).HasColumnName("updated_at");
         homestay.HasOne<User>().WithMany().HasForeignKey(x => x.HostId).OnDelete(DeleteBehavior.Restrict);
+        homestay.HasOne<User>().WithMany().HasForeignKey(x => x.ReviewedBy).OnDelete(DeleteBehavior.SetNull);
 
         var roomType = modelBuilder.Entity<RoomType>();
         roomType.ToTable("room_types");
@@ -99,6 +109,18 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         room.Property(x => x.CreatedAt).HasColumnName("created_at");
         room.Property(x => x.UpdatedAt).HasColumnName("updated_at");
         room.HasOne(x => x.RoomType).WithMany(x => x.Rooms).HasForeignKey(x => x.RoomTypeId);
+
+        var pricePeriod = modelBuilder.Entity<RoomPricePeriod>();
+        pricePeriod.ToTable("room_price_periods");
+        pricePeriod.HasKey(x => x.Id);
+        pricePeriod.Property(x => x.Id).HasColumnName("price_period_id");
+        pricePeriod.Property(x => x.RoomTypeId).HasColumnName("room_type_id");
+        pricePeriod.Property(x => x.Name).HasColumnName("name").HasMaxLength(100).IsRequired();
+        pricePeriod.Property(x => x.StartDate).HasColumnName("start_date");
+        pricePeriod.Property(x => x.EndDate).HasColumnName("end_date");
+        pricePeriod.Property(x => x.PricePerNight).HasColumnName("price_per_night").HasPrecision(18, 2);
+        pricePeriod.Property(x => x.CreatedAt).HasColumnName("created_at");
+        pricePeriod.HasOne(x => x.RoomType).WithMany(x => x.PricePeriods).HasForeignKey(x => x.RoomTypeId);
 
         var amenity = modelBuilder.Entity<Amenity>();
         amenity.ToTable("amenities");
@@ -148,6 +170,18 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         roomTypeImage.Property(x => x.SortOrder).HasColumnName("sort_order");
         roomTypeImage.Property(x => x.CreatedAt).HasColumnName("created_at");
         roomTypeImage.HasOne(x => x.RoomType).WithMany(x => x.Images).HasForeignKey(x => x.RoomTypeId);
+
+        var roomImage = modelBuilder.Entity<RoomImage>();
+        roomImage.ToTable("room_images");
+        roomImage.HasKey(x => x.Id);
+        roomImage.Property(x => x.Id).HasColumnName("image_id");
+        roomImage.Property(x => x.RoomId).HasColumnName("room_id");
+        roomImage.Property(x => x.ImageUrl).HasColumnName("image_url").HasMaxLength(500).IsRequired();
+        roomImage.Property(x => x.Caption).HasColumnName("caption").HasMaxLength(255);
+        roomImage.Property(x => x.IsThumbnail).HasColumnName("is_thumbnail");
+        roomImage.Property(x => x.SortOrder).HasColumnName("sort_order");
+        roomImage.Property(x => x.CreatedAt).HasColumnName("created_at");
+        roomImage.HasOne(x => x.Room).WithMany(x => x.Images).HasForeignKey(x => x.RoomId).OnDelete(DeleteBehavior.Cascade);
 
         var booking = modelBuilder.Entity<Booking>();
         booking.ToTable("bookings");

@@ -21,7 +21,7 @@ export default function CustomerNav({ active = 'home', user, onHome, onHomestays
     </div>
     <div className="customer-nav-actions">
       <button type="button" aria-label="Tài khoản" title={user?.fullName || 'Tài khoản'} onClick={onAccount}>♙</button>
-      {user?.role === 'Customer' && <button type="button" aria-label="Đơn đặt phòng" title="Đơn đặt phòng của tôi" onClick={onBookings}>▣</button>}
+      {['Customer','Host'].includes(user?.role) && <button type="button" aria-label="Đơn đặt phòng" title="Đơn đặt phòng của tôi" onClick={onBookings}>▣</button>}
     </div>
   </nav>;
 }
