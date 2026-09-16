@@ -3,6 +3,7 @@ import{homestayApi}from'../api/homestayApi.js';
 import'./host-layout.css';
 import{CalendarBoard,FinanceReport}from'./HostInsights.jsx';
 import RoomManagement from'./RoomManagement.jsx';
+import HomestayInventory from'./HomestayInventory.jsx';
 import HomestayImageUpload from'./HomestayImageUpload.jsx';
 const labels={Draft:'Bản nháp',Pending:'Chờ duyệt',Approved:'Đã duyệt',Rejected:'Từ chối',Suspended:'Tạm ngưng',Confirmed:'Đã xác nhận',CheckedIn:'Đang lưu trú',PendingPayment:'Chờ thanh toán',PaymentFailed:'Thanh toán lỗi',Expired:'Hết hạn',CancellationRequested:'Chờ duyệt hủy',Cancelled:'Đã hủy',Completed:'Hoàn tất'};
 const money=v=>`${new Intl.NumberFormat('vi-VN').format(v||0)} đ`,empty={name:'',description:'',addressLine:'',ward:'',district:'',province:'',checkInTime:'14:00',checkOutTime:'12:00'};
@@ -17,7 +18,7 @@ export default function HostDashboardPage({user,onLogout,onChangePassword,onCust
  {tab==='profile'&&profile&&<HostProfile data={profile} run={run}/>}
  {tab==='overview'&&<><div className="host-stats"><Stat n="HOMESTAY" v={overview.homestays||0}/><Stat n="ĐƠN XÁC NHẬN" v={overview.confirmedBookings||0}/><Stat n="ĐÁNH GIÁ" v={Number(overview.averageRating||0).toFixed(1)}/><Stat n="DOANH THU" v={money(overview.revenue)}/></div><Panel title="Đơn đặt phòng mới"><Bookings items={bookings.slice(0,6)} run={run}/></Panel></>}
  {tab==='calendar'&&<CalendarBoard items={bookings} homestays={items}/>}
- {tab==='homestays'&&<>{detail?<Manager data={detail} amenities={amenities} back={()=>setDetail(null)} edit={()=>setShowForm(true)} run={run}/>:<Panel title="Danh sách Homestay" action={<button onClick={()=>{setDetail(null);setForm(empty);setShowForm(true)}}>+ Đăng ký niêm yết</button>}><p className="host-hint">Admin duyệt hồ sơ niêm yết Homestay; Host tự đăng và quản lý từng phòng.</p><div className="bo-table">{items.map(x=><article key={x.id}><div><b>#{x.id} · {x.name}</b><small>{x.address}, {x.district}, {x.province} · {x.roomTypeCount} loại · {x.physicalRoomCount} phòng</small></div><span className={`status status-${x.status.toLowerCase()}`}>{labels[x.status]||x.status}</span><div className="bo-actions"><button onClick={()=>open(x.id)}>Quản lý</button>{['Draft','Rejected'].includes(x.status)&&<button onClick={()=>run(()=>homestayApi.submitHomestay(x.id),false)}>Gửi Admin duyệt</button>}</div></article>)}</div></Panel>}{showForm&&<Modal title={detail?'Sửa thông tin Homestay':'Đăng ký niêm yết Homestay'} close={()=>setShowForm(false)}><PropertyForm value={form} set={setForm} save={save}/></Modal>}</>}
+ {tab==='homestays'&&<>{detail?<Manager data={detail} amenities={amenities} back={()=>setDetail(null)} edit={()=>setShowForm(true)} run={run}/>:<HomestayInventory items={items} open={open} run={run} onCreate={()=>{setDetail(null);setForm(empty);setShowForm(true)}}/>}{showForm&&<Modal title={detail?'Sửa thông tin Homestay':'Đăng ký niêm yết Homestay'} close={()=>setShowForm(false)}><PropertyForm value={form} set={setForm} save={save}/></Modal>}</>}
  {tab==='homestays'&&detail&&<HomestayImageUpload homestayId={detail.id} run={run}/>}
  {tab==='homestays'&&!detail&&<RoomManagement data={roomData} run={run}/>}
  {tab==='bookings'&&<Panel title="Quản lý Đặt phòng (Bookings & Reservations)"><Bookings items={bookings} run={run}/></Panel>}

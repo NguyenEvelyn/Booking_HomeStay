@@ -28,6 +28,9 @@ public sealed record HostHomestayListItemResponse(
     string? ThumbnailUrl,
     int RoomTypeCount,
     int PhysicalRoomCount,
+    int AvailableRoomCount,
+    decimal? FromPrice,
+    int ImageCount,
     DateTime UpdatedAt);
 
 public sealed record RoomTypeListItemResponse(

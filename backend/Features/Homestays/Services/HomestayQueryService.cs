@@ -122,9 +122,13 @@ public sealed class HomestayQueryService(AppDbContext db) : IHomestayQueryServic
             .OrderByDescending(h => h.UpdatedAt)
             .Select(h => new HostHomestayListItemResponse(
                 h.Id, h.Name, h.AddressLine, h.District, h.Province, h.Status,
-                h.Images.Where(i => i.IsThumbnail).Select(i => i.ImageUrl).FirstOrDefault(),
+                h.Images.OrderByDescending(i => i.IsThumbnail).ThenBy(i => i.SortOrder)
+                    .Select(i => i.ImageUrl).FirstOrDefault(),
                 h.RoomTypes.Count(),
                 h.RoomTypes.SelectMany(r => r.Rooms).Count(),
+                h.RoomTypes.SelectMany(r => r.Rooms).Count(r => r.Status == "Available"),
+                h.RoomTypes.Select(r => (decimal?)r.BasePrice).Min(),
+                h.Images.Count(),
                 h.UpdatedAt))
             .ToListAsync();
 }
