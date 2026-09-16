@@ -7,6 +7,7 @@ public interface IEmailOtpSender
 {
     bool IsConfigured { get; }
     Task SendAsync(string email, string fullName, string code);
+    Task SendPasswordResetAsync(string email, string fullName, string code);
 }
 
 public sealed class EmailOtpSender : IEmailOtpSender
@@ -35,6 +36,26 @@ public sealed class EmailOtpSender : IEmailOtpSender
             Subject = "Mã xác minh tài khoản Tripio",
             Body = $"Xin chào {fullName},\n\nMã OTP xác minh tài khoản Tripio của bạn là: {code}\nMã có hiệu lực trong 10 phút.\n\nKhông chia sẻ mã này với bất kỳ ai."
         };
+        await client.SendMailAsync(message);
+    }
+
+    public async Task SendPasswordResetAsync(string email, string fullName, string code)
+    {
+        if (!IsConfigured) return;
+        var from = host!.Equals("smtp.gmail.com", StringComparison.OrdinalIgnoreCase)
+            ? username!
+            : string.IsNullOrWhiteSpace(configuredFrom) ? username! : configuredFrom;
+        using var client = new SmtpClient(host!, port)
+        {
+            EnableSsl = true,
+            Credentials = new NetworkCredential(username, password)
+        };
+       using var message = new MailMessage(from, email)
+        {
+            Subject = "Mã đặt lại mật khẩu Tripio",
+            Body = $"Xin chào {fullName},\n\nMã OTP đặt lại mật khẩu Tripio của bạn là: {code}\nMã có hiệu lực trong 10 phút.\n\nNếu bạn không yêu cầu đặt lại mật khẩu, hãy bỏ qua email này."
+        };
+
         await client.SendMailAsync(message);
     }
 }

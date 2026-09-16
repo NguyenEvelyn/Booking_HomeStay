@@ -1,12 +1,15 @@
 using HomestayAuth.Api.Features.Auth.Services;
+using HomestayAuth.Api.Features.Homestays.Services;
 using HomestayAuth.Api.Infrastructure.Persistence;
 using HomestayAuth.Api.Utilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Threading.RateLimiting;
 
 var workingDirectory = Directory.GetCurrentDirectory();
 var envPath = Path.Combine(workingDirectory, ".env");
@@ -15,6 +18,15 @@ if (!File.Exists(envPath))
 EnvLoader.Load(envPath);
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+builder.Logging.AddDebug();
+
+var dataProtectionKeysPath = Path.Combine(builder.Environment.ContentRootPath, ".data-protection-keys");
+Directory.CreateDirectory(dataProtectionKeysPath);
+builder.Services.AddDataProtection()
+    .SetApplicationName("Tripio.Homestay")
+    .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath));
 
 var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET");
 if (string.IsNullOrWhiteSpace(jwtSecret))
@@ -56,17 +68,35 @@ if (Uri.TryCreate(connectionString, UriKind.Absolute, out var databaseUri) &&
 builder.WebHost.UseUrls($"http://localhost:{Environment.GetEnvironmentVariable("PORT") ?? "5000"}");
 builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IHomestayQueryService, HomestayQueryService>();
+builder.Services.AddSingleton<HomestayAuth.Api.Features.Bookings.VnPayService>();
 builder.Services.AddSingleton<IEmailOtpSender, EmailOtpSender>();
 builder.Services.AddRateLimiter(options =>
 {
-    options.AddFixedWindowLimiter("auth-login", limiter =>
-    {
-        limiter.PermitLimit = 10;
-        limiter.Window = TimeSpan.FromMinutes(1);
-        limiter.QueueLimit = 0;
-    });
+    static RateLimitPartition<string> FixedWindow(HttpContext context, int limit, TimeSpan window) =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = limit,
+                Window = window,
+                QueueLimit = 0,
+                AutoReplenishment = true
+            });
+
+    options.AddPolicy("auth-login", context => FixedWindow(context, 10, TimeSpan.FromMinutes(1)));
+    options.AddPolicy("auth-register", context => FixedWindow(context, 5, TimeSpan.FromMinutes(10)));
+    options.AddPolicy("auth-otp", context => FixedWindow(context, 10, TimeSpan.FromMinutes(1)));
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = async (context, cancellationToken) =>
+    {
+        context.HttpContext.Response.ContentType = "application/json";
+        await context.HttpContext.Response.WriteAsJsonAsync(
+            new { message = "Bạn thao tác quá nhanh. Vui lòng thử lại sau." }, cancellationToken);
+    };
 });
+var jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER") ?? "Tripio";
+var jwtAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") ?? "Tripio.Web";
 var authentication = builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddCookie("External", options =>
     {
@@ -77,8 +107,10 @@ var authentication = builder.Services.AddAuthentication(JwtBearerDefaults.Authen
     {
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateIssuer = false,
-            ValidateAudience = false,
+            ValidateIssuer = true,
+            ValidIssuer = jwtIssuer,
+            ValidateAudience = true,
+            ValidAudience = jwtAudience,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(
@@ -91,6 +123,21 @@ var authentication = builder.Services.AddAuthentication(JwtBearerDefaults.Authen
             {
                 context.Token = context.Request.Cookies["token"];
                 return Task.CompletedTask;
+            },
+            OnTokenValidated = async context =>
+            {
+                var userIdValue = context.Principal?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                var authVersionValue = context.Principal?.FindFirst("auth_version")?.Value;
+                if (!long.TryParse(userIdValue, out var userId) || !int.TryParse(authVersionValue, out var authVersion))
+                {
+                    context.Fail("Phiên đăng nhập không hợp lệ.");
+                    return;
+                }
+
+                var db = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+                var validSession = await db.Users.AsNoTracking().AnyAsync(user =>
+                    user.Id == userId && user.Status == "Active" && user.AuthVersion == authVersion);
+                if (!validSession) context.Fail("Phiên đăng nhập đã hết hiệu lực.");
             }
         };
     });

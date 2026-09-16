@@ -6,7 +6,7 @@ export async function apiClient(path, options = {}) {
     headers: { 'Content-Type': 'application/json', ...options.headers },
     ...options
   });
-  const data = await response.json();
+  const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.message || 'Có lỗi xảy ra.');
   return data;
 }

@@ -13,19 +13,20 @@ namespace HomestayAuth.Api.Features.Auth.Controllers;
 public class AuthController(IAuthService authService, IWebHostEnvironment environment, IAuthenticationSchemeProvider schemes) : ControllerBase
 {
     [HttpPost("register")]
+    [EnableRateLimiting("auth-register")]
     public async Task<IActionResult> Register(RegisterRequest request)
     {
         (UserResponse? User, string? VerificationCode) result;
         try { result = await authService.RegisterAsync(request); }
         catch (ArgumentException error) { return BadRequest(new { message = error.Message }); }
+        catch (InvalidOperationException error) { return StatusCode(503, new { message = error.Message }); }
         return result.User is null
             ? Conflict(new { message = "Email hoặc số điện thoại đã được sử dụng." })
             : StatusCode(201, new
             {
                 message = "Đăng ký thành công. Vui lòng nhập mã OTP đã gửi đến email.",
                 user = result.User,
-                requiresVerification = true,
-                developmentOtp = environment.IsDevelopment() ? result.VerificationCode : null
+                requiresVerification = true
             });
     }
 
@@ -35,12 +36,12 @@ public class AuthController(IAuthService authService, IWebHostEnvironment enviro
     {
         var result = await authService.LoginAsync(request);
         if (result.User is null) return Unauthorized(new { message = result.Error });
-        Response.Cookies.Append("token", result.Token!, CookieOptions());
+        Response.Cookies.Append("token", result.Token!, CookieOptions(request.Remember));
         return Ok(new { message = "Đăng nhập thành công.", user = result.User });
     }
 
     [HttpPost("verify-email")]
-    [EnableRateLimiting("auth-login")]
+    [EnableRateLimiting("auth-otp")]
     public async Task<IActionResult> VerifyEmail(VerifyEmailRequest request) =>
         await authService.VerifyEmailAsync(request)
             ? Ok(new { message = "Xác minh email thành công. Bạn có thể đăng nhập." })
@@ -50,14 +51,46 @@ public class AuthController(IAuthService authService, IWebHostEnvironment enviro
     [EnableRateLimiting("auth-login")]
     public async Task<IActionResult> ResendVerification(ResendVerificationRequest request)
     {
-        var code = await authService.ResendVerificationAsync(request.Email);
-        return code is null
-            ? BadRequest(new { message = "Không thể gửi lại mã xác minh." })
-            : Ok(new
-            {
-                message = "Đã gửi lại mã OTP xác minh.",
-                developmentOtp = environment.IsDevelopment() ? code : null
-            });
+        (string? Code, string? Error) result;
+        try { result = await authService.ResendVerificationAsync(request.Email); }
+        catch (InvalidOperationException error) { return StatusCode(503, new { message = error.Message }); }
+        return result.Code is null
+            ? BadRequest(new { message = result.Error })
+            : Ok(new { message = "Đã gửi lại mã OTP xác minh." });
+    }
+
+    [HttpPost("forgot-password")]
+    [EnableRateLimiting("auth-register")]
+    public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest request)
+    {
+        try { await authService.RequestPasswordResetAsync(request.Email); }
+        catch (InvalidOperationException error) { return StatusCode(503, new { message = error.Message }); }
+        return Ok(new
+        {
+            message = "Nếu email đã đăng ký, mã OTP đặt lại mật khẩu đã được gửi."
+        });
+    }
+
+    [HttpPost("reset-password")]
+    [EnableRateLimiting("auth-otp")]
+    public async Task<IActionResult> ResetPassword(ResetPasswordRequest request)
+    {
+        var result = await authService.ResetPasswordAsync(request);
+        return result.Success
+            ? Ok(new { message = "Đặt lại mật khẩu thành công. Bạn có thể đăng nhập bằng mật khẩu mới." })
+            : BadRequest(new { message = result.Error });
+    }
+
+    [HttpPost("change-password")]
+    [Authorize]
+    [EnableRateLimiting("auth-login")]
+    public async Task<IActionResult> ChangePassword(ChangePasswordRequest request)
+    {
+        var userId = long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var result = await authService.ChangePasswordAsync(userId, request);
+        if (!result.Success) return BadRequest(new { message = result.Error });
+        Response.Cookies.Delete("token", CookieOptions());
+        return Ok(new { message = "Đổi mật khẩu thành công. Vui lòng đăng nhập lại." });
     }
 
     [HttpGet("me")]
@@ -70,8 +103,11 @@ public class AuthController(IAuthService authService, IWebHostEnvironment enviro
     }
 
     [HttpPost("logout")]
-    public IActionResult Logout()
+    [Authorize]
+    public async Task<IActionResult> Logout()
     {
+        var userId = long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        await authService.RevokeSessionsAsync(userId);
         Response.Cookies.Delete("token", CookieOptions());
         return Ok(new { message = "Đăng xuất thành công." });
     }
@@ -98,18 +134,26 @@ public class AuthController(IAuthService authService, IWebHostEnvironment enviro
         if (!result.Succeeded || string.IsNullOrWhiteSpace(email))
             return Redirect($"{clientUrl}?auth=error");
 
-        var login = await authService.ExternalLoginAsync(email, name);
+        (UserResponse User, string Token) login;
+        try { login = await authService.ExternalLoginAsync(email, name); }
+        catch (InvalidOperationException)
+        {
+            await HttpContext.SignOutAsync("External");
+            return Redirect($"{clientUrl}?auth=locked");
+        }
         Response.Cookies.Append("token", login.Token, CookieOptions());
         await HttpContext.SignOutAsync("External");
         return Redirect($"{clientUrl}?auth=success&provider={Uri.EscapeDataString(provider)}");
     }
 
-    private CookieOptions CookieOptions() => new()
+    private CookieOptions CookieOptions(bool remember = false)
+        => new()
     {
         HttpOnly = true,
         Secure = environment.IsProduction(),
         SameSite = environment.IsProduction() ? SameSiteMode.None : SameSiteMode.Lax,
-        Expires = DateTimeOffset.UtcNow.AddMilliseconds(
-            double.TryParse(Environment.GetEnvironmentVariable("COOKIE_MAX_AGE_MS"), out var age) ? age : 86_400_000)
+        Expires = remember
+            ? DateTimeOffset.UtcNow.AddHours(int.TryParse(Environment.GetEnvironmentVariable("JWT_REMEMBER_HOURS"), out var hours) ? hours : 720)
+            : null
     };
 }

@@ -11,7 +11,14 @@ CREATE TABLE IF NOT EXISTS users (
     CHECK (status IN ('Active', 'Locked', 'Unverified')),
   email_verification_code_hash VARCHAR(64),
   email_verification_expires_at TIMESTAMPTZ,
+  email_verification_sent_at TIMESTAMPTZ,
   email_verified_at TIMESTAMPTZ,
+  email_verification_failed_attempts INTEGER NOT NULL DEFAULT 0,
+  password_reset_code_hash VARCHAR(64),
+  password_reset_expires_at TIMESTAMPTZ,
+  password_reset_sent_at TIMESTAMPTZ,
+  password_reset_failed_attempts INTEGER NOT NULL DEFAULT 0,
+  auth_version INTEGER NOT NULL DEFAULT 0,
   failed_login_attempts INTEGER NOT NULL DEFAULT 0,
   lockout_end TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -22,7 +29,14 @@ CREATE UNIQUE INDEX IF NOT EXISTS ux_users_email_lower ON users (LOWER(email));
 
 ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_code_hash VARCHAR(64);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_expires_at TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_sent_at TIMESTAMPTZ;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_failed_attempts INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_code_hash VARCHAR(64);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_expires_at TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_sent_at TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_failed_attempts INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_version INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS failed_login_attempts INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS lockout_end TIMESTAMPTZ;
 ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
