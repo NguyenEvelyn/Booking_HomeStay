@@ -42,7 +42,7 @@ public sealed class ReviewsController(AppDbContext db) : ControllerBase
         return Ok(new { average, total, distribution, items });
     }
 
-    [Authorize(Roles = "Customer")]
+    [Authorize(Roles = "Customer,Host")]
     [HttpPost("reviews")]
     public async Task<IActionResult> Create(CreateReviewRequest request)
     {
@@ -51,7 +51,7 @@ public sealed class ReviewsController(AppDbContext db) : ControllerBase
         var customerId = long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var booking = await db.Bookings.AsNoTracking().SingleOrDefaultAsync(x => x.Id == request.BookingId && x.CustomerId == customerId);
         if (booking is null) return NotFound(new { message = "Không tìm thấy đơn đặt phòng." });
-        if (booking.CheckOutDate > DateOnly.FromDateTime(DateTime.UtcNow)) return BadRequest(new { message = "Bạn chỉ có thể đánh giá sau ngày trả phòng." });
+        if (booking.Status != "Completed") return BadRequest(new { message = "Bạn chỉ có thể đánh giá sau khi kỳ lưu trú đã hoàn tất." });
         if (await db.Reviews.AnyAsync(x => x.BookingId == booking.Id)) return Conflict(new { message = "Đơn đặt phòng này đã được đánh giá." });
         var now = DateTime.UtcNow;
         var review = new Review { BookingId = booking.Id, CustomerId = customerId, HomestayId = booking.HomestayId, Rating = request.Rating, Comment = string.IsNullOrWhiteSpace(request.Comment) ? null : request.Comment.Trim(), Status = "Visible", CreatedAt = now, UpdatedAt = now };

@@ -107,11 +107,11 @@ export default function App() {
 
   if (user && mode !== 'change-password') {
     if (user.role === 'Admin') return <><AdminDashboardPage user={user} onLogout={logout} onChangePassword={() => { setMode('change-password'); setNotice(null); }} />{dialog}</>;
-    if (user.role === 'Host') return <><HostDashboardPage user={user} onLogout={logout} onChangePassword={() => { setMode('change-password'); setNotice(null); }} onDeveloping={showDeveloping} />{dialog}</>;
+    if (user.role === 'Host' && view === 'host') return <><HostDashboardPage user={user} onLogout={logout} onCustomerMode={() => setView('home')} onChangePassword={() => { setMode('change-password'); setNotice(null); }} onDeveloping={showDeveloping} />{dialog}</>;
     if (view === 'bookings') return <><MyBookingsPage user={user} onHome={() => setView('home')} onHomestays={openCatalog} onAccount={() => { setMode('change-password'); setNotice(null); }} />{dialog}</>;
     if (view === 'catalog') return <><CustomerHomestaysPage user={user} onBack={() => setView('home')} onOpen={openHomestay} onBookings={() => setView('bookings')} onAccount={() => { setMode('change-password'); setNotice(null); }} />{dialog}</>;
     if (view === 'detail') return <><HomestayDetailPage id={selectedHomestayId} initialSearch={homestaySearch} user={user} onHome={() => setView('home')} onBack={openCatalog} onBookings={() => setView('bookings')} onAccount={() => { setMode('change-password'); setNotice(null); }} onDeveloping={showDeveloping} />{dialog}</>;
-    return <><HomePage user={user} onLogout={logout} onChangePassword={() => { setMode('change-password'); setNotice(null); }} onBrowseHomestays={openCatalog} onOpenHomestay={openHomestay} onDeveloping={showDeveloping} />{dialog}</>;
+    return <><HomePage user={user} onLogout={logout} onChangePassword={() => { setMode('change-password'); setNotice(null); }} onBrowseHomestays={openCatalog} onOpenHomestay={openHomestay} onDeveloping={showDeveloping} />{user.role==='Host'&&<button className="return-host-portal" onClick={()=>setView('host')}>⌂ Về trang quản lý Host</button>}{dialog}</>;
   }
 
   if (showHome) {
