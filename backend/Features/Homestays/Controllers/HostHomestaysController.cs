@@ -456,13 +456,13 @@ public sealed class HostHomestaysController(IHomestayQueryService service, AppDb
             return Ok(new { message = "Đã từ chối yêu cầu hủy; booking vẫn được xác nhận." });
         }
 
-        cancellation.Status = cancellation.RefundAmount > 0 ? "Refunded" : "Approved";
+        cancellation.Status = cancellation.RefundAmount > 0 ? "RefundPending" : "Approved";
         booking.Status = "Cancelled";
         booking.UpdatedAt = now;
         if (cancellation.RefundAmount > 0)
-            db.Payments.Add(new Payment { BookingId = booking.Id, TransactionCode = $"RF{now:yyyyMMddHHmmss}{Guid.NewGuid():N}"[..30].ToUpperInvariant(), PaymentMethod = "VNPay", TransactionType = "Refund", Amount = cancellation.RefundAmount, Status = "Success", PaidAt = now, GatewayResponse = "Host approved cancellation refund", CreatedAt = now, UpdatedAt = now });
+            db.Payments.Add(new Payment { BookingId = booking.Id, TransactionCode = $"RF{now:yyyyMMddHHmmss}{Guid.NewGuid():N}"[..30].ToUpperInvariant(), PaymentMethod = "VNPay", TransactionType = "Refund", Amount = cancellation.RefundAmount, Status = "Pending", GatewayResponse = "Host approved; awaiting VNPay refund processing", CreatedAt = now, UpdatedAt = now });
         await db.SaveChangesAsync();
-        return Ok(new { message = "Đã duyệt hủy và ghi nhận khoản hoàn tiền.", cancellation.RefundAmount, cancellation.CancellationFee });
+        return Ok(new { message = cancellation.RefundAmount > 0 ? "Đã duyệt hủy. Khoản hoàn tiền đang chờ xử lý qua VNPay." : "Đã duyệt hủy booking.", cancellation.RefundAmount, cancellation.CancellationFee, cancellation.Status });
     }
 
     [HttpPost("{id:long}/submit")]

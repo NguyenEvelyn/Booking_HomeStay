@@ -1,0 +1,6 @@
+.cancel-message.error{color:#a12720;background:#fff0ee}
+.booking-cancellation-info{grid-column:1/-1!important;display:flex!important;align-items:center;gap:16px!important;padding:11px 14px;border-left:3px solid #d39a00;border-radius:7px;background:#fff8df}
+.booking-cancellation-info b{color:#8a6200;font-size:11px}.booking-cancellation-info span{color:#65748a;font-size:10px}
+.booking-cancellation-info.refundpending{border-left-color:#1551aa;background:#edf5ff}.booking-cancellation-info.refundpending b{color:#1551aa}
+.booking-cancellation-info.rejected{border-left-color:#b42318;background:#fff0ee}.booking-cancellation-info.rejected b{color:#b42318}
+@media(max-width:700px){.booking-cancellation-info{align-items:flex-start;flex-direction:column;gap:6px!important}}

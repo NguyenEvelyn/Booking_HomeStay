@@ -61,7 +61,8 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay) : Co
         var userId = long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var items = await db.Bookings.AsNoTracking().Where(x => x.CustomerId == userId)
             .OrderByDescending(x => x.CreatedAt)
-            .Select(x => new { x.Id, x.BookingCode, x.HomestayId, HomestayName = db.Homestays.Where(h => h.Id == x.HomestayId).Select(h => h.Name).First(), x.CheckInDate, x.CheckOutDate, x.AdultCount, x.ChildCount, x.TotalAmount, x.Status, x.CreatedAt, CanReview = x.Status == "Completed" && !db.Reviews.Any(r => r.BookingId == x.Id) })
+            .Select(x => new { x.Id, x.BookingCode, x.HomestayId, HomestayName = db.Homestays.Where(h => h.Id == x.HomestayId).Select(h => h.Name).First(), x.CheckInDate, x.CheckOutDate, x.AdultCount, x.ChildCount, x.TotalAmount, x.Status, x.CreatedAt, CanReview = x.Status == "Completed" && !db.Reviews.Any(r => r.BookingId == x.Id),
+                Cancellation = db.Cancellations.Where(c => c.BookingId == x.Id).Select(c => new { c.Reason, c.CancellationFee, c.RefundAmount, c.Status, c.CancelledAt, c.ProcessedAt }).FirstOrDefault() })
             .ToListAsync();
         return Ok(new { items });
     }
