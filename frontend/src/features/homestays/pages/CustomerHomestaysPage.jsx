@@ -4,6 +4,7 @@ import CustomerNav from '../../../shared/components/CustomerNav.jsx';
 import pineHomestayImage from '../../../../assets/f6cd6879081dc8e8d4ff18669308ea86.jpg';
 import azureHomestayImage from '../../../../assets/ecf184f6b6cd2b6e2aa898ff3195ab7e.jpg';
 import sunsetHomestayImage from '../../../../assets/2fc6b619bb0af3dc94971c099d25bbae.jpg';
+import { freshImageUrl } from '../../../shared/utils/freshImageUrl.js';
 
 const money = (value) => value == null ? 'Liên hệ' : `${new Intl.NumberFormat('vi-VN').format(value)}đ`;
 const covers = [pineHomestayImage, azureHomestayImage, sunsetHomestayImage];
@@ -14,7 +15,7 @@ const SearchIcon = ({ type }) => <svg viewBox="0 0 24 24" aria-hidden="true">
   {type === 'guests' && <><circle cx="9" cy="8" r="3" /><path d="M3.5 20v-2.2A4.8 4.8 0 0 1 8.3 13h1.4a4.8 4.8 0 0 1 4.8 4.8V20M16 5.5a3 3 0 0 1 0 5.8M16.5 14a4.5 4.5 0 0 1 4 4.5V20" /></>}
 </svg>;
 
-export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings, onAccount }) {
+export default function CustomerHomestaysPage({ user, refreshKey = 0, onBack, onOpen, onBookings, onAccount }) {
   const [search, setSearch] = useState('');
   const [result, setResult] = useState({ items: [], total: 0 });
   const [maxPrice, setMaxPrice] = useState(3000000);
@@ -36,11 +37,12 @@ export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings
       if ((checkIn && !checkOut) || (!checkIn && checkOut)) throw new Error('Vui lòng chọn đầy đủ ngày nhận và ngày trả phòng.');
       if (checkIn && checkOut && checkOut <= checkIn) throw new Error('Ngày trả phòng phải sau ngày nhận phòng.');
       const response = await homestayApi.list(criteria(targetPage));
-      setResult(response); setPage(targetPage);
+      const imageVersion = `${Date.now()}-${refreshKey}`;
+      setResult({ ...response, items: response.items.map((item) => ({ ...item, thumbnailUrl: freshImageUrl(item.thumbnailUrl, imageVersion) })) }); setPage(targetPage);
     } catch (e) { setError(e.message); }
     finally { setLoading(false); }
   };
-  useEffect(() => { load(1); }, [maxPrice, roomType, minRating, sort]);
+  useEffect(() => { load(1); }, [maxPrice, roomType, minRating, sort, refreshKey]);
 
   const resetFilters = () => { setMaxPrice(3000000); setRoomType(''); setMinRating(0); };
   const toggleFavorite = (id) => { const next = favorites.includes(id) ? favorites.filter((item) => item !== id) : [...favorites, id]; setFavorites(next); localStorage.setItem('tripio-favorites', JSON.stringify(next)); };

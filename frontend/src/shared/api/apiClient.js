@@ -2,8 +2,10 @@ export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/ap
 
 export async function apiClient(path, options = {}) {
   const isForm = options.body instanceof FormData;
+  const method = String(options.method || 'GET').toUpperCase();
   const response = await fetch(`${API_URL}${path}`, {
     credentials: 'include',
+    cache: method === 'GET' ? 'no-store' : undefined,
     headers: { ...(isForm ? {} : { 'Content-Type': 'application/json' }), ...options.headers },
     ...options
   });

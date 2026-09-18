@@ -23,6 +23,7 @@ export default function App() {
   const [selectedHomestayId, setSelectedHomestayId] = useState(null);
   const [homestaySearch, setHomestaySearch] = useState(null);
   const [paymentResult, setPaymentResult] = useState(null);
+  const [catalogVersion, setCatalogVersion] = useState(0);
   const errorCode = Number(window.location.pathname.slice(1));
   const isErrorPage = [400, 401, 403, 404, 500].includes(errorCode) || !['/', ''].includes(window.location.pathname);
 
@@ -41,6 +42,18 @@ export default function App() {
       if (params.get('auth') === 'locked') setNotice({ type: 'error', text: 'Tài khoản đã bị khóa. Vui lòng liên hệ hỗ trợ.' });
     });
   }, []);
+  useEffect(() => {
+    const refreshCatalog = (event) => {
+      if (!event || event.key === 'tripio-catalog-version') setCatalogVersion((current) => current + 1);
+    };
+    window.addEventListener('storage', refreshCatalog);
+    window.addEventListener('focus', refreshCatalog);
+    return () => { window.removeEventListener('storage', refreshCatalog); window.removeEventListener('focus', refreshCatalog); };
+  }, []);
+  const markCatalogChanged = () => {
+    localStorage.setItem('tripio-catalog-version', String(Date.now()));
+    setCatalogVersion((current) => current + 1);
+  };
   const switchMode = () => { setMode((current) => current === 'login' ? 'register' : 'login'); setNotice(null); };
   const submit = async (form) => {
     setBusy(true); setNotice(null);
@@ -107,11 +120,11 @@ export default function App() {
 
   if (user && mode !== 'change-password') {
     if (user.role === 'Admin') return <><AdminDashboardPage user={user} onLogout={logout} onChangePassword={() => { setMode('change-password'); setNotice(null); }} />{dialog}</>;
-    if (user.role === 'Host' && view === 'host') return <><HostDashboardPage user={user} onLogout={logout} onCustomerMode={() => setView('home')} onChangePassword={() => { setMode('change-password'); setNotice(null); }} onDeveloping={showDeveloping} />{dialog}</>;
+    if (user.role === 'Host' && view === 'host') return <><HostDashboardPage user={user} onLogout={logout} onCustomerMode={() => setView('home')} onCatalogChanged={markCatalogChanged} onChangePassword={() => { setMode('change-password'); setNotice(null); }} onDeveloping={showDeveloping} />{dialog}</>;
     if (view === 'bookings') return <><MyBookingsPage user={user} onHome={() => setView('home')} onHomestays={openCatalog} onAccount={() => { setMode('change-password'); setNotice(null); }} />{dialog}</>;
-    if (view === 'catalog') return <><CustomerHomestaysPage user={user} onBack={() => setView('home')} onOpen={openHomestay} onBookings={() => setView('bookings')} onAccount={() => { setMode('change-password'); setNotice(null); }} />{dialog}</>;
-    if (view === 'detail') return <><HomestayDetailPage id={selectedHomestayId} initialSearch={homestaySearch} user={user} onHome={() => setView('home')} onBack={openCatalog} onBookings={() => setView('bookings')} onAccount={() => { setMode('change-password'); setNotice(null); }} onDeveloping={showDeveloping} />{dialog}</>;
-    return <><HomePage user={user} onLogout={logout} onChangePassword={() => { setMode('change-password'); setNotice(null); }} onBrowseHomestays={openCatalog} onOpenHomestay={openHomestay} onDeveloping={showDeveloping} />{user.role==='Host'&&<button className="return-host-portal" onClick={()=>setView('host')}>⌂ Về trang quản lý Host</button>}{dialog}</>;
+    if (view === 'catalog') return <><CustomerHomestaysPage refreshKey={catalogVersion} user={user} onBack={() => setView('home')} onOpen={openHomestay} onBookings={() => setView('bookings')} onAccount={() => { setMode('change-password'); setNotice(null); }} />{dialog}</>;
+    if (view === 'detail') return <><HomestayDetailPage refreshKey={catalogVersion} id={selectedHomestayId} initialSearch={homestaySearch} user={user} onHome={() => setView('home')} onBack={openCatalog} onBookings={() => setView('bookings')} onAccount={() => { setMode('change-password'); setNotice(null); }} onDeveloping={showDeveloping} />{dialog}</>;
+    return <><HomePage refreshKey={catalogVersion} user={user} onLogout={logout} onChangePassword={() => { setMode('change-password'); setNotice(null); }} onBrowseHomestays={openCatalog} onOpenHomestay={openHomestay} onDeveloping={showDeveloping} />{user.role==='Host'&&<button className="return-host-portal" onClick={()=>setView('host')}>⌂ Về trang quản lý Host</button>}{dialog}</>;
   }
 
   if (showHome) {

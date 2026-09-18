@@ -19,6 +19,7 @@ import vungTau from '../../../assets/figma/destination-vungtau.jpg';
 import daNang from '../../../assets/figma/destination-danang.png';
 import haLong from '../../../assets/figma/destination-halong.jpg';
 import { homestayApi } from '../homestays/api/homestayApi.js';
+import { freshImageUrl } from '../../shared/utils/freshImageUrl.js';
 
 const fallbackStays = [
   { name: 'The Sunset Residence', location: 'Phú Quốc, Việt Nam', price: '1,456k VND', rating: '4,8', image: sunsetImage },
@@ -48,7 +49,7 @@ const heroStays = [
 
 const offers = [voucherWeek, voucherHotDeal, voucherSummer, voucherHotDeal, voucherWeek];
 
-export default function HomePage({ user, onLogout, onChangePassword, onBrowseHomestays, onOpenHomestay, onDeveloping }) {
+export default function HomePage({ user, refreshKey = 0, onLogout, onChangePassword, onBrowseHomestays, onOpenHomestay, onDeveloping }) {
   const [menuScrolled, setMenuScrolled] = useState(false);
   const [homeStays, setHomeStays] = useState(fallbackStays);
   const [homestayTotal, setHomestayTotal] = useState(0);
@@ -64,14 +65,15 @@ export default function HomePage({ user, onLogout, onChangePassword, onBrowseHom
 
   useEffect(() => {
     homestayApi.list({ page: 1 }).then(async (result) => {
+      const imageVersion = `${Date.now()}-${refreshKey}`;
       setHomestayTotal(result.total);
       const items = await Promise.all(result.items.slice(0, 5).map(async (item, index) => {
         const review = await homestayApi.reviews(item.id).catch(() => ({ average: 0, total: 0 }));
-        return { id: item.id, name: item.name, location: `${item.district}, ${item.province}`, price: item.fromPrice, ratingValue: review.average, reviewCount: review.total, image: item.thumbnailUrl || fallbackStays[index % fallbackStays.length].image };
+        return { id: item.id, name: item.name, location: `${item.district}, ${item.province}`, price: item.fromPrice, ratingValue: review.average, reviewCount: review.total, image: item.thumbnailUrl ? freshImageUrl(item.thumbnailUrl, imageVersion) : fallbackStays[index % fallbackStays.length].image };
       }));
       if (items.length) setHomeStays(items);
     }).catch(() => {});
-  }, []);
+  }, [refreshKey]);
 
   return <div className="home-page">
     <section className="hero" id="home" style={{ backgroundImage: `url('${heroImage}')` }}>
