@@ -4,6 +4,7 @@ import CustomerNav from '../../../shared/components/CustomerNav.jsx';
 import { freshImageUrl } from '../../../shared/utils/freshImageUrl.js';
 import { bookingApi } from '../../bookings/api/bookingApi.js';
 import './CapacityBooking.css';
+import './HomestayDetailReference.css';
 import './HomestayDetailRedesign.css';
 import pineHomestayImage from '../../../../assets/f6cd6879081dc8e8d4ff18669308ea86.jpg';
 import azureHomestayImage from '../../../../assets/ecf184f6b6cd2b6e2aa898ff3195ab7e.jpg';
@@ -231,7 +232,7 @@ export default function HomestayDetailPage({ id, refreshKey = 0, initialSearch, 
     </main>;
   }
 
-  return <main className="stay-detail-page">
+  return <main className="stay-detail-page reference-detail-page">
     <CustomerNav active="homestays" user={user} onHome={onHome} onHomestays={onBack} onBookings={onBookings} onAccount={onAccount} />
     <section className="stay-hero" style={{ backgroundImage: `linear-gradient(90deg,rgba(4,19,45,.48),rgba(4,19,45,.03)), url('${freshImageUrl(data.thumbnailUrl || data.images?.find((image) => image.isThumbnail)?.url || data.images?.[0]?.url, imageVersion) || homestayCover(data.name)}')` }}>
       <div className="stay-hero-copy"><p>HOMESTAY CAO CẤP</p><h1>{data.name}</h1><div><b>★ <span>{reviews.total ? Number(reviews.average).toFixed(1) : 'Mới'}</span></b><span>({reviews.total} đánh giá)</span><i /><span>●</span><span>{address}</span></div></div>
@@ -287,5 +288,7 @@ export default function HomestayDetailPage({ id, refreshKey = 0, initialSearch, 
       </section>
     </div>}
     <section className="review-highlights"><header><div><small>CẢM NHẬN TỪ KHÁCH</small><h2>Đọc xem khách yêu thích điều gì nhất</h2></div>{reviews.total > 0 && <button onClick={() => setShowAllReviews(true)}>Đọc tất cả {reviews.total} đánh giá</button>}</header><div className="review-highlights-shell"><button className="review-arrow previous" aria-label="Đánh giá trước" onClick={() => document.querySelector('.review-highlights-track')?.scrollBy({ left: -390, behavior: 'smooth' })}>‹</button><div className="review-highlights-track">{reviews.items.length ? reviews.items.slice(0, 6).map((review) => <article key={review.id}><header><span>{review.customerName.split(/\s+/).map((part) => part[0]).slice(-1).join('').toUpperCase()}</span><div><strong>{review.customerName}</strong><small>🇻🇳 Việt Nam</small></div><em>{review.rating},0</em></header><p>“{review.comment || 'Khách hàng hài lòng với kỳ nghỉ tại homestay.'}”</p>{review.hostReply && <small className="review-replied">✓ Chủ homestay đã phản hồi</small>}<button onClick={() => setShowAllReviews(true)}>Tìm hiểu thêm</button></article>) : <p className="empty-reviews">Homestay chưa có đánh giá.</p>}</div><button className="review-arrow next" aria-label="Đánh giá tiếp theo" onClick={() => document.querySelector('.review-highlights-track')?.scrollBy({ left: 390, behavior: 'smooth' })}>›</button></div></section>
+    <section className="detail-closing"><span>✦</span><p>Du khách tìm kiếm những trải nghiệm <em>độc bản</em> và<br/><em>giàu cảm hứng</em> sẽ tìm thấy sự tinh tế tại</p><h2>{data.name}</h2><small>TRỌN VẸN · TIN CẬY · TẬN TÂM</small></section>
+    <footer className="detail-footer"><div><a className="detail-footer-logo" href="#top" onClick={(event)=>{event.preventDefault();onHome()}}>tripio</a><p>Nơi mỗi chuyến đi trở thành một trải nghiệm đáng nhớ. Tận hưởng kỳ nghỉ riêng tư, tiện nghi và đầy cảm hứng.</p></div><div><b>TRẢI NGHIỆM</b><button onClick={onBack}>Khám phá Homestay</button><button onClick={()=>document.getElementById('rooms')?.scrollIntoView({behavior:'smooth'})}>Chọn phòng</button></div><div><b>THÔNG TIN</b><button onClick={()=>document.getElementById('policy')?.scrollIntoView({behavior:'smooth'})}>Chính sách</button><button onClick={()=>document.getElementById('reviews')?.scrollIntoView({behavior:'smooth'})}>Đánh giá</button></div><div><b>LIÊN HỆ</b><p>{address}</p><p>tripio@gmail.com</p></div></footer>
   </main>;
 }
