@@ -4,6 +4,7 @@ import CustomerNav from '../../../shared/components/CustomerNav.jsx';
 import { freshImageUrl } from '../../../shared/utils/freshImageUrl.js';
 import { bookingApi } from '../../bookings/api/bookingApi.js';
 import './CapacityBooking.css';
+import './HomestayDetailRedesign.css';
 import pineHomestayImage from '../../../../assets/f6cd6879081dc8e8d4ff18669308ea86.jpg';
 import azureHomestayImage from '../../../../assets/ecf184f6b6cd2b6e2aa898ff3195ab7e.jpg';
 import sunsetHomestayImage from '../../../../assets/2fc6b619bb0af3dc94971c099d25bbae.jpg';
