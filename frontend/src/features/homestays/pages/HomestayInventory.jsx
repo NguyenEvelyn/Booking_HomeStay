@@ -6,7 +6,7 @@ const labels = {
   Draft: 'Bản nháp', Pending: 'Chờ duyệt', Approved: 'Đã duyệt',
   Rejected: 'Từ chối', Suspended: 'Tạm ngưng'
 };
-const money = value => value == null ? 'Chưa đặt giá' : `${new Intl.NumberFormat('vi-VN').format(value)} đ`;
+const money = value => value == null ? 'Chưa đặt giá' : `${new Intl.NumberFormat('vi-VN').format(value)}đ`;
 const date = value => value ? new Intl.DateTimeFormat('vi-VN').format(new Date(value)) : '—';
 
 function PropertyImage({ item }) {

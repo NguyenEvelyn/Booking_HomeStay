@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import CustomerNav from '../../../shared/components/CustomerNav.jsx';
 import { bookingApi } from '../api/bookingApi.js';
 
-const money = (value) => `${new Intl.NumberFormat('vi-VN').format(value)} đ`;
+const money = (value) => `${new Intl.NumberFormat('vi-VN').format(value)}đ`;
 const statusLabels = { PendingPayment: 'Chờ thanh toán', PaymentFailed: 'Thanh toán lỗi', Expired: 'Hết hạn giữ phòng', Confirmed: 'Đã xác nhận', CheckedIn: 'Đã nhận phòng', Completed: 'Hoàn thành', CancellationRequested: 'Chờ duyệt hủy', Cancelled: 'Đã hủy', NoShow: 'Không đến' };
 
 export default function MyBookingsPage({ user, onHome, onHomestays, onAccount }) {

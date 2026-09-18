@@ -110,7 +110,7 @@ export default function HomePage({ user, onLogout, onChangePassword, onBrowseHom
       <div className="stays-intro"><p className="kicker dark">DÀNH CHO BẠN</p><h2>HOMESTAY ĐƯỢC<br /><em>YÊU THÍCH</em></h2><p>Khám phá các homestay được nhiều du khách yêu thích và lựa chọn cho hành trình đáng nhớ.</p><button type="button" onClick={onBrowseHomestays}>Xem tất cả <span>↗</span></button></div>
       <div className="stay-grid">{homeStays.map((stay) => <article className="stay-card" key={stay.id || stay.name} style={{ backgroundImage: `linear-gradient(180deg,transparent 35%,rgba(3,31,45,.86)),url('${stay.image}')` }}>
         <div className="stay-top"><span>⌖ {stay.location}</span><span>{stay.reviewCount ? `★ ${Number(stay.ratingValue).toFixed(1)} · ${stay.reviewCount} đánh giá` : 'Homestay mới'}</span></div>
-        <div><h3>{stay.name}</h3><p>Khám phá các hạng phòng và tiện ích đang có tại homestay.</p><footer><b>{typeof stay.price === 'number' ? `Từ ${new Intl.NumberFormat('vi-VN').format(stay.price)} đ` : stay.price}</b><button type="button" onClick={() => stay.id ? onOpenHomestay(stay.id) : onBrowseHomestays()}>Xem phòng</button></footer></div>
+        <div><h3>{stay.name}</h3><p>Khám phá các hạng phòng và tiện ích đang có tại homestay.</p><footer><b>{typeof stay.price === 'number' ? `Từ ${new Intl.NumberFormat('vi-VN').format(stay.price)}đ` : stay.price}</b><button type="button" onClick={() => stay.id ? onOpenHomestay(stay.id) : onBrowseHomestays()}>Xem phòng</button></footer></div>
       </article>)}</div>
     </section>
 
