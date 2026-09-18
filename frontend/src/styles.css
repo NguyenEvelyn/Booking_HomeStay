@@ -235,9 +235,26 @@ input:focus, select:focus { border-color: #11377b; background: white; box-shadow
 @media(max-width:1050px){.customer-nav{grid-template-columns:1fr auto}.customer-nav-links{display:none}.catalog-grid{grid-template-columns:1fr 1fr}.detail-layout{grid-template-columns:1fr}.detail-booking-card{position:static}.host-page{grid-template-columns:78px 1fr}.host-sidebar{padding:25px 10px}.host-logo{margin:0 auto 35px;font-size:18px}.host-sidebar nav button{font-size:0;text-align:center}.host-sidebar nav button:first-letter{font-size:20px}.host-stats{grid-template-columns:1fr 1fr}.host-table article{grid-template-columns:65px 1fr 100px}.host-table article>div:nth-of-type(3),.host-table article>div:nth-of-type(4){display:none}}
 @media(max-width:620px){.customer-nav{height:72px;padding:0 20px}.customer-logo{font-size:28px}.customer-nav-actions button{width:38px;height:38px}.portal-header nav{display:none}.portal-user span{display:none}.catalog-grid{grid-template-columns:1fr}.catalog-hero form{flex-direction:column}.catalog-hero form button{width:100%;height:46px}.detail-gallery{height:300px;grid-template-columns:1fr}.detail-gallery img{display:none}.detail-main h1{font-size:30px}.room-type-list article{grid-template-columns:1fr}.room-type-list img{width:100%}.amenity-grid{grid-template-columns:1fr}.host-content{padding:25px 15px}.host-content h1{font-size:22px}.host-stats{grid-template-columns:1fr 1fr}.host-panel{padding:18px}.host-table article{grid-template-columns:55px 1fr}.host-table .status,.host-table article>button{display:none}}
 
+/* One shared top-header height across customer, Host and Admin screens. */
+:root{--app-header-height:94px}
+.home-nav,.customer-nav,.host-content>header{
+ box-sizing:border-box;
+ min-height:var(--app-header-height);
+}
+.home-nav{height:var(--app-header-height);padding-top:0;padding-bottom:0}
+.home-nav.is-scrolled{height:var(--app-header-height);padding-top:0;padding-bottom:0}
+.customer-nav{height:var(--app-header-height)}
+.stay-detail-page .customer-nav{height:var(--app-header-height)}
+.host-content>header{height:var(--app-header-height);padding-top:0;padding-bottom:0}
+@media(max-width:620px){
+ :root{--app-header-height:72px}
+ .home-nav,.home-nav.is-scrolled,.customer-nav,.stay-detail-page .customer-nav,.host-content>header{height:var(--app-header-height);min-height:var(--app-header-height)}
+ .home-nav{padding:0 20px}
+}
+
 /* Chi tiết homestay */
 .stay-detail-page { min-height:100vh; color:#062b80; background:#fff; }
-.stay-detail-page .customer-nav { position:absolute; top:0; left:0; right:0; width:100%; height:76px; background:linear-gradient(180deg,rgba(1,28,73,.96),rgba(1,28,73,.88)); box-shadow:none; }
+.stay-detail-page .customer-nav { position:absolute; top:0; left:0; right:0; width:100%; height:var(--app-header-height); background:linear-gradient(180deg,rgba(1,28,73,.96),rgba(1,28,73,.88)); box-shadow:none; }
 .stay-detail-page .customer-logo { font-size:34px; }
 .stay-detail-page .customer-nav-links { background:transparent; }
 .stay-detail-page .customer-nav-links button { border-radius:0; padding:15px 19px; }
