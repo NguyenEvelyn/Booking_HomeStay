@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { homestayApi } from '../api/homestayApi.js';
 import CustomerNav from '../../../shared/components/CustomerNav.jsx';
 import { bookingApi } from '../../bookings/api/bookingApi.js';
+import './CapacityBooking.css';
 import pineHomestayImage from '../../../../assets/f6cd6879081dc8e8d4ff18669308ea86.jpg';
 import azureHomestayImage from '../../../../assets/ecf184f6b6cd2b6e2aa898ff3195ab7e.jpg';
 import sunsetHomestayImage from '../../../../assets/2fc6b619bb0af3dc94971c099d25bbae.jpg';
@@ -22,6 +23,10 @@ const eloraImages = Object.values(import.meta.glob('../../../../assets/EloraHome
 
 const homestayCover = (name) => name.includes('Sunset') ? sunsetHomestayImage
   : name.includes('Azure') ? azureHomestayImage : pineHomestayImage;
+
+function GuestCounter({value,min=1,max,onChange}){
+  return <div className="booking-guest-stepper"><button type="button" disabled={value<=min} onClick={()=>onChange(Math.max(min,value-1))}>−</button><b>{value}</b><button type="button" disabled={value>=max} onClick={()=>onChange(Math.min(max,value+1))}>＋</button></div>;
+}
 
 export default function HomestayDetailPage({ id, initialSearch, user, onHome, onBack, onBookings, onAccount, onDeveloping }) {
   const [data, setData] = useState(null);
@@ -125,23 +130,25 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
   const openRoomDetail = async (room) => {
     const availableQuantity = Math.max(1, Math.min(roomQuantity, room.availableRoomCount || 1));
     setSelectedRoom(room); setShowPaymentPage(false); setActiveRoomImage(0); setRoomQuantity(availableQuantity);
-    setAdultCount((value) => Math.max(1, Math.min(value, room.maxAdults * availableQuantity)));
-    setChildCount((value) => Math.min(value, room.maxChildren * availableQuantity));
+    const roomLimit=(room.extraGuestAllowed?room.maxCapacity:room.baseCapacity)||room.maxAdults+room.maxChildren;
+    setAdultCount((value) => Math.max(1, Math.min(value, roomLimit * availableQuantity)));
+    setChildCount(0);
     window.setTimeout(() => document.getElementById('room-detail-inline')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
     try { const detail = await homestayApi.roomTypeDetail(room.id); setSelectedRoom((current) => current?.id === room.id ? { ...current, ...detail } : current); } catch { /* giữ dữ liệu danh sách nếu tải gallery thất bại */ }
   };
   const closeRoomDetail = () => { setSelectedRoom(null); setShowPaymentPage(false); window.setTimeout(() => document.querySelector('.rooms-section')?.scrollIntoView({ behavior: 'smooth' }), 0); };
   const bookingNights = arrival && departure ? Math.max(0, Math.round((new Date(departure) - new Date(arrival)) / 86400000)) : 0;
-  const includedAdultCount = selectedRoom ? Math.min(2, selectedRoom.maxAdults) * roomQuantity : 0;
-  const extraAdultCount = Math.max(0, adultCount - includedAdultCount);
+  const bookingGuestMax = selectedRoom ? ((selectedRoom.extraGuestAllowed ? selectedRoom.maxCapacity : selectedRoom.baseCapacity) || selectedRoom.maxAdults + selectedRoom.maxChildren) * roomQuantity : 1;
+  const includedAdultCount = selectedRoom ? (selectedRoom.baseCapacity||Math.min(2,selectedRoom.maxAdults)) * roomQuantity : 0;
+  const extraAdultCount = Math.max(0, adultCount + childCount - includedAdultCount);
   const roomPriceTotal = selectedRoom ? selectedRoom.basePrice * bookingNights * roomQuantity : 0;
-  const extraAdultTotal = extraAdultCount * 150000 * bookingNights;
-  const childFeeTotal = childCount * 100000 * bookingNights;
+  const extraAdultTotal = extraAdultCount * (selectedRoom?.extraGuestFee||0) * bookingNights;
+  const childFeeTotal = 0;
   const extraFeeTotal = extraAdultTotal + childFeeTotal;
   const bookingGrandTotal = roomPriceTotal + extraFeeTotal;
   const quotedRoomTotal = priceQuote?.roomTotal ?? roomPriceTotal;
-  const quotedExtraAdultTotal = priceQuote?.extraAdultFee ?? extraAdultTotal;
-  const quotedChildFeeTotal = priceQuote?.childFee ?? childFeeTotal;
+  const quotedExtraAdultTotal = priceQuote?.extraGuestFee ?? extraAdultTotal;
+  const quotedChildFeeTotal = 0;
   const quotedGrandTotal = priceQuote?.total ?? bookingGrandTotal;
   const selectedRoomImages = selectedRoom?.rooms?.flatMap((room) => room.images.map((image) => ({ ...image, caption: image.caption || `Phòng ${room.roomNumber}` })))?.length
     ? selectedRoom.rooms.flatMap((room) => room.images.map((image) => ({ ...image, caption: image.caption || `Phòng ${room.roomNumber}` })))
@@ -248,7 +255,16 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
         <div className="room-page-gallery"><img className="room-page-main-image" src={selectedRoomImages[Math.min(activeRoomImage,selectedRoomImages.length-1)]?.url} alt={selectedRoomImages[Math.min(activeRoomImage,selectedRoomImages.length-1)]?.caption || selectedRoom.name} /><div className="room-page-thumbs">{selectedRoomImages.map((image, index) => <button className={index === activeRoomImage ? 'active' : ''} key={`${image.id}-${image.url}`} onClick={() => setActiveRoomImage(index)}><img src={image.url} alt={image.caption || `Xem ảnh ${index + 1}`} /></button>)}</div></div>
         <div className="room-page-layout">
           <article className="room-page-info"><div className="room-page-facts"><span>♙ {selectedRoom.maxAdults + selectedRoom.maxChildren} khách</span><span>▰ {selectedRoom.bedType}</span><span>△ {selectedRoom.roomSize || '—'} m²</span></div><p>{selectedRoom.description} Không gian được thiết kế ấm cúng, nhiều ánh sáng tự nhiên và đầy đủ tiện nghi cho một kỳ nghỉ thoải mái.</p><hr /><h2>Tiện nghi trong phòng</h2><ul className="room-page-amenities"><li>WiFi tốc độ cao miễn phí</li><li>Máy điều hòa</li><li>Phòng tắm riêng &amp; nước nóng</li><li>TV màn hình phẳng</li><li>Ấm đun nước và minibar</li><li>{selectedRoom.name.toLowerCase().includes('ban công') ? 'Ban công riêng, nhìn ra thành phố' : 'Dọn phòng hằng ngày'}</li></ul><hr /><h2>Chính sách phòng</h2><div className="room-page-policy"><p><b>Nhận phòng</b><span>Từ {data.checkInTime.slice(0, 5)}</span></p><p><b>Trả phòng</b><span>Trước {data.checkOutTime.slice(0, 5)}</span></p><p><b>Hủy phòng</b><span>Miễn phí trước 7 ngày</span></p></div></article>
-          <aside className="room-page-booking"><small>GIÁ PHÒNG</small><div><strong>{money(selectedRoom.basePrice)}</strong><span>/ phòng / đêm</span></div><p>✓ {selectedRoom.availableRoomCount} phòng đang còn trống</p><label>Ngày nhận<input type="date" min={new Date().toISOString().slice(0, 10)} value={arrival} onChange={(e) => { setArrival(e.target.value); setBookingError(''); }} /></label><label>Ngày trả<input type="date" min={arrival || new Date().toISOString().slice(0,10)} value={departure} onChange={(e) => { setDeparture(e.target.value); setBookingError(''); }} /></label><div className="guest-room-fields"><label>Người lớn<select value={adultCount} onChange={(e) => { setAdultCount(Number(e.target.value)); setBookingError(''); }}>{Array.from({ length: selectedRoom.maxAdults * roomQuantity }, (_, i) => i + 1).map((value) => <option key={value}>{value}</option>)}</select></label><label>Trẻ em<select value={childCount} onChange={(e) => { setChildCount(Number(e.target.value)); setBookingError(''); }}>{Array.from({ length: selectedRoom.maxChildren * roomQuantity + 1 }, (_, i) => i).map((value) => <option key={value}>{value}</option>)}</select></label><label>Số phòng<select value={roomQuantity} onChange={(e) => { const quantity = Number(e.target.value); setRoomQuantity(quantity); setAdultCount((value) => Math.min(value, selectedRoom.maxAdults * quantity)); setChildCount((value) => Math.min(value, selectedRoom.maxChildren * quantity)); setBookingError(''); }}>{Array.from({ length: Math.min(selectedRoom.availableRoomCount, 10) }, (_, i) => i + 1).map((value) => <option key={value}>{value}</option>)}</select></label></div><small className="capacity-note">Giá gồm tối đa {Math.min(2, selectedRoom.maxAdults)} người lớn/phòng. Phụ thu: người lớn 150.000đ và trẻ em 100.000đ mỗi đêm.</small>{bookingNights > 0 && <div className="booking-price-breakdown"><div><span>Tiền phòng</span><strong>{money(roomPriceTotal)}</strong></div>{extraAdultCount > 0 && <div><span>Thêm {extraAdultCount} người lớn</span><strong>+ {money(extraAdultTotal)}</strong></div>}{childCount > 0 && <div><span>Thêm {childCount} trẻ em</span><strong>+ {money(childFeeTotal)}</strong></div>}<div className="booking-total"><span>Tổng cộng</span><strong>{money(bookingGrandTotal)}</strong></div></div>}{bookingError && <div className="booking-error">{bookingError}</div>}<button disabled={selectedRoom.availableRoomCount === 0} onClick={openPaymentPage}>{selectedRoom.availableRoomCount > 0 ? 'Đến trang thanh toán →' : 'Phòng đã hết'}</button><em>Chưa phát sinh giao dịch ở bước này</em></aside>
+          <aside className="room-page-booking">
+            <small>GIÁ PHÒNG</small><div><strong>{money(selectedRoom.basePrice)}</strong><span>/ phòng / đêm</span></div><p>✓ {selectedRoom.availableRoomCount} phòng đang còn trống</p>
+            <label>Ngày nhận<input type="date" min={new Date().toISOString().slice(0,10)} value={arrival} onChange={e=>{setArrival(e.target.value);setBookingError('')}}/></label>
+            <label>Ngày trả<input type="date" min={arrival||new Date().toISOString().slice(0,10)} value={departure} onChange={e=>{setDeparture(e.target.value);setBookingError('')}}/></label>
+            <div className="guest-booking-control"><span>Số khách</span><GuestCounter value={adultCount} max={bookingGuestMax} onChange={value=>{setAdultCount(value);setChildCount(0);setBookingError('')}}/></div>
+            <small className="capacity-note">Tối đa {bookingGuestMax} khách · {selectedRoom.extraGuestAllowed&&selectedRoom.maxCapacity>selectedRoom.baseCapacity?`+${money(selectedRoom.extraGuestFee)}/khách từ khách thứ ${selectedRoom.baseCapacity+1}`:`Giá gồm tối đa ${selectedRoom.baseCapacity||bookingGuestMax} khách/phòng`}</small>
+            <label>Số phòng<select value={roomQuantity} onChange={e=>{const quantity=Number(e.target.value);const limit=((selectedRoom.extraGuestAllowed?selectedRoom.maxCapacity:selectedRoom.baseCapacity)||selectedRoom.maxAdults+selectedRoom.maxChildren)*quantity;setRoomQuantity(quantity);setAdultCount(value=>Math.min(value,limit));setChildCount(0);setBookingError('')}}>{Array.from({length:Math.min(selectedRoom.availableRoomCount,10)},(_,i)=>i+1).map(value=><option key={value}>{value}</option>)}</select></label>
+            {bookingNights>0&&<div className="booking-price-breakdown"><div><span>Tiền phòng</span><strong>{money(roomPriceTotal)}</strong></div>{extraAdultCount>0&&<div><span>Thêm {extraAdultCount} khách</span><strong>+ {money(extraAdultTotal)}</strong></div>}<div className="booking-total"><span>Tổng cộng</span><strong>{money(bookingGrandTotal)}</strong></div></div>}
+            {bookingError&&<div className="booking-error">{bookingError}</div>}<button disabled={selectedRoom.availableRoomCount===0} onClick={openPaymentPage}>{selectedRoom.availableRoomCount>0?'Đến trang thanh toán →':'Phòng đã hết'}</button><em>Chưa phát sinh giao dịch ở bước này</em>
+          </aside>
         </div>
       </section>}
       <section id="policy" className="detail-box policy-section"><header className="section-title"><small>THÔNG TIN CẦN BIẾT</small><h2>Chính sách homestay</h2></header><div className="policy-grid">

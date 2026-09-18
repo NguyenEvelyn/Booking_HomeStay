@@ -23,7 +23,7 @@ public sealed class HomestayQueryService(AppDbContext db) : IHomestayQueryServic
 
         var holdCutoff = DateTime.UtcNow.AddMinutes(-15);
         query = query.Where(h => h.RoomTypes.Any(r => r.Status == "Active"
-            && r.MaxAdults + r.MaxChildren >= guests
+            && (r.ExtraGuestAllowed ? r.MaxCapacity : r.BaseCapacity) >= guests
             && (!maxPrice.HasValue || r.BasePrice <= maxPrice.Value)
             && (string.IsNullOrWhiteSpace(roomType) || EF.Functions.ILike(r.Name, $"%{roomType!.Trim()}%"))
             && (!checkIn.HasValue ||
@@ -50,7 +50,7 @@ public sealed class HomestayQueryService(AppDbContext db) : IHomestayQueryServic
                 h.District,
                 h.Province,
                 h.Images.Where(i => i.IsThumbnail).Select(i => i.ImageUrl).FirstOrDefault(),
-                h.RoomTypes.Where(r => r.Status == "Active" && r.MaxAdults + r.MaxChildren >= guests
+                h.RoomTypes.Where(r => r.Status == "Active" && (r.ExtraGuestAllowed ? r.MaxCapacity : r.BaseCapacity) >= guests
                     && (!maxPrice.HasValue || r.BasePrice <= maxPrice.Value)
                     && (string.IsNullOrWhiteSpace(roomType) || EF.Functions.ILike(r.Name, $"%{roomType!.Trim()}%")))
                     .Select(r => (decimal?)r.BasePrice).Min(),
@@ -79,6 +79,7 @@ public sealed class HomestayQueryService(AppDbContext db) : IHomestayQueryServic
                 h.RoomTypes.Where(r => r.Status == "Active").OrderBy(r => r.BasePrice)
                     .Select(r => new RoomTypeListItemResponse(
                         r.Id, r.Name, r.Description, r.BasePrice, r.MaxAdults, r.MaxChildren,
+                        r.BaseCapacity, r.MaxCapacity, r.ExtraGuestAllowed, r.ExtraGuestFee,
                         r.BedType, r.RoomSize,
                         r.Images.Where(i => i.IsThumbnail).Select(i => i.ImageUrl).FirstOrDefault(),
                         r.Rooms.Count(room => room.Status == "Available"))).ToList()))
@@ -93,6 +94,7 @@ public sealed class HomestayQueryService(AppDbContext db) : IHomestayQueryServic
             .OrderBy(r => r.BasePrice)
             .Select(r => new RoomTypeListItemResponse(
                 r.Id, r.Name, r.Description, r.BasePrice, r.MaxAdults, r.MaxChildren,
+                r.BaseCapacity, r.MaxCapacity, r.ExtraGuestAllowed, r.ExtraGuestFee,
                 r.BedType, r.RoomSize,
                 r.Images.Where(i => i.IsThumbnail).Select(i => i.ImageUrl).FirstOrDefault(),
                 r.Rooms.Count(room => room.Status == "Available")))
@@ -104,7 +106,7 @@ public sealed class HomestayQueryService(AppDbContext db) : IHomestayQueryServic
             .Where(r => r.Id == roomTypeId && r.Status == "Active" && r.Homestay.Status == "Approved")
             .Select(r => new RoomTypeDetailResponse(
                 r.Id, r.HomestayId, r.Homestay.Name, r.Name, r.Description, r.BasePrice,
-                r.MaxAdults, r.MaxChildren, r.BedType, r.RoomSize,
+                r.MaxAdults, r.MaxChildren, r.BaseCapacity, r.MaxCapacity, r.ExtraGuestAllowed, r.ExtraGuestFee, r.BedType, r.RoomSize,
                 r.Rooms.Count(room => room.Status == "Available"),
                 r.Images.OrderBy(i => i.SortOrder)
                     .Select(i => new ImageResponse(i.Id, i.ImageUrl, i.Caption, i.IsThumbnail, i.SortOrder)).ToList(),
