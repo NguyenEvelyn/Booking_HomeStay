@@ -9,6 +9,8 @@ const emptyForm = {
   password: '',
   confirmPassword: '',
   verificationCode: '',
+  currentPassword: '',
+  newPassword: '',
   remember: false,
 };
 
@@ -119,6 +121,36 @@ export default function AuthForm({
     }
 
     /*
+     * Đặt lại mật khẩu / Đổi mật khẩu
+     */
+    if (mode === 'reset' || mode === 'change-password') {
+      if (form.newPassword !== form.confirmPassword) {
+        setError('Mật khẩu xác nhận không khớp.');
+        return;
+      }
+      if (mode === 'reset') {
+        return onSubmit({
+          code: form.verificationCode,
+          newPassword: form.newPassword,
+          confirmPassword: form.confirmPassword,
+        });
+      }
+      return onSubmit({
+        currentPassword: form.currentPassword,
+        newPassword: form.newPassword,
+        confirmPassword: form.confirmPassword,
+      });
+    }
+
+    /*
+     * Kiểm tra xác nhận mật khẩu khi đăng ký
+     */
+    if (mode === 'register' && form.password && form.confirmPassword && form.password !== form.confirmPassword) {
+      setError('Mật khẩu xác nhận không khớp.');
+      return;
+    }
+
+    /*
      * Đăng nhập / Đăng ký
      */
     onSubmit(
@@ -133,6 +165,7 @@ export default function AuthForm({
             email: form.email,
             phoneNumber: form.phoneNumber,
             password: form.password,
+            confirmPassword: form.confirmPassword,
             role: 'Customer',
           }
     );
@@ -142,6 +175,8 @@ export default function AuthForm({
   const isLogin = mode === 'login';
   const isForgot = mode === 'forgot';
   const isVerify = mode === 'verify';
+  const isReset = mode === 'reset';
+  const isChangePassword = mode === 'change-password';
 
   return (
     <>
@@ -217,7 +252,11 @@ export default function AuthForm({
                 ? 'Đăng nhập vào tài khoản'
                 : isForgot
                   ? 'Quên mật khẩu'
-                  : 'Xác minh tài khoản'}
+                  : isReset
+                    ? 'Đặt lại mật khẩu'
+                    : isChangePassword
+                      ? 'Đổi mật khẩu'
+                      : 'Xác minh tài khoản'}
           </h1>
 
           {/* REGISTER */}
@@ -251,16 +290,28 @@ export default function AuthForm({
           {/* FORGOT PASSWORD */}
           {isForgot && (
             <p>
-              Nhập email đã đăng ký để nhận hướng dẫn
-              đặt lại mật khẩu.
+              Nhập email đã đăng ký để nhận mã OTP đặt lại mật khẩu.
+            </p>
+          )}
+
+          {/* RESET PASSWORD */}
+          {isReset && (
+            <p>
+              Nhập mã OTP và tạo mật khẩu mới cho tài khoản.
+            </p>
+          )}
+
+          {/* CHANGE PASSWORD */}
+          {isChangePassword && (
+            <p>
+              Nhập mật khẩu hiện tại và mật khẩu mới của bạn.
             </p>
           )}
 
           {/* VERIFY */}
           {isVerify && (
             <p>
-              Nhập mã xác minh đã được gửi đến email
-              của bạn.
+              Nhập mã xác minh đã được gửi đến email của bạn.
             </p>
           )}
 
@@ -391,12 +442,147 @@ export default function AuthForm({
           {/* =========================
               PASSWORD
           ========================== */}
-          {!isVerify && !isForgot && (
+          {/* =========================
+              RESET OTP
+          ========================== */}
+          {isReset && (
+            <label>
+              Mã OTP đặt lại mật khẩu
+
+              <input
+                name="verificationCode"
+                inputMode="numeric"
+                value={form.verificationCode}
+                onChange={update}
+                pattern="[0-9]{6}"
+                minLength="6"
+                maxLength="6"
+                placeholder="Nhập mã OTP gồm 6 chữ số"
+                required
+                autoComplete="one-time-code"
+              />
+            </label>
+          )}
+
+          {/* =========================
+              CHANGE PASSWORD - CURRENT PASSWORD
+          ========================== */}
+          {isChangePassword && (
+            <label>
+              Mật khẩu hiện tại
+
+              <span className="password-field">
+                <input
+                  name="currentPassword"
+                  type={
+                    showPassword
+                      ? 'text'
+                      : 'password'
+                  }
+                  value={form.currentPassword}
+                  onChange={update}
+                  placeholder="Nhập mật khẩu hiện tại"
+                  required
+                  autoComplete="current-password"
+                />
+
+                <button
+                  type="button"
+                  className="eye-button"
+                  onClick={() =>
+                    setShowPassword(
+                      (value) => !value
+                    )
+                  }
+                  aria-label={
+                    showPassword
+                      ? 'Ẩn mật khẩu'
+                      : 'Hiện mật khẩu'
+                  }
+                >
+                  {showPassword ? '◉' : '◌'}
+                </button>
+              </span>
+            </label>
+          )}
+
+          {/* =========================
+              NEW PASSWORD (RESET / CHANGE PASSWORD)
+          ========================== */}
+          {(isReset || isChangePassword) && (
+            <>
+              <label>
+                Mật khẩu mới
+
+                <span className="password-field">
+                  <input
+                    name="newPassword"
+                    type={
+                      showPassword
+                        ? 'text'
+                        : 'password'
+                    }
+                    value={form.newPassword}
+                    onChange={update}
+                    minLength="8"
+                    maxLength="32"
+                    pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).{8,32}"
+                    placeholder="Nhập mật khẩu mới"
+                    required
+                    autoComplete="new-password"
+                  />
+
+                  <button
+                    type="button"
+                    className="eye-button"
+                    onClick={() =>
+                      setShowPassword(
+                        (value) => !value
+                      )
+                    }
+                    aria-label={
+                      showPassword
+                        ? 'Ẩn mật khẩu'
+                        : 'Hiện mật khẩu'
+                    }
+                  >
+                    {showPassword ? '◉' : '◌'}
+                  </button>
+                </span>
+              </label>
+
+              <label>
+                Xác nhận mật khẩu mới
+
+                <span className="password-field">
+                  <input
+                    name="confirmPassword"
+                    type={
+                      showPassword
+                        ? 'text'
+                        : 'password'
+                    }
+                    value={form.confirmPassword}
+                    onChange={update}
+                    minLength="8"
+                    maxLength="32"
+                    placeholder="Nhập lại mật khẩu mới"
+                    required
+                    autoComplete="new-password"
+                  />
+                </span>
+              </label>
+            </>
+          )}
+
+          {/* =========================
+              PASSWORD (LOGIN / REGISTER)
+          ========================== */}
+          {(isLogin || isRegister) && (
             <label>
               Mật khẩu
 
               <span className="password-field">
-
                 <input
                   name="password"
                   type={
@@ -434,7 +620,33 @@ export default function AuthForm({
                 >
                   {showPassword ? '◉' : '◌'}
                 </button>
+              </span>
+            </label>
+          )}
 
+          {/* =========================
+              CONFIRM PASSWORD (REGISTER)
+          ========================== */}
+          {isRegister && (
+            <label>
+              Xác nhận mật khẩu
+
+              <span className="password-field">
+                <input
+                  name="confirmPassword"
+                  type={
+                    showPassword
+                      ? 'text'
+                      : 'password'
+                  }
+                  value={form.confirmPassword}
+                  onChange={update}
+                  minLength="6"
+                  maxLength="32"
+                  placeholder="Nhập lại mật khẩu"
+                  required
+                  autoComplete="new-password"
+                />
               </span>
             </label>
           )}
@@ -475,7 +687,7 @@ export default function AuthForm({
 
           {/* =========================
               BACK TO LOGIN
-              FORGOT
+              FORGOT / RESET / CHANGE PASSWORD
           ========================== */}
           {isForgot && (
             <button
@@ -488,6 +700,20 @@ export default function AuthForm({
               }}
             >
               ← Quay lại đăng nhập
+            </button>
+          )}
+
+          {(isReset || isChangePassword) && (
+            <button
+              type="button"
+              className="muted-link"
+              onClick={isChangePassword ? onGoHome : () => onSwitchMode('login')}
+              style={{
+                alignSelf: 'flex-start',
+                marginTop: '-4px',
+              }}
+            >
+              ← {isChangePassword ? 'Quay lại' : 'Quay lại đăng nhập'}
             </button>
           )}
 
@@ -519,8 +745,30 @@ export default function AuthForm({
                   ? 'Gửi yêu cầu đặt lại mật khẩu'
                   : isVerify
                     ? 'Xác minh tài khoản'
-                    : 'Tạo tài khoản'}
+                    : isReset
+                      ? 'Đặt lại mật khẩu'
+                      : isChangePassword
+                        ? 'Cập nhật mật khẩu'
+                        : 'Tạo tài khoản'}
           </button>
+
+          {/* =========================
+              RESEND OTP BUTTON (VERIFY)
+          ========================== */}
+          {isVerify && typeof onResendVerification === 'function' && (
+            <button
+              type="button"
+              className="muted-link"
+              disabled={busy}
+              onClick={onResendVerification}
+              style={{
+                alignSelf: 'center',
+                marginTop: '14px',
+              }}
+            >
+              Chưa nhận được mã? Gửi lại mã OTP
+            </button>
+          )}
 
         </form>
 

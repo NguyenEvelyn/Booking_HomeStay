@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import './styles/home.css';
+import { homestayApi } from '../homestays/api/homestayApi.js';
 
 const heroImage = '/assets/figma/hero.png';
 const aboutImage = '/assets/figma/about.jpg';
@@ -194,7 +195,17 @@ const offers = [
   voucherWeek,
 ];
 
-export default function HomePage({ user, onLogout, onDeveloping }) {
+export default function HomePage({
+  user,
+  onLogout,
+  onDeveloping,
+  onBrowseHomestays,
+  onOpenHomestay,
+  onChangePassword,
+  onBookings,
+  onHostPortal,
+  onAdminPortal,
+}) {
   const [menuScrolled, setMenuScrolled] = useState(false);
   const [activeNav, setActiveNav] = useState('home');
   const [activeHero, setActiveHero] = useState(0);
@@ -215,6 +226,40 @@ export default function HomePage({ user, onLogout, onDeveloping }) {
   const blogDrag = useRef({ active: false, startX: 0, scrollLeft: 0, moved: false });
   const [canBlogPrev, setCanBlogPrev] = useState(false);
   const [canBlogNext, setCanBlogNext] = useState(true);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [searchLocation, setSearchLocation] = useState('');
+  const [searchCheckIn, setSearchCheckIn] = useState('');
+  const [searchCheckOut, setSearchCheckOut] = useState('');
+  const [searchGuests, setSearchGuests] = useState('');
+  const [apiStays, setApiStays] = useState([]);
+
+  useEffect(() => {
+    let mounted = true;
+    homestayApi
+      .list({ pageSize: 6 })
+      .then((res) => {
+        if (mounted && res?.items?.length) {
+          setApiStays(
+            res.items.map((item, idx) => ({
+              id: item.id,
+              name: item.name,
+              location: `${item.district || ''}, ${item.province || ''}`.replace(/^,\s*/, '') || 'Việt Nam',
+              price: typeof item.fromPrice === 'number'
+                ? `Từ ${new Intl.NumberFormat('vi-VN').format(item.fromPrice)} đ`
+                : item.fromPrice || '1,456k VND',
+              rating: item.averageRating ? Number(item.averageRating).toFixed(1).replace('.', ',') : '4,8',
+              image: item.thumbnailUrl || stays[idx % stays.length].image,
+            }))
+          );
+        }
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const displayStays = apiStays.length > 0 ? apiStays : stays;
 
   const navItems = [
     ['home', 'Trang chủ', '#home'],
@@ -524,15 +569,107 @@ export default function HomePage({ user, onLogout, onDeveloping }) {
             ))}
           </div>
 
-          <div className="nav-actions">
+          <div className="nav-actions" style={{ position: 'relative' }}>
             <button
               type="button"
               aria-label="Tài khoản"
               title={user?.fullName ? `Tài khoản (${user.fullName})` : 'Đăng nhập'}
-              onClick={onLogout}
+              onClick={() => {
+                if (user && user.fullName && user.fullName !== 'Khách') {
+                  setUserMenuOpen((prev) => !prev);
+                } else {
+                  onLogout();
+                }
+              }}
             >
               <Icon name="user" />
             </button>
+
+            {userMenuOpen && user && user.fullName !== 'Khách' && (
+              <div
+                className="home-user-menu"
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 10px)',
+                  right: 0,
+                  minWidth: '220px',
+                  background: '#ffffff',
+                  borderRadius: '12px',
+                  boxShadow: '0 12px 36px rgba(0,0,0,0.18)',
+                  padding: '8px 0',
+                  zIndex: 250,
+                  color: '#071f52',
+                  display: 'flex',
+                  flexDirection: 'column',
+                }}
+              >
+                <div style={{ padding: '10px 16px', borderBottom: '1px solid #edf0f4' }}>
+                  <div style={{ fontWeight: '700', fontSize: '14px' }}>{user.fullName}</div>
+                  <div style={{ color: '#6b7b93', fontSize: '11px', marginTop: '2px' }}>{user.email || user.role}</div>
+                </div>
+
+                {user.role === 'Host' && (
+                  <button
+                    type="button"
+                    style={{ width: '100%', textAlign: 'left', padding: '10px 16px', background: 'transparent', border: 0, fontSize: '13px', fontWeight: '600', color: '#0b4ae6', cursor: 'pointer' }}
+                    onClick={() => {
+                      setUserMenuOpen(false);
+                      onHostPortal?.();
+                    }}
+                  >
+                    ⌂ Quản lý Homestay (Host)
+                  </button>
+                )}
+
+                {user.role === 'Admin' && (
+                  <button
+                    type="button"
+                    style={{ width: '100%', textAlign: 'left', padding: '10px 16px', background: 'transparent', border: 0, fontSize: '13px', fontWeight: '600', color: '#0b4ae6', cursor: 'pointer' }}
+                    onClick={() => {
+                      setUserMenuOpen(false);
+                      onAdminPortal?.();
+                    }}
+                  >
+                    ⚙ Trang quản trị Admin
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  style={{ width: '100%', textAlign: 'left', padding: '10px 16px', background: 'transparent', border: 0, fontSize: '13px', color: '#1a2744', cursor: 'pointer' }}
+                  onClick={() => {
+                    setUserMenuOpen(false);
+                    onBookings?.();
+                  }}
+                >
+                  📅 Phòng đã đặt
+                </button>
+
+                <button
+                  type="button"
+                  style={{ width: '100%', textAlign: 'left', padding: '10px 16px', background: 'transparent', border: 0, fontSize: '13px', color: '#1a2744', cursor: 'pointer' }}
+                  onClick={() => {
+                    setUserMenuOpen(false);
+                    onChangePassword?.();
+                  }}
+                >
+                  🔒 Đổi mật khẩu
+                </button>
+
+                <div style={{ borderTop: '1px solid #edf0f4', margin: '4px 0' }} />
+
+                <button
+                  type="button"
+                  style={{ width: '100%', textAlign: 'left', padding: '10px 16px', background: 'transparent', border: 0, fontSize: '13px', color: '#b42318', cursor: 'pointer' }}
+                  onClick={() => {
+                    setUserMenuOpen(false);
+                    onLogout();
+                  }}
+                >
+                  🚪 Đăng xuất
+                </button>
+              </div>
+            )}
 
             <button
               type="button"
@@ -618,7 +755,16 @@ export default function HomePage({ user, onLogout, onDeveloping }) {
         className="search-bar"
         onSubmit={(event) => {
           event.preventDefault();
-          onDeveloping('Tìm phòng');
+          if (typeof onBrowseHomestays === 'function') {
+            onBrowseHomestays({
+              search: searchLocation,
+              checkIn: searchCheckIn,
+              checkOut: searchCheckOut,
+              guests: searchGuests.includes('2') ? 2 : searchGuests.includes('Gia đình') ? 4 : 1,
+            });
+          } else {
+            onDeveloping('Tìm phòng');
+          }
         }}
       >
         <label>
@@ -627,6 +773,8 @@ export default function HomePage({ user, onLogout, onDeveloping }) {
           <span className="search-control">
             <input
               placeholder="Bạn muốn đến đâu?"
+              value={searchLocation}
+              onChange={(e) => setSearchLocation(e.target.value)}
             />
 
             <i><Icon name="location" /></i>
@@ -640,6 +788,8 @@ export default function HomePage({ user, onLogout, onDeveloping }) {
             <input
               type="text"
               placeholder="Chọn ngày nhận"
+              value={searchCheckIn}
+              onChange={(e) => setSearchCheckIn(e.target.value)}
               onFocus={(event) => {
                 event.currentTarget.type = 'date';
               }}
@@ -661,6 +811,8 @@ export default function HomePage({ user, onLogout, onDeveloping }) {
             <input
               type="text"
               placeholder="Chọn ngày trả"
+              value={searchCheckOut}
+              onChange={(e) => setSearchCheckOut(e.target.value)}
               onFocus={(event) => {
                 event.currentTarget.type = 'date';
               }}
@@ -678,7 +830,10 @@ export default function HomePage({ user, onLogout, onDeveloping }) {
         <label>
           Khách và phòng
 
-          <select defaultValue="">
+          <select
+            value={searchGuests}
+            onChange={(e) => setSearchGuests(e.target.value)}
+          >
             <option
               value=""
               disabled
@@ -686,15 +841,15 @@ export default function HomePage({ user, onLogout, onDeveloping }) {
               Chọn số người
             </option>
 
-            <option>
+            <option value="1">
               1 khách · 1 phòng
             </option>
 
-            <option>
+            <option value="2">
               2 khách · 1 phòng
             </option>
 
-            <option>
+            <option value="family">
               Gia đình · 2 phòng
             </option>
           </select>
@@ -819,7 +974,13 @@ export default function HomePage({ user, onLogout, onDeveloping }) {
             <button
               type="button"
               className="stays-all-btn"
-              onClick={() => onDeveloping('Xem tất cả homestay')}
+              onClick={() => {
+                if (typeof onBrowseHomestays === 'function') {
+                  onBrowseHomestays();
+                } else {
+                  onDeveloping('Xem tất cả homestay');
+                }
+              }}
             >
               <span>Xem tất cả</span>
               <span className="arrow-circle">
@@ -834,10 +995,10 @@ export default function HomePage({ user, onLogout, onDeveloping }) {
           ref={stayGridRef}
           onMouseDown={onStayMouseDown}
         >
-          {stays.map((stay) => (
+          {displayStays.map((stay) => (
             <article
               className="stay-card"
-              key={stay.name}
+              key={stay.id || stay.name}
             >
               {/* Background Image */}
               <img
@@ -889,7 +1050,13 @@ export default function HomePage({ user, onLogout, onDeveloping }) {
                     type="button"
                     onClick={(e) => {
                       if (stayDrag.current.moved) return;
-                      onDeveloping('Đặt phòng');
+                      if (stay.id && typeof onOpenHomestay === 'function') {
+                        onOpenHomestay(stay.id);
+                      } else if (typeof onBrowseHomestays === 'function') {
+                        onBrowseHomestays();
+                      } else {
+                        onDeveloping('Đặt phòng');
+                      }
                     }}
                   >
                     Đặt phòng
@@ -930,7 +1097,13 @@ export default function HomePage({ user, onLogout, onDeveloping }) {
           <button
             type="button"
             className="cta-all-btn"
-            onClick={() => onDeveloping('Đặt phòng')}
+            onClick={() => {
+              if (typeof onBrowseHomestays === 'function') {
+                onBrowseHomestays();
+              } else {
+                onDeveloping('Đặt phòng');
+              }
+            }}
           >
             <span>Đặt phòng ngay</span>
             <span className="arrow-circle">
@@ -988,6 +1161,15 @@ export default function HomePage({ user, onLogout, onDeveloping }) {
               <article
                 className="dest-card"
                 key={name}
+                style={{ cursor: 'pointer' }}
+                onClick={() => {
+                  if (destDrag.current.moved) return;
+                  if (typeof onBrowseHomestays === 'function') {
+                    onBrowseHomestays({ search: name });
+                  } else {
+                    onDeveloping(`Điểm đến ${name}`);
+                  }
+                }}
               >
                 <img
                   className="dest-card-bg"
