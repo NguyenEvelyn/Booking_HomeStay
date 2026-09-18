@@ -118,11 +118,20 @@ if (!string.IsNullOrWhiteSpace(facebookAppId) && !string.IsNullOrWhiteSpace(face
     });
 builder.Services.AddAuthorization();
 builder.Services.AddControllers();
+var configuredClientUrl = Environment.GetEnvironmentVariable("CLIENT_URL") ?? "http://localhost:5173";
 builder.Services.AddCors(options => options.AddPolicy("Frontend", policy =>
-    policy.WithOrigins(Environment.GetEnvironmentVariable("CLIENT_URL") ?? "http://localhost:5173")
-          .AllowAnyHeader()
-          .AllowAnyMethod()
-          .AllowCredentials()));
+    policy.SetIsOriginAllowed(origin =>
+    {
+        if (string.Equals(origin, configuredClientUrl, StringComparison.OrdinalIgnoreCase)) return true;
+        if (Uri.TryCreate(origin, UriKind.Absolute, out var uri))
+        {
+            return uri.Host == "localhost" || uri.Host == "127.0.0.1";
+        }
+        return false;
+    })
+    .AllowAnyHeader()
+    .AllowAnyMethod()
+    .AllowCredentials()));
 
 var app = builder.Build();
 app.UseExceptionHandler(errorApp => errorApp.Run(async context =>

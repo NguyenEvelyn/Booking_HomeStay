@@ -1,0 +1,340 @@
+/* =========================================================
+   FOOTER - Match Figma Specs
+   ========================================================= */
+
+.home-footer {
+  position: relative;
+  background: #02163b;
+  color: #fff;
+  padding: 60px max(80px, calc((100% - 1280px) / 2)) 20px;
+}
+
+/* =========================================================
+   NEWSLETTER
+   ========================================================= */
+.footer-newsletter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  padding-bottom: 48px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.footer-newsletter-text h3 {
+  margin: 0 0 8px;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #fff;
+}
+
+.footer-newsletter-text p {
+  margin: 0;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.footer-newsletter-form {
+  display: flex;
+  align-items: center;
+  width: 480px;
+  max-width: 100%;
+  height: 52px;
+  padding: 4px 5px 4px 22px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(8px);
+}
+
+.footer-newsletter-form input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: #fff;
+  font-size: 14px;
+}
+
+.footer-newsletter-form input::placeholder {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.footer-newsletter-form button {
+  height: 42px;
+  padding: 0 28px;
+  border: none;
+  border-radius: 999px;
+  background: #f5a800;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.18s ease, transform 0.15s ease;
+}
+
+.footer-newsletter-form button:hover {
+  background: #e09800;
+}
+
+/* =========================================================
+   COLUMNS (4 COLUMNS)
+   ========================================================= */
+.footer-columns {
+  display: grid;
+  grid-template-columns: 280px 300px 180px 260px;
+  justify-content: space-between;
+  gap: 28px;
+  padding: 50px 0 44px;
+}
+
+.footer-col h4 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #fff;
+}
+
+.footer-title-bar {
+  width: 40px;
+  height: 3px;
+  background: #f5a800;
+  border-radius: 2px;
+  margin: 10px 0 22px;
+}
+
+/* Column 1: Brand */
+.footer-col-brand .footer-logo img {
+  height: 34px;
+  width: auto;
+  display: block;
+  margin-bottom: 18px;
+}
+
+.footer-col-brand p {
+  margin: 0 0 24px;
+  font-size: 14px;
+  line-height: 1.65;
+  color: rgba(255, 255, 255, 0.72);
+  max-width: 290px;
+}
+
+.footer-socials {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.footer-social-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.45);
+  background: transparent;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.2s ease;
+}
+
+.footer-social-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+  stroke: none;
+}
+
+.footer-social-btn.active,
+.footer-social-btn:hover {
+  background: #fff;
+  border-color: #fff;
+  color: #02163b;
+}
+
+/* Column 2: Contact */
+.footer-contact-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.footer-contact-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.footer-contact-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: #fff;
+  display: grid;
+  place-items: center;
+}
+
+.footer-contact-icon svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  stroke-width: 2;
+  fill: none;
+}
+
+.footer-contact-item b {
+  font-weight: 700;
+  color: #fff;
+}
+
+/* Column 3: Links */
+.footer-link-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.footer-link-list a {
+  color: rgba(255, 255, 255, 0.80);
+  font-size: 14px;
+  text-decoration: none;
+  transition: color 0.18s ease;
+}
+
+.footer-link-list a:hover {
+  color: #f5a800;
+}
+
+/* Column 4: Fanpage */
+.footer-fanpage-card {
+  position: relative;
+  width: 100%;
+  max-width: 260px;
+  height: 135px;
+  border-radius: 12px;
+  overflow: hidden;
+  background-size: cover;
+  background-position: center right;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 12px 14px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.footer-fanpage-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(2, 22, 59, 0.70) 0%,
+    rgba(2, 22, 59, 0.35) 50%,
+    rgba(2, 22, 59, 0.75) 100%
+  );
+  z-index: 0;
+}
+
+.footer-fanpage-top,
+.footer-fanpage-btn {
+  position: relative;
+  z-index: 1;
+}
+
+.footer-fanpage-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.footer-fanpage-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #fff;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.footer-fanpage-avatar span {
+  color: #02163b;
+  font-size: 9px;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: -0.5px;
+}
+
+.footer-fanpage-info {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.footer-fanpage-info b {
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.footer-fanpage-info small {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 11px;
+}
+
+.footer-fanpage-btn {
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 12px;
+  color: #111;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+  transition: opacity 0.18s ease;
+}
+
+.footer-fanpage-btn:hover {
+  opacity: 0.9;
+}
+
+.footer-fanpage-btn svg {
+  width: 14px;
+  height: 14px;
+  fill: #111;
+  stroke: #111;
+  stroke-width: 0.5;
+}
+
+/* =========================================================
+   FOOTER BOTTOM
+   ========================================================= */
+.footer-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 0 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  text-align: center;
+}
+
+.footer-bottom p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 13px;
+}

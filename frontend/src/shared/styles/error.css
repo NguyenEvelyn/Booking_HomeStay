@@ -1,0 +1,128 @@
+/* =========================================================
+   ERROR PAGE
+   ========================================================= */
+
+.error-page {
+  min-height: 100vh;
+
+  display: grid;
+
+  place-items: center;
+
+  padding:
+    80px 24px;
+
+  color: #0d2554;
+
+  background:
+    radial-gradient(
+      circle at 50% 35%,
+      #fff 0,
+      #f3f7fc 48%,
+      #e6eef8 100%
+    );
+}
+
+
+.error-logo {
+  position: absolute;
+
+  top: 28px;
+  left: 5%;
+
+  color: #082b69;
+
+  font-size: 36px;
+
+  font-weight: 800;
+
+  font-style: italic;
+
+  letter-spacing: -2px;
+
+  text-decoration: none;
+}
+
+
+.error-card {
+  width: min(600px, 100%);
+
+  text-align: center;
+}
+
+
+.error-code {
+  margin: 0;
+
+  color: #f4b400;
+
+  font-size:
+    clamp(105px, 18vw, 190px);
+
+  font-weight: 900;
+
+  line-height: .9;
+
+  letter-spacing: -.08em;
+
+  text-shadow:
+    8px 8px 0 #e3eaf5;
+}
+
+
+.error-card h1 {
+  margin:
+    28px 0 10px;
+
+  font-size:
+    clamp(28px, 4vw, 42px);
+}
+
+
+.error-card > p:not(.error-code) {
+  margin:
+    0 auto 30px;
+
+  max-width: 470px;
+
+  color: #687080;
+
+  line-height: 1.7;
+}
+
+
+.error-actions {
+  display: flex;
+
+  justify-content: center;
+
+  gap: 12px;
+
+  flex-wrap: wrap;
+}
+
+
+.error-actions button {
+  padding:
+    12px 22px;
+
+  border:
+    1px solid #082b69;
+
+  border-radius: 25px;
+
+  color: #082b69;
+
+  background: transparent;
+
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+
+.error-actions .error-home {
+  color: #fff;
+
+  background: #082b69;
+}

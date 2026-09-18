@@ -1,0 +1,798 @@
+/* =========================================================
+   =========================================================
+   HOMEPAGE
+   =========================================================
+   ========================================================= */
+
+.home-page {
+  width: 100%;
+  max-width: none;
+  min-height: 100vh;
+  margin: 0;
+  color: #09275f;
+  background: #fff;
+  overflow-x: hidden;
+}
+
+
+/* =========================================================
+   BREADCRUMB
+   ========================================================= */
+
+.home-breadcrumb {
+  height: 36px;
+
+  display: flex;
+
+  align-items: center;
+
+  padding-left: 18px;
+
+  color:
+    rgba(255, 255, 255, .72);
+
+  background: #8da3a6;
+
+  font-size: 14px;
+
+  font-weight: 400;
+}
+
+
+/* =========================================================
+   HERO BANNER
+   KÍCH THƯỚC THIẾT KẾ: 1440 × 750
+   ========================================================= */
+
+.hero {
+  position: relative;
+
+  width: 100%;
+
+  /*
+   * Figma:
+   * Width  = 1440px
+   * Height = 750px
+   */
+  height: 750px;
+
+  min-height: 750px;
+
+  margin: 0;
+
+  overflow: hidden;
+
+  color: #fff;
+
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+
+.hero-background {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  background: #0a2235;
+}
+
+.hero-background-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: center;
+  opacity: 0;
+  transform: scale(1.01);
+  transition: opacity .65s ease, transform .9s ease;
+}
+
+.hero-background-image.is-active {
+  opacity: 1;
+  transform: scale(1);
+}
+
+
+/* =========================================================
+   HERO OVERLAY
+   ========================================================= */
+
+.hero-shade {
+  position: absolute;
+
+  inset: 0;
+
+  z-index: 1;
+
+  pointer-events: none;
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(4, 21, 39, .06) 0%,
+      rgba(4, 21, 39, .02) 38%,
+      rgba(3, 19, 33, .78) 100%
+    );
+}
+
+
+/* =========================================================
+   NAVBAR
+   ========================================================= */
+
+.home-nav {
+  position: absolute;
+
+  z-index: 20;
+
+  top: 18px;
+
+  left: 0;
+  right: 0;
+
+  display: grid;
+
+  grid-template-columns:
+    minmax(180px, 1fr)
+    auto
+    minmax(180px, 1fr);
+
+  align-items: center;
+
+  padding-left:  max(80px, calc((100% - 1280px) / 2));
+  padding-right: max(80px, calc((100% - 1280px) / 2));
+
+  background: transparent;
+
+  transition:
+    background .25s ease,
+    padding .25s ease,
+    box-shadow .25s ease,
+    backdrop-filter .25s ease;
+}
+
+
+/*
+ * Khi scroll:
+ * navbar chuyển thành fixed.
+ */
+
+.home-nav.is-scrolled {
+  position: fixed;
+
+  top: 0;
+  left: 0;
+  right: 0;
+
+  padding-top: 12px;
+  padding-bottom: 12px;
+
+  background:
+    rgba(6, 31, 78, .92);
+
+  box-shadow:
+    0 8px 30px
+    rgba(3, 20, 54, .18);
+
+  backdrop-filter: blur(14px);
+}
+
+
+/* =========================================================
+   LOGO
+   ========================================================= */
+
+.home-logo {
+  display: flex;
+
+  align-items: center;
+
+  width: 118px;
+  height: 44px;
+
+  color: #fff;
+
+  text-decoration: none;
+}
+
+
+.home-logo img {
+  display: block;
+
+  width: 104px;
+  height: auto;
+
+  object-fit: contain;
+}
+
+
+/* Logo dạng text nếu footer dùng text */
+
+.home-footer .home-logo:not(:has(img)) {
+  color: #fff;
+
+  font-size: 31px;
+
+  font-weight: 800;
+
+  font-style: italic;
+
+  letter-spacing: -2px;
+}
+
+
+/* =========================================================
+   NAV LINKS
+   ========================================================= */
+
+.nav-links {
+  position: relative;
+  display: flex;
+
+  align-items: center;
+
+  gap: 0;
+
+  padding: 3px;
+
+  border:
+    1px solid rgba(255, 255, 255, .30);
+
+  border-radius: 28px;
+
+  background:
+    rgba(178, 204, 215, .28);
+
+  backdrop-filter: blur(12px);
+}
+
+
+.nav-links a {
+  position: relative;
+  z-index: 2;
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  height: 36px;
+
+  padding:
+    0 17px;
+
+  color:
+    rgba(255, 255, 255, .84);
+
+  border-radius: 22px;
+
+  font-size: 11px;
+
+  font-weight: 400;
+
+  line-height: 1;
+
+  text-decoration: none;
+
+  white-space: nowrap;
+
+  transition:
+    color .2s ease,
+    background .2s ease;
+}
+
+
+.nav-links a:hover {
+  color: #fff;
+}
+
+
+.nav-links a.active {
+  color: #17233c;
+  background: transparent;
+}
+
+.nav-active-pill {
+  position: absolute;
+  z-index: 1;
+  top: 3px;
+  left: 0;
+  height: 36px;
+  border-radius: 22px;
+  background: #fff;
+  pointer-events: none;
+  transition: transform .38s cubic-bezier(.22,.61,.36,1), width .28s ease;
+}
+
+
+/* =========================================================
+   NAV ACTIONS
+   ========================================================= */
+
+.nav-actions {
+  display: flex;
+
+  align-items: center;
+
+  justify-content: flex-end;
+
+  gap: 7px;
+}
+
+
+.nav-actions button,
+.nav-actions .user-chip {
+  width: 38px;
+  height: 38px;
+
+  display: grid;
+
+  place-items: center;
+
+  padding: 0;
+
+  border:
+    1px solid rgba(255, 255, 255, .48);
+
+  border-radius: 50%;
+
+  color: #fff;
+
+  background:
+    rgba(37, 66, 83, .34);
+
+  backdrop-filter: blur(10px);
+
+  cursor: pointer;
+
+  transition:
+    background .2s ease,
+    transform .2s ease;
+}
+
+
+.nav-actions button:hover,
+.nav-actions .user-chip:hover {
+  background:
+    rgba(255, 255, 255, .18);
+
+  transform: translateY(-1px);
+}
+
+
+.nav-actions svg {
+  width: 17px;
+  height: 17px;
+}
+
+.home-page svg {
+  display: block;
+
+  fill: none;
+
+  stroke: currentColor;
+
+  stroke-width: 1.7;
+
+  stroke-linecap: round;
+
+  stroke-linejoin: round;
+}
+
+
+/* =========================================================
+   HERO CONTENT
+   ========================================================= */
+
+.hero-content {
+  position: absolute;
+
+  z-index: 4;
+
+  left: max(80px, calc((100% - 1280px) / 2));
+
+  bottom: 48px;
+
+  width: 754px;
+
+  max-width:
+    calc(100% - 500px);
+}
+
+
+.hero-content h1 {
+  margin: 0;
+
+  color: #fff;
+
+  font-family:
+    'Be Vietnam Pro',
+    Arial,
+    sans-serif;
+
+  font-size: 64px;
+
+  line-height: .95;
+
+  font-weight: 300;
+
+  letter-spacing: -2.5px;
+
+  white-space: nowrap;
+}
+
+
+.hero-content h1 strong {
+  font-weight: 700;
+}
+
+
+.hero-content p {
+  width: 100%;
+
+  max-width: 754px;
+
+  margin: 14px 0 0;
+
+  color:
+    rgba(255, 255, 255, .70);
+
+  font-size: 14px;
+
+  line-height: 1.5;
+
+  font-weight: 400;
+}
+
+
+/* =========================================================
+   HERO PICK CARDS
+   FIGMA: CARD 300 × 102
+   IMAGE: 120 × 80
+   TEXT: 148 × 42
+   BUTTON: 42 × 42
+   GAP: 20
+   ========================================================= */
+
+.hero-picks {
+  position: absolute;
+  z-index: 5;
+
+  right: max(80px, calc((100% - 1280px) / 2));
+  bottom: 42px;
+
+  width: 300px;
+  height: 224px;
+
+  overflow: hidden;
+
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  overscroll-behavior: contain;
+}
+
+.hero-picks.is-dragging {
+  cursor: grabbing;
+}
+
+.hero-picks-track {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+
+  width: 300px;
+
+  transition: transform .45s cubic-bezier(.22,.61,.36,1);
+  will-change: transform;
+}
+
+.hero-picks.is-dragging .hero-picks-track {
+  transition: none;
+}
+
+.hero-picks article {
+  position: relative;
+
+  flex: 0 0 102px;
+
+  width: 300px;
+  height: 102px;
+  box-sizing: border-box;
+
+  display: block;
+
+  padding: 10px;
+
+  border: 1px solid rgba(255, 255, 255, .30);
+  border-radius: 10px;
+
+  color: #fff;
+  background: rgba(255, 255, 255, .12);
+
+  box-shadow: none;
+
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+
+  cursor: pointer;
+
+  transition:
+    background .25s ease,
+    border-color .25s ease,
+    transform .25s ease;
+}
+
+.hero-picks article:hover {
+  background: rgba(255, 255, 255, .12);
+  border-color: rgba(255, 255, 255, .30);
+  transform: none;
+}
+
+.hero-picks article.is-active {
+  background: rgba(255, 255, 255, .12);
+  border-color: rgba(255, 255, 255, .30);
+}
+
+.hero-picks img {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+
+  display: block;
+
+  width: 120px;
+  height: 80px;
+
+  border-radius: 10px;
+
+  object-fit: cover;
+  object-position: center;
+
+  pointer-events: none;
+}
+
+.hero-picks article span {
+  position: absolute;
+  left: 150px;
+  top: 10px;
+
+  width: 148px;
+  height: 42px;
+
+  display: flex;
+  align-items: flex-start;
+
+  padding: 0;
+
+  color: #fff;
+
+  font-family: 'Be Vietnam Pro', Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  font-weight: 400;
+
+  text-align: left;
+
+  overflow: hidden;
+}
+
+.hero-picks article > button {
+  position: absolute;
+  right: 18px;
+  bottom: 8px;
+
+  width: 42px;
+  height: 42px;
+
+  display: grid;
+  place-items: center;
+
+  margin: 0;
+  padding: 0;
+
+  border: 1px solid rgba(255, 255, 255, .30);
+  border-radius: 50%;
+
+  color: #fff;
+  background: transparent;
+
+  cursor: pointer;
+
+  transition:
+    color .2s ease,
+    background .2s ease,
+    border-color .2s ease,
+    transform .2s ease;
+}
+
+.hero-picks article > button:hover {
+  color: #17233c;
+  background: #fff;
+  border-color: #fff;
+  transform: scale(1.02);
+}
+
+.hero-picks article > button svg {
+  width: 17px;
+  height: 17px;
+
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+
+/* =========================================================
+   SEARCH BAR
+   ========================================================= */
+
+.search-bar {
+  position: relative;
+
+  z-index: 5;
+
+  width: 100%;
+
+  min-height: 96px;
+
+  display: grid;
+
+  grid-template-columns:
+    1.45fr
+    1fr
+    1fr
+    1.05fr
+    120px;
+
+  gap: 10px;
+
+  align-items: end;
+
+  margin: 0;
+
+  padding:
+    18px max(80px, calc((100% - 1280px) / 2))
+    16px;
+
+  background: #fff;
+
+  box-shadow:
+    0 8px 24px
+    rgba(5, 25, 55, .08);
+}
+
+
+.search-bar label {
+  display: grid;
+
+  gap: 7px;
+
+  color: #151515;
+
+  font-size: 11px;
+
+  font-weight: 600;
+
+  line-height: 1.2;
+}
+
+
+.search-control {
+  position: relative;
+
+  display: block;
+}
+
+
+.search-bar input,
+.search-bar select {
+  width: 100%;
+
+  height: 38px;
+
+  padding:
+    0 35px 0 11px;
+
+  color: #555;
+
+  border:
+    1px solid #dedede;
+
+  border-radius: 5px;
+
+  outline: none;
+
+  background: #fff;
+
+  font-size: 10px;
+}
+
+
+.search-bar input::placeholder {
+  color:
+    rgba(0, 0, 0, .38);
+}
+
+
+.search-bar select {
+  padding-right: 10px;
+}
+
+
+.search-bar input:focus,
+.search-bar select:focus {
+  border-color:
+    rgba(6, 43, 112, .35);
+
+  box-shadow:
+    0 0 0 2px
+    rgba(6, 43, 112, .05);
+}
+
+
+.search-control i {
+  position: absolute;
+
+  top: 50%;
+  right: 11px;
+
+  width: 15px;
+  height: 15px;
+
+  display: grid;
+
+  place-items: center;
+
+  transform: translateY(-50%);
+
+  color: #8c8c8c;
+
+  font-style: normal;
+
+  pointer-events: none;
+}
+
+
+.search-control i svg {
+  width: 15px;
+  height: 15px;
+}
+
+
+.search-bar > button {
+  width: 120px;
+  height: 38px;
+
+  align-self: end;
+
+  border: 0;
+
+  border-radius: 5px;
+
+  color: #172b55;
+
+  background: #ffb700;
+
+  font-size: 11px;
+
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition:
+    transform .2s ease,
+    background .2s ease;
+}
+
+
+.search-bar > button:hover {
+  background: #ffbf16;
+
+  transform: translateY(-1px);
+}

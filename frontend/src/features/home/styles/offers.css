@@ -1,0 +1,258 @@
+/* =========================================================
+   OFFERS
+   ========================================================= */
+
+.offers-outer {
+  position: relative;
+  overflow: hidden;
+}
+
+/* ---- Watermark 'TRIPIO HOMESTAY' gradient text ---- */
+.offers-watermark {
+  position: relative;
+  z-index: 0;
+  pointer-events: none;
+  user-select: none;
+
+  margin: 0 0 -16px;
+  padding: 0;
+
+  font-size: clamp(72px, 11vw, 148px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+  text-align: center;
+  line-height: 1;
+
+  /* Gradient tu tren xuong: xam dam -> xam nhat -> trong suot */
+  color: transparent;
+  background: linear-gradient(
+    to bottom,
+    rgba(20, 30, 60, 0.30) 0%,
+    rgba(20, 30, 60, 0.14) 55%,
+    rgba(20, 30, 60, 0.04) 80%,
+    transparent 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+/* ---- Main card ---- */
+.offers-section {
+  position: relative;
+  overflow: hidden;
+
+  width: min(1280px, calc(100% - 160px));
+  margin: 0 auto;
+
+  /* H=606 Hug theo Figma */
+  min-height: 506px;
+
+  display: grid;
+  grid-template-columns: 1fr 520px;
+  gap: 40px;
+
+  /* stretch de .offers-copy day du chieu cao */
+  align-items: stretch;
+
+  padding: 50px;
+
+  /* Corner radius = 50 theo Figma */
+  border-radius: 50px;
+
+  color: #fff;
+
+  background-position: center;
+  background-size: cover;
+}
+
+/* ---- Gradient overlay (khong xanh dam) ---- */
+/* Lop 1: gradient ngang tu trai (theo Figma ảnh 3): #011E60 40% -> #011E60 0% tai 78% */
+.offers-section::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(1, 30, 96, 0.40) 0%,
+      rgba(1, 30, 96, 0) 78%
+    ),
+    /* Lop 2: gradient tu duoi (theo Figma anh 4): #000 0% tai 50% -> #000 70% tai 100% */
+    linear-gradient(
+      to bottom,
+      transparent 0%,
+      transparent 50%,
+      rgba(0, 0, 0, 0.70) 100%
+    );
+  z-index: 0;
+}
+
+/* ---- Content above overlay ---- */
+.offers-copy,
+.voucher-list {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---- Left copy: logo tren, text duoi ---- */
+.offers-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.offers-logo-img {
+  display: block;
+  height: 32px;
+  width: auto;
+  filter: brightness(0) invert(1);
+}
+
+.offers-text-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.offers-kicker {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.80);
+  margin: 0;
+}
+
+.offers-copy h2 {
+  margin: 0;
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: #fff;
+}
+
+.offers-copy h2 em {
+  color: #ffb700;
+  font-style: normal;
+}
+
+/* ---- Voucher list (right side, scrollable) ---- */
+.voucher-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+
+  /* ~3 cards visible (133px each + 14px gap) */
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: 430px;
+  padding-right: 4px;
+
+  cursor: grab;
+
+  /* An scrollbar nhung van scroll duoc */
+  scrollbar-width: none;
+}
+
+.voucher-list:active {
+  cursor: grabbing;
+}
+
+.voucher-list::-webkit-scrollbar {
+  display: none;
+}
+
+/* ---- Single voucher card ---- */
+.voucher-card {
+  position: relative;
+  flex-shrink: 0;
+
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: 16px;
+
+  padding: 14px;
+
+  border-radius: 14px;
+
+  background: rgba(255, 255, 255, 0.97);
+
+  color: #111;
+}
+
+.voucher-card-thumb {
+  width: 150px;
+  height: 105px;
+  border-radius: 8px;
+  object-fit: cover;
+  display: block;
+}
+
+.voucher-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-right: 24px;
+}
+
+.voucher-card h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: #111;
+}
+
+.voucher-card p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.voucher-save-btn {
+  margin-top: 8px;
+  display: inline-block;
+  padding: 6px 18px;
+  border: 1.5px solid #0b4ae6;
+  border-radius: 20px;
+  background: transparent;
+  color: #0b4ae6;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s;
+  align-self: flex-start;
+}
+
+.voucher-save-btn:hover {
+  background: #0b4ae6;
+  color: #fff;
+}
+
+/* ---- Info icon button ---- */
+.voucher-info-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+
+  width: 22px;
+  height: 22px;
+
+  display: grid;
+  place-items: center;
+
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #0b4ae6;
+  cursor: pointer;
+}
+
+.voucher-info-btn svg {
+  width: 17px;
+  height: 17px;
+}

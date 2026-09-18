@@ -1,0 +1,160 @@
+/* =========================================================
+   SUPPORT
+   ========================================================= */
+
+.support-section {
+  position: relative;
+  overflow: hidden;
+
+  margin-top: 80px;
+
+  /* Lay full chieu cao cua anh (~230px) */
+  min-height: 230px;
+
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+
+  /* Khoang cach giua text va nhom nut = 40px */
+  gap: 40px;
+
+  padding: 0 max(80px, calc((100% - 1280px) / 2));
+
+  color: #fff;
+
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+/* ---- Overlay gradient ngang ---- */
+.support-section::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(4, 18, 70, 0.90) 0%,
+    rgba(8, 50, 140, 0.72) 48%,
+    rgba(8, 50, 140, 0.20) 75%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ---- Content above overlay ---- */
+.support-copy,
+.support-actions {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---- Left copy ---- */
+.support-copy p {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.80);
+  text-transform: uppercase;
+}
+
+.support-section h2 {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  color: #fff;
+}
+
+/* ---- Buttons row: 2 nut cach nhau 20px ---- */
+.support-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 20px;
+  flex-shrink: 0;
+}
+
+/* iOS-style glass buttons */
+.support-actions a,
+.support-actions button {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+
+  padding: 8px 22px 8px 8px;
+
+  border: 1px solid rgba(255, 255, 255, 0.30);
+  border-radius: 999px;
+
+  color: #fff;
+
+  /* Hieu ung trong suot kieu iOS */
+  background: rgba(255, 255, 255, 0.10);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+
+  transition: background 0.20s ease, border-color 0.20s ease;
+}
+
+.support-actions a:hover,
+.support-actions button:hover {
+  background: rgba(255, 255, 255, 0.20);
+  border-color: rgba(255, 255, 255, 0.50);
+}
+
+/* Icon circle (nen trang, icon xanh) */
+.support-actions span {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+
+  display: grid;
+  place-items: center;
+
+  border-radius: 50%;
+
+  color: #072866;
+  background: #fff;
+}
+
+.support-actions span svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Text 2 dong cua nut Hotline */
+.support-btn-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.support-btn-text small {
+  font-size: 12px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.75);
+  line-height: 1;
+}
+
+.support-btn-text b {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  color: #fff;
+}
+
+/* Nut Nhan tin (1 dong) */
+.support-actions button b {
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+}

@@ -1,0 +1,119 @@
+/* =========================================================
+   CTA WAVE BANNER (Figma Frame 548: 1440 × 600)
+   ========================================================= */
+
+.cta-section {
+  position: relative;
+  width: 100%;
+  height: 620px;
+  min-height: 620px;
+  margin-top: 70px;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  text-align: center;
+  background: #ffffff;
+}
+
+
+/* Ảnh nền sóng biển herobanner.jpg bao phủ toàn bộ */
+.cta-bg-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 35%;
+  z-index: 1;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+
+/* Khối nội dung nằm phía trên ảnh, cách đỉnh vừa vặn để không chạm sóng */
+.cta-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 50px;
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+
+/* Kicker "BẮT ĐẦU HÀNH TRÌNH" */
+.cta-content .kicker {
+  margin: 0 0 10px;
+  color: #f4b400;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+
+/* Tiêu đề 2 dòng */
+.cta-content h2 {
+  margin: 0 0 24px;
+  color: #011E60;
+  font-size: 36px;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.5px;
+}
+
+.cta-content h2 em {
+  color: #f4b400;
+  font-style: normal;
+}
+
+
+/* Nút "Đặt phòng ngay" dạng viên thuốc navy + vòng tròn icon trắng */
+.cta-all-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  padding: 6px 6px 6px 24px;
+  border: 0;
+  border-radius: 999px;
+  color: #ffffff;
+  background: #011E60;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(1, 30, 96, 0.22);
+  transition: background-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.cta-all-btn:hover {
+  background: #092c7d;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(1, 30, 96, 0.32);
+}
+
+.cta-all-btn .arrow-circle {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #ffffff;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  transition: transform 0.25s ease;
+}
+
+.cta-all-btn:hover .arrow-circle {
+  transform: rotate(45deg);
+}
+
+.cta-all-btn .arrow-circle svg {
+  width: 16px;
+  height: 16px;
+  stroke: #011E60;
+  stroke-width: 2.2;
+  fill: none;
+}

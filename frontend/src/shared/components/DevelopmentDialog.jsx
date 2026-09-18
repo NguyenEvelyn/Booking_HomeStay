@@ -1,4 +1,5 @@
 import React from 'react';
+import '../styles/dialog.css';
 
 export default function DevelopmentDialog({ open, feature, onClose }) {
   if (!open) return null;

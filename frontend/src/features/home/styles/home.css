@@ -1,0 +1,14 @@
+/* =========================================================
+   HOMEPAGE STYLES BUNDLE
+   ========================================================= */
+
+@import './hero.css';
+@import './about.css';
+@import './stays.css';
+@import './cta-wave.css';
+@import './destinations.css';
+@import './offers.css';
+@import './support.css';
+@import './blog.css';
+@import './footer.css';
+@import './responsive.css';

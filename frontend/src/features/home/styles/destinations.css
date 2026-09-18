@@ -1,0 +1,269 @@
+/* =========================================================
+   DESTINATIONS SECTION (CÁC ĐIỂM ĐẾN ĐANG THỊNH HÀNH)
+   ========================================================= */
+
+.destinations-section {
+  padding-top: 60px;
+  padding-bottom: 40px;
+  overflow: hidden;
+}
+
+
+.destinations-section > header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 28px;
+}
+
+
+/* Kicker "XU HƯỚNG DU LỊCH" */
+.destinations-section .kicker {
+  margin: 0 0 6px;
+  color: #011E60;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+
+/* Tiêu đề: CÁC ĐIỂM ĐẾN ĐANG THỊNH HÀNH */
+.destinations-section h2 {
+  margin: 0;
+  color: #011E60;
+  font-size: 34px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.destinations-section h2 em {
+  color: #f4b400;
+  font-style: normal;
+}
+
+
+/* 2 nút mũi tên < và > */
+.carousel-arrows {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dest-arrow {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 0;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  background: #E8EDF5;
+  color: #8C9BB5;
+  transition: background-color 0.2s ease, color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.dest-arrow.active,
+.dest-arrow:hover {
+  background: #011E60;
+  color: #ffffff;
+  box-shadow: 0 3px 10px rgba(1, 30, 96, 0.22);
+}
+
+.dest-arrow:hover {
+  transform: scale(1.06);
+}
+
+.dest-arrow svg {
+  width: 17px;
+  height: 17px;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  fill: none;
+}
+
+
+/* =========================================================
+   DESTINATION TRACK — Kéo ngang + Cuộn mượt mà
+   ========================================================= */
+
+.destination-track {
+  display: flex;
+  gap: 20px;
+  padding: 8px 0 20px 0;
+
+  overflow-x: auto;
+  overflow-y: hidden;
+
+  overscroll-behavior-inline: contain;
+  scroll-behavior: smooth;
+  scroll-snap-type: x mandatory;
+
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.destination-track::-webkit-scrollbar {
+  display: none;
+}
+
+.destination-track.is-dragging {
+  cursor: grabbing !important;
+  scroll-behavior: auto !important;
+  scroll-snap-type: none !important;
+}
+
+.destination-track.is-dragging * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  pointer-events: none !important;
+}
+
+
+/* =========================================================
+   DESTINATION CARD — Chuẩn Figma: 4 thẻ vừa trọn màn hình
+   ========================================================= */
+
+.dest-card {
+  position: relative;
+  width: 275px;
+  min-width: 275px;
+  height: 490px;
+  border-radius: 18px;
+  overflow: hidden;
+  color: #fff;
+  scroll-snap-align: start;
+  flex-shrink: 0;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  background: #141c2e;
+  transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+/* Khi hover vào: thẻ to ra và nổi bật */
+.dest-card:hover {
+  width: 395px;
+  min-width: 395px;
+  transform: translateY(-4px);
+  box-shadow: 0 14px 32px rgba(1, 30, 96, 0.22);
+}
+
+
+/* Ảnh nền thẻ */
+.dest-card-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  z-index: 1;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  transition: transform 0.35s ease;
+}
+
+.dest-card:hover .dest-card-bg {
+  transform: scale(1.04);
+}
+
+
+/* Overlay gradient: tối nhẹ ở trên (làm rõ số) và tối dần ở dưới (làm rõ tên) */
+.dest-card-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.15) 0%,
+    rgba(0, 0, 0, 0) 35%,
+    rgba(0, 0, 0, 0.65) 100%
+  );
+}
+
+
+/* Số lớn ở góc trên bên trái: 01, 02... */
+.dest-number {
+  position: absolute;
+  top: 22px;
+  left: 22px;
+  z-index: 3;
+  color: #ffffff;
+  font-size: 38px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -1px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+
+/* Khối thông tin đáy: Tên + Nút tròn mũi tên */
+.dest-bottom-info {
+  position: absolute;
+  bottom: 22px;
+  left: 22px;
+  right: 22px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+
+/* Tên địa điểm: Phú Quốc, Quy Nhơn... */
+.dest-name {
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: 600;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+
+/* Nút tròn mũi tên viền trắng mờ ở góc dưới — bình thường ẩn, hover thẻ mới hiện */
+.dest-circle-arrow {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: grid;
+  place-items: center;
+  color: #ffffff;
+  opacity: 0;
+  visibility: hidden;
+  transform: scale(0.6);
+  pointer-events: none;
+  transition: opacity 0.3s ease, visibility 0.3s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+/* Khi hover vào thẻ: hiện nút mũi tên */
+.dest-card:hover .dest-circle-arrow {
+  opacity: 1;
+  visibility: visible;
+  transform: scale(1);
+  pointer-events: auto;
+}
+
+/* Khi hover tiếp lên nút mũi tên: đổi sang nền trắng */
+.dest-card .dest-circle-arrow:hover {
+  background: #ffffff;
+  color: #011E60;
+  border-color: #ffffff;
+  transform: scale(1.12);
+}
+
+.dest-circle-arrow svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  fill: none;
+}

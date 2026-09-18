@@ -1,4 +1,5 @@
 import React from 'react';
+import '../styles/error.css';
 
 const errors = {
   400: { title: 'Yêu cầu không hợp lệ', text: 'Yêu cầu của bạn chưa đúng hoặc còn thiếu thông tin.' },
