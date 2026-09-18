@@ -9,6 +9,8 @@ const emptyForm = {
   password: '',
   confirmPassword: '',
   verificationCode: '',
+  currentPassword: '',
+  newPassword: '',
   remember: false,
 };
 
@@ -100,28 +102,39 @@ export default function AuthForm({
     event.preventDefault();
     setError('');
 
-    /*
-     * Xác minh OTP
-     */
     if (mode === 'verify') {
+      return onSubmit({ code: form.verificationCode });
+    }
+
+    if (mode === 'forgot') {
+      return onSubmit({ email: form.email });
+    }
+
+    if ((mode === 'reset' || mode === 'change-password') && form.newPassword !== form.confirmPassword) {
+      return setError('Mật khẩu xác nhận không khớp.');
+    }
+
+    if (mode === 'reset') {
       return onSubmit({
         code: form.verificationCode,
+        newPassword: form.newPassword,
+        confirmPassword: form.confirmPassword,
       });
     }
 
-    /*
-     * Quên mật khẩu
-     */
-    if (mode === 'forgot') {
+    if (mode === 'change-password') {
       return onSubmit({
-        email: form.email,
+        currentPassword: form.currentPassword,
+        newPassword: form.newPassword,
+        confirmPassword: form.confirmPassword,
       });
     }
 
-    /*
-     * Đăng nhập / Đăng ký
-     */
-    onSubmit(
+    if (mode === 'register' && form.password !== form.confirmPassword) {
+      return setError('Mật khẩu xác nhận không khớp.');
+    }
+
+    return onSubmit(
       mode === 'login'
         ? {
             identifier: form.identifier,
@@ -133,6 +146,7 @@ export default function AuthForm({
             email: form.email,
             phoneNumber: form.phoneNumber,
             password: form.password,
+            confirmPassword: form.confirmPassword,
             role: 'Customer',
           }
     );
@@ -142,6 +156,8 @@ export default function AuthForm({
   const isLogin = mode === 'login';
   const isForgot = mode === 'forgot';
   const isVerify = mode === 'verify';
+  const isReset = mode === 'reset';
+  const isChangePassword = mode === 'change-password';
 
   return (
     <>
@@ -204,12 +220,7 @@ export default function AuthForm({
           RIGHT CONTENT
       ========================== */}
       <div className="auth-content">
-
-        {/* =========================
-            HEADER
-        ========================== */}
         <div className="form-header">
-
           <h1>
             {isRegister
               ? 'Tạo tài khoản'
@@ -217,10 +228,13 @@ export default function AuthForm({
                 ? 'Đăng nhập vào tài khoản'
                 : isForgot
                   ? 'Quên mật khẩu'
-                  : 'Xác minh tài khoản'}
+                  : isVerify
+                    ? 'Xác minh tài khoản'
+                    : isReset
+                      ? 'Đặt lại mật khẩu'
+                      : 'Đổi mật khẩu'}
           </h1>
 
-          {/* REGISTER */}
           {isRegister && (
             <p>
               Đã có tài khoản?{' '}
@@ -234,7 +248,6 @@ export default function AuthForm({
             </p>
           )}
 
-          {/* LOGIN */}
           {isLogin && (
             <p>
               Chưa có tài khoản?{' '}
@@ -248,39 +261,35 @@ export default function AuthForm({
             </p>
           )}
 
-          {/* FORGOT PASSWORD */}
           {isForgot && (
             <p>
-              Nhập email đã đăng ký để nhận hướng dẫn
-              đặt lại mật khẩu.
+              Nhập email đã đăng ký để nhận hướng dẫn đặt lại mật khẩu.
             </p>
           )}
 
-          {/* VERIFY */}
           {isVerify && (
             <p>
-              Nhập mã xác minh đã được gửi đến email
-              của bạn.
+              Nhập mã xác minh đã được gửi đến email của bạn.
             </p>
           )}
 
+          {isReset && (
+            <p>
+              Nhập mã OTP và tạo mật khẩu mới cho tài khoản của bạn.
+            </p>
+          )}
+
+          {isChangePassword && (
+            <p>
+              Nhập mật khẩu hiện tại và mật khẩu mới của bạn.
+            </p>
+          )}
         </div>
 
-        {/* =========================
-            FORM
-        ========================== */}
-        <form
-          onSubmit={submit}
-          className="form"
-        >
-
-          {/* =========================
-              VERIFY OTP
-          ========================== */}
-          {isVerify && (
+        <form onSubmit={submit} className="form">
+          {(isVerify || isReset) && (
             <label>
-              Mã OTP xác minh email
-
+              Mã OTP xác minh
               <input
                 name="verificationCode"
                 inputMode="numeric"
@@ -296,16 +305,11 @@ export default function AuthForm({
             </label>
           )}
 
-          {/* =========================
-              REGISTER
-          ========================== */}
           {isRegister && (
             <>
               <div className="field-row">
-
                 <label>
                   Họ và Tên
-
                   <input
                     name="fullName"
                     value={form.fullName}
@@ -320,7 +324,6 @@ export default function AuthForm({
 
                 <label>
                   Số điện thoại
-
                   <input
                     name="phoneNumber"
                     type="tel"
@@ -332,12 +335,10 @@ export default function AuthForm({
                     autoComplete="tel"
                   />
                 </label>
-
               </div>
 
               <label>
                 Email
-
                 <input
                   name="email"
                   type="email"
@@ -351,13 +352,9 @@ export default function AuthForm({
             </>
           )}
 
-          {/* =========================
-              FORGOT PASSWORD
-          ========================== */}
           {isForgot && (
             <label>
               Email
-
               <input
                 name="email"
                 type="email"
@@ -370,13 +367,9 @@ export default function AuthForm({
             </label>
           )}
 
-          {/* =========================
-              LOGIN
-          ========================== */}
           {isLogin && (
             <label>
               Email hoặc Số điện thoại
-
               <input
                 name="identifier"
                 value={form.identifier}
@@ -388,22 +381,38 @@ export default function AuthForm({
             </label>
           )}
 
-          {/* =========================
-              PASSWORD
-          ========================== */}
-          {!isVerify && !isForgot && (
+          {isChangePassword && (
+            <label>
+              Mật khẩu hiện tại
+              <span className="password-field">
+                <input
+                  name="currentPassword"
+                  type={showPassword ? 'text' : 'password'}
+                  value={form.currentPassword}
+                  onChange={update}
+                  placeholder="Nhập mật khẩu hiện tại"
+                  required
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  className="eye-button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                >
+                  {showPassword ? '◉' : '◌'}
+                </button>
+              </span>
+            </label>
+          )}
+
+          {(isLogin || isRegister) && (
             <label>
               Mật khẩu
-
               <span className="password-field">
-
                 <input
                   name="password"
-                  type={
-                    showPassword
-                      ? 'text'
-                      : 'password'
-                  }
+                  type={showPassword ? 'text' : 'password'}
                   value={form.password}
                   onChange={update}
                   minLength="6"
@@ -411,40 +420,77 @@ export default function AuthForm({
                   pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).{6,32}"
                   placeholder="Nhập mật khẩu"
                   required
-                  autoComplete={
-                    isLogin
-                      ? 'current-password'
-                      : 'new-password'
-                  }
+                  autoComplete={isLogin ? 'current-password' : 'new-password'}
                 />
-
                 <button
                   type="button"
                   className="eye-button"
-                  onClick={() =>
-                    setShowPassword(
-                      (value) => !value
-                    )
-                  }
-                  aria-label={
-                    showPassword
-                      ? 'Ẩn mật khẩu'
-                      : 'Hiện mật khẩu'
-                  }
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
                 >
                   {showPassword ? '◉' : '◌'}
                 </button>
-
               </span>
             </label>
           )}
 
-          {/* =========================
-              LOGIN OPTIONS
-          ========================== */}
+          {(isReset || isChangePassword) && (
+            <label>
+              Mật khẩu mới
+              <span className="password-field">
+                <input
+                  name="newPassword"
+                  type={showPassword ? 'text' : 'password'}
+                  value={form.newPassword}
+                  onChange={update}
+                  minLength="8"
+                  maxLength="32"
+                  pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).{8,32}"
+                  placeholder="Nhập mật khẩu mới"
+                  required
+                  autoComplete="new-password"
+                />
+                <button
+                  type="button"
+                  className="eye-button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                >
+                  {showPassword ? '◉' : '◌'}
+                </button>
+              </span>
+            </label>
+          )}
+
+          {(isRegister || isReset || isChangePassword) && (
+            <label>
+              Xác nhận mật khẩu
+              <span className="password-field">
+                <input
+                  name="confirmPassword"
+                  type={showPassword ? 'text' : 'password'}
+                  value={form.confirmPassword}
+                  onChange={update}
+                  minLength="6"
+                  maxLength="32"
+                  placeholder="Nhập lại mật khẩu"
+                  required
+                  autoComplete="new-password"
+                />
+                <button
+                  type="button"
+                  className="eye-button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                >
+                  {showPassword ? '◉' : '◌'}
+                </button>
+              </span>
+            </label>
+          )}
+
           {isLogin && (
             <div className="form-options">
-
               <label className="check-label">
                 <input
                   name="remember"
@@ -452,10 +498,7 @@ export default function AuthForm({
                   checked={form.remember}
                   onChange={update}
                 />
-
-                <span>
-                  Nhớ mật khẩu
-                </span>
+                <span>Nhớ mật khẩu</span>
               </label>
 
               <button
@@ -469,15 +512,10 @@ export default function AuthForm({
               >
                 Quên mật khẩu?
               </button>
-
             </div>
           )}
 
-          {/* =========================
-              BACK TO LOGIN
-              FORGOT
-          ========================== */}
-          {isForgot && (
+          {(isForgot || isReset || isChangePassword) && (
             <button
               type="button"
               className="muted-link"
@@ -491,9 +529,6 @@ export default function AuthForm({
             </button>
           )}
 
-          {/* =========================
-              ERROR / NOTICE
-          ========================== */}
           {(error || notice?.text) && (
             <p
               className={`inline-error ${notice?.type === 'success' ? 'is-success' : ''}`}
@@ -503,9 +538,6 @@ export default function AuthForm({
             </p>
           )}
 
-          {/* =========================
-              SUBMIT
-          ========================== */}
           <button
             type="submit"
             className="primary-button"
@@ -519,14 +551,14 @@ export default function AuthForm({
                   ? 'Gửi yêu cầu đặt lại mật khẩu'
                   : isVerify
                     ? 'Xác minh tài khoản'
-                    : 'Tạo tài khoản'}
+                    : isReset
+                      ? 'Đặt lại mật khẩu'
+                      : isChangePassword
+                        ? 'Đổi mật khẩu'
+                        : 'Tạo tài khoản'}
           </button>
-
         </form>
 
-        {/* =========================
-            SOCIAL LOGIN
-        ========================== */}
         {(isRegister || isLogin) && (
           <>
             <div className="divider">
@@ -534,43 +566,28 @@ export default function AuthForm({
             </div>
 
             <div className="social-row">
-
-              {/* FACEBOOK */}
               <button
                 type="button"
                 className="social-button"
-                onClick={() =>
-                  onSocialLogin('facebook')
-                }
+                onClick={() => onSocialLogin('facebook')}
                 disabled={busy}
               >
-                <span className="facebook">
-                  f
-                </span>
-
+                <span className="facebook">f</span>
                 Facebook
               </button>
 
-              {/* GOOGLE */}
               <button
                 type="button"
                 className="social-button"
-                onClick={() =>
-                  onSocialLogin('google')
-                }
+                onClick={() => onSocialLogin('google')}
                 disabled={busy}
               >
-                <span className="google">
-                  G
-                </span>
-
+                <span className="google">G</span>
                 Google
               </button>
-
             </div>
           </>
         )}
-
       </div>
     </>
   );

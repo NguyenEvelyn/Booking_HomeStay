@@ -1,6 +1,6 @@
 # Hệ thống Quản lý và Đặt phòng Homestay
 
-Ứng dụng gồm Backend ASP.NET Core Web API, Frontend React và SQL Server. Dự án được tổ chức theo kiến trúc modular monolith để phát triển lần lượt các nghiệp vụ Auth, Homestay, Room, Booking, Payment và Administration.
+Ứng dụng gồm Backend ASP.NET Core Web API, Frontend React và PostgreSQL. Dự án được tổ chức theo kiến trúc modular monolith để phát triển lần lượt các nghiệp vụ Auth, Homestay, Room, Booking, Payment và Administration.
 
 Chi tiết cách đặt mã và mở rộng module xem tại [`docs/architecture.md`](docs/architecture.md).
 
@@ -9,7 +9,7 @@ Chi tiết cách đặt mã và mở rộng module xem tại [`docs/architecture
 ```text
 backend/       ASP.NET Core Web API
 frontend/      React + Vite
-database/      Script khởi tạo SQL Server
+database/      Script khởi tạo PostgreSQL
 docs/          Tài liệu yêu cầu và kiến trúc
 ```
 
@@ -113,6 +113,9 @@ Frontend không kết nối trực tiếp và không được chứa tài khoả
 - `POST /api/auth/login` — đăng nhập và nhận cookie HttpOnly.
 - `GET /api/auth/me` — kiểm tra phiên đăng nhập.
 - `POST /api/auth/logout` — xóa cookie và đăng xuất.
+- `POST /api/auth/forgot-password` — gửi OTP đặt lại mật khẩu qua email.
+- `POST /api/auth/reset-password` — xác minh OTP và tạo mật khẩu mới.
+- `POST /api/auth/change-password` — đổi mật khẩu khi đang đăng nhập.
 - `GET /api/auth/external/google` — bắt đầu đăng nhập Google.
 - `GET /api/auth/external/facebook` — bắt đầu đăng nhập Facebook.
 

@@ -7,3 +7,10 @@ obj/
 .vs/
 .vscode/
 coverage/
+.data-protection-keys/
+backend/.data-protection-keys/
+backend/wwwroot/uploads/
+**/.build*/
+**/.tmp*/
+**/.*build*/
+.verify-build/
