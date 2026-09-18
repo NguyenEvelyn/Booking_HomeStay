@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import './styles/home.css';
-import { homestayApi } from '../homestays/api/homestayApi.js';
 
 const heroImage = '/assets/figma/hero.png';
 const aboutImage = '/assets/figma/about.jpg';
@@ -195,15 +194,7 @@ const offers = [
   voucherWeek,
 ];
 
-export default function HomePage({
-  user,
-  onLogout,
-  onChangePassword,
-  onBrowseHomestays,
-  onOpenHomestay,
-  onDeveloping,
-}) {
-  const [staysData, setStaysData] = useState(stays);
+export default function HomePage({ user, onLogout, onDeveloping }) {
   const [menuScrolled, setMenuScrolled] = useState(false);
   const [activeNav, setActiveNav] = useState('home');
   const [activeHero, setActiveHero] = useState(0);
@@ -249,51 +240,11 @@ export default function HomePage({
     setActiveNav(key);
     moveNavPill(key);
 
-    if (key === 'homestay' && typeof onBrowseHomestays === 'function') {
-      onBrowseHomestays();
-      return;
-    }
-
     const section = document.querySelector(target);
     if (section) {
       section.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
-
-  useEffect(() => {
-    if (typeof homestayApi?.list === 'function') {
-      homestayApi
-        .list({ page: 1 })
-        .then(async (result) => {
-          if (result?.items?.length) {
-            const items = await Promise.all(
-              result.items.slice(0, 5).map(async (item, index) => {
-                const review = await homestayApi
-                  .reviews(item.id)
-                  .catch(() => ({ average: 0, total: 0 }));
-                return {
-                  id: item.id,
-                  name: item.name,
-                  location: `${item.district}, ${item.province}`,
-                  price:
-                    typeof item.fromPrice === 'number'
-                      ? `Từ ${new Intl.NumberFormat('vi-VN').format(item.fromPrice)} đ`
-                      : item.fromPrice || stays[index % stays.length].price,
-                  rating: review.average
-                    ? String(review.average.toFixed(1)).replace('.', ',')
-                    : 'Mới',
-                  image:
-                    item.thumbnailUrl ||
-                    stays[index % stays.length].image,
-                };
-              })
-            );
-            if (items.length) setStaysData(items);
-          }
-        })
-        .catch(() => {});
-    }
-  }, []);
 
   const changeHero = (index) => {
     const total = heroStays.length;
@@ -667,11 +618,7 @@ export default function HomePage({
         className="search-bar"
         onSubmit={(event) => {
           event.preventDefault();
-          if (typeof onBrowseHomestays === 'function') {
-            onBrowseHomestays();
-          } else {
-            onDeveloping('Tìm phòng');
-          }
+          onDeveloping('Tìm phòng');
         }}
       >
         <label>
@@ -872,13 +819,7 @@ export default function HomePage({
             <button
               type="button"
               className="stays-all-btn"
-              onClick={() => {
-                if (typeof onBrowseHomestays === 'function') {
-                  onBrowseHomestays();
-                } else {
-                  onDeveloping('Xem tất cả homestay');
-                }
-              }}
+              onClick={() => onDeveloping('Xem tất cả homestay')}
             >
               <span>Xem tất cả</span>
               <span className="arrow-circle">
@@ -893,10 +834,10 @@ export default function HomePage({
           ref={stayGridRef}
           onMouseDown={onStayMouseDown}
         >
-          {staysData.map((stay) => (
+          {stays.map((stay) => (
             <article
               className="stay-card"
-              key={stay.id || stay.name}
+              key={stay.name}
             >
               {/* Background Image */}
               <img
@@ -948,13 +889,7 @@ export default function HomePage({
                     type="button"
                     onClick={(e) => {
                       if (stayDrag.current.moved) return;
-                      if (stay.id && typeof onOpenHomestay === 'function') {
-                        onOpenHomestay(stay.id);
-                      } else if (typeof onBrowseHomestays === 'function') {
-                        onBrowseHomestays();
-                      } else {
-                        onDeveloping('Đặt phòng');
-                      }
+                      onDeveloping('Đặt phòng');
                     }}
                   >
                     Đặt phòng
