@@ -45,6 +45,7 @@ export default function App() {
   const [selectedHomestayId, setSelectedHomestayId] = useState(null);
   const [homestaySearch, setHomestaySearch] = useState(null);
   const [paymentResult, setPaymentResult] = useState(null);
+  const [catalogVersion, setCatalogVersion] = useState(0);
 
   /* =========================================================
      ERROR PAGE CHECK
@@ -93,6 +94,25 @@ export default function App() {
         }
       });
   }, []);
+
+  useEffect(() => {
+    const refreshCatalog = (event) => {
+      if (!event || event.key === 'tripio-catalog-version') {
+        setCatalogVersion((current) => current + 1);
+      }
+    };
+    window.addEventListener('storage', refreshCatalog);
+    window.addEventListener('focus', refreshCatalog);
+    return () => {
+      window.removeEventListener('storage', refreshCatalog);
+      window.removeEventListener('focus', refreshCatalog);
+    };
+  }, []);
+
+  const markCatalogChanged = () => {
+    localStorage.setItem('tripio-catalog-version', String(Date.now()));
+    setCatalogVersion((current) => current + 1);
+  };
 
   /* =========================================================
      SWITCH LOGIN / REGISTER
@@ -415,6 +435,7 @@ export default function App() {
             user={user}
             onLogout={logout}
             onCustomerMode={() => setView('home')}
+            onCatalogChanged={markCatalogChanged}
             onChangePassword={() => {
               setMode('change-password');
               setNotice(null);
@@ -447,6 +468,7 @@ export default function App() {
       return (
         <>
           <CustomerHomestaysPage
+            refreshKey={catalogVersion}
             user={user}
             onBack={() => setView('home')}
             onOpen={openHomestay}
@@ -465,6 +487,7 @@ export default function App() {
       return (
         <>
           <HomestayDetailPage
+            refreshKey={catalogVersion}
             id={selectedHomestayId}
             initialSearch={homestaySearch}
             user={user}
@@ -486,6 +509,7 @@ export default function App() {
     return (
       <>
         <HomePage
+          refreshKey={catalogVersion}
           user={user}
           onLogout={logout}
           onChangePassword={() => {
@@ -522,6 +546,7 @@ export default function App() {
       return (
         <>
           <CustomerHomestaysPage
+            refreshKey={catalogVersion}
             user={null}
             onBack={() => setView('home')}
             onOpen={openHomestay}
@@ -539,6 +564,7 @@ export default function App() {
       return (
         <>
           <HomestayDetailPage
+            refreshKey={catalogVersion}
             id={selectedHomestayId}
             initialSearch={homestaySearch}
             user={null}
@@ -558,6 +584,7 @@ export default function App() {
     return (
       <>
         <HomePage
+          refreshKey={catalogVersion}
           user={{ fullName: 'Khách' }}
           onLogout={() => {
             setShowHome(false);

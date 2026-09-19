@@ -5,6 +5,7 @@ namespace HomestayAuth.Api.Features.Homestays.Controllers;
 
 [ApiController]
 [Route("api/homestays")]
+[ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 public sealed class HomestaysController(IHomestayQueryService service) : ControllerBase
 {
     [HttpGet]

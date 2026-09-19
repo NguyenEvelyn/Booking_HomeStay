@@ -1,7 +1,7 @@
 import React,{useEffect,useMemo,useState}from'react';
 import{homestayApi}from'../api/homestayApi.js';
 import'./RoomManagement.css';
-const money=v=>`${new Intl.NumberFormat('vi-VN').format(v||0)} đ`;
+const money=v=>`${new Intl.NumberFormat('vi-VN').format(v||0)}đ`;
 const empty={homestayId:'',roomTypeId:'',roomNumber:'',floorNumber:'',status:'Available',note:'',images:[]};
 const statusLabel={Available:'Còn trống',Occupied:'Đang sử dụng',Cleaning:'Đang dọn',Maintenance:'Bảo trì',Inactive:'Ngưng hoạt động'};
 const cleanLabel={Available:'Sạch',Occupied:'Đang sử dụng',Cleaning:'Cần dọn',Maintenance:'Bảo trì',Inactive:'—'};

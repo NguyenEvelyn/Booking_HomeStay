@@ -1,7 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { homestayApi } from '../api/homestayApi.js';
 import CustomerNav from '../../../shared/components/CustomerNav.jsx';
+import { freshImageUrl } from '../../../shared/utils/freshImageUrl.js';
 import { bookingApi } from '../../bookings/api/bookingApi.js';
+import './CapacityBooking.css';
+import './HomestayDetailReference.css';
+import './HomestayDetailRedesign.css';
 import pineHomestayImage from '../../../../assets/f6cd6879081dc8e8d4ff18669308ea86.jpg';
 import azureHomestayImage from '../../../../assets/ecf184f6b6cd2b6e2aa898ff3195ab7e.jpg';
 import sunsetHomestayImage from '../../../../assets/2fc6b619bb0af3dc94971c099d25bbae.jpg';
@@ -9,7 +13,7 @@ import deluxeRoomImage from '../../../../assets/be402600cc69b6c03f813e85453be7ff
 import familySuiteImage from '../../../../assets/9831323b9ec25a6c954800c1a66de2ff.jpg';
 import gardenViewRoomImage from '../../../../assets/351637f1124ce334062731a57eec77ac.jpg';
 
-const money = (value) => `${new Intl.NumberFormat('vi-VN').format(value)} đ`;
+const money = (value) => `${new Intl.NumberFormat('vi-VN').format(value)}đ`;
 const amenityIcons = { Internet: '⌁', 'Giải trí': '≋', 'Dịch vụ': '🚘', Phòng: '❄', 'Tiện ích': '♨' };
 const roomFallbacks = [
   deluxeRoomImage,
@@ -23,8 +27,13 @@ const eloraImages = Object.values(import.meta.glob('../../../../assets/EloraHome
 const homestayCover = (name) => name.includes('Sunset') ? sunsetHomestayImage
   : name.includes('Azure') ? azureHomestayImage : pineHomestayImage;
 
-export default function HomestayDetailPage({ id, initialSearch, user, onHome, onBack, onBookings, onAccount, onDeveloping }) {
+function GuestCounter({value,min=1,max,onChange}){
+  return <div className="booking-guest-stepper"><button type="button" disabled={value<=min} onClick={()=>onChange(Math.max(min,value-1))}>−</button><b>{value}</b><button type="button" disabled={value>=max} onClick={()=>onChange(Math.min(max,value+1))}>＋</button></div>;
+}
+
+export default function HomestayDetailPage({ id, refreshKey = 0, initialSearch, user, onHome, onBack, onBookings, onAccount, onDeveloping }) {
   const [data, setData] = useState(null);
+  const [imageVersion, setImageVersion] = useState(0);
   const [error, setError] = useState('');
   const [arrival, setArrival] = useState(initialSearch?.checkIn || '');
   const [departure, setDeparture] = useState(initialSearch?.checkOut || '');
@@ -59,8 +68,8 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
 
   useEffect(() => {
     window.scrollTo(0, 0);
-    homestayApi.detail(id).then(setData).catch((e) => setError(e.message));
-  }, [id]);
+    homestayApi.detail(id).then((result) => { setImageVersion(`${Date.now()}-${refreshKey}`); setData(result); }).catch((e) => setError(e.message));
+  }, [id, refreshKey]);
 
   const loadReviews = () => homestayApi.reviews(id).then(setReviews).catch(() => {});
   useEffect(() => {
@@ -125,23 +134,24 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
   const openRoomDetail = async (room) => {
     const availableQuantity = Math.max(1, Math.min(roomQuantity, room.availableRoomCount || 1));
     setSelectedRoom(room); setShowPaymentPage(false); setActiveRoomImage(0); setRoomQuantity(availableQuantity);
-    setAdultCount((value) => Math.max(1, Math.min(value, room.maxAdults * availableQuantity)));
-    setChildCount((value) => Math.min(value, room.maxChildren * availableQuantity));
+    const roomLimit=(room.extraGuestAllowed?room.maxCapacity:room.baseCapacity)||room.maxAdults+room.maxChildren;
+    setAdultCount((value) => Math.max(1, Math.min(value, roomLimit * availableQuantity)));
+    setChildCount(0);
     window.setTimeout(() => document.getElementById('room-detail-inline')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
     try { const detail = await homestayApi.roomTypeDetail(room.id); setSelectedRoom((current) => current?.id === room.id ? { ...current, ...detail } : current); } catch { /* giữ dữ liệu danh sách nếu tải gallery thất bại */ }
   };
   const closeRoomDetail = () => { setSelectedRoom(null); setShowPaymentPage(false); window.setTimeout(() => document.querySelector('.rooms-section')?.scrollIntoView({ behavior: 'smooth' }), 0); };
   const bookingNights = arrival && departure ? Math.max(0, Math.round((new Date(departure) - new Date(arrival)) / 86400000)) : 0;
-  const includedAdultCount = selectedRoom ? Math.min(2, selectedRoom.maxAdults) * roomQuantity : 0;
-  const extraAdultCount = Math.max(0, adultCount - includedAdultCount);
+  const bookingGuestMax = selectedRoom ? ((selectedRoom.extraGuestAllowed ? selectedRoom.maxCapacity : selectedRoom.baseCapacity) || selectedRoom.maxAdults + selectedRoom.maxChildren) * roomQuantity : 1;
+  const includedAdultCount = selectedRoom ? (selectedRoom.baseCapacity||Math.min(2,selectedRoom.maxAdults)) * roomQuantity : 0;
+  const extraAdultCount = Math.max(0, adultCount + childCount - includedAdultCount);
   const roomPriceTotal = selectedRoom ? selectedRoom.basePrice * bookingNights * roomQuantity : 0;
-  const extraAdultTotal = extraAdultCount * 150000 * bookingNights;
-  const childFeeTotal = childCount * 100000 * bookingNights;
+  const extraAdultTotal = extraAdultCount * (selectedRoom?.extraGuestFee||0) * bookingNights;
+  const childFeeTotal = 0;
   const extraFeeTotal = extraAdultTotal + childFeeTotal;
   const bookingGrandTotal = roomPriceTotal + extraFeeTotal;
   const quotedRoomTotal = priceQuote?.roomTotal ?? roomPriceTotal;
-  const quotedExtraAdultTotal = priceQuote?.extraAdultFee ?? extraAdultTotal;
-  const quotedChildFeeTotal = priceQuote?.childFee ?? childFeeTotal;
+  const quotedExtraAdultTotal = priceQuote?.extraGuestFee ?? extraAdultTotal;
   const quotedGrandTotal = priceQuote?.total ?? bookingGrandTotal;
   const selectedRoomImages = selectedRoom?.rooms?.flatMap((room) => room.images.map((image) => ({ ...image, caption: image.caption || `Phòng ${room.roomNumber}` })))?.length
     ? selectedRoom.rooms.flatMap((room) => room.images.map((image) => ({ ...image, caption: image.caption || `Phòng ${room.roomNumber}` })))
@@ -215,21 +225,21 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
             <section className="payment-card payment-extra-card"><h2>Thông tin lưu trú bổ sung</h2><p>Vui lòng cung cấp thông tin sau để chỗ nghỉ chuẩn bị đón tiếp bạn tốt hơn.</p><label><span>Bạn dự kiến đến nhận phòng lúc nào?</span><select value={guestInfo.arrivalTime} onChange={updateGuestInfo('arrivalTime')}><option value="">Tôi chưa biết</option><option>12:00 - 14:00</option><option>14:00 - 16:00</option><option>16:00 - 18:00</option><option>18:00 - 20:00</option><option>Sau 20:00</option></select><small>Chủ homestay sẽ được báo trước giờ đến dự kiến.</small></label></section>
             <section className="payment-card"><h2>Phương thức thanh toán</h2><label className="payment-method"><input type="radio" checked readOnly /><span className="vnpay-mark">VN<span>PAY</span></span><div><strong>Thanh toán qua VNPay</strong><small>Quét mã QR bằng ứng dụng ngân hàng hoặc ví VNPay</small></div><i>✓</i></label><p className="payment-note">Bạn sẽ được chuyển đến trang VNPay an toàn để quét mã và hoàn tất thanh toán.</p></section>
           </div>
-          <aside className="payment-summary"><h2>Chi tiết thanh toán</h2><div><span>{roomQuantity} phòng × {bookingNights} đêm</span><strong>{money(quotedRoomTotal)}</strong></div>{extraAdultCount > 0 && <div><span>Phụ thu {extraAdultCount} người lớn</span><strong>{money(quotedExtraAdultTotal)}</strong></div>}{childCount > 0 && <div><span>Phụ thu {childCount} trẻ em</span><strong>{money(quotedChildFeeTotal)}</strong></div>}<div><span>Phí dịch vụ</span><strong>0 đ</strong></div><hr /><div className="payment-grand-total"><span>Tổng thanh toán</span><strong>{money(quotedGrandTotal)}</strong></div>{bookingError && <div className="booking-error">{bookingError}</div>}<button disabled={bookingBusy || paymentSecondsLeft <= 0} onClick={payWithVnPay}>{bookingBusy ? 'Đang kết nối VNPay...' : paymentSecondsLeft <= 0 ? 'Thời gian giữ giá đã hết' : 'Tiếp tục đến VNPay →'}</button><small>🔒 Giao dịch được bảo mật bởi VNPay</small></aside>
+          <aside className="payment-summary"><h2>Chi tiết thanh toán</h2><div><span>{roomQuantity} phòng × {bookingNights} đêm</span><strong>{money(quotedRoomTotal)}</strong></div>{extraAdultCount > 0 && <div><span>Phụ thu {extraAdultCount} khách thêm</span><strong>{money(quotedExtraAdultTotal)}</strong></div>}<div><span>Phí dịch vụ</span><strong>0đ</strong></div><hr /><div className="payment-grand-total"><span>Tổng thanh toán</span><strong>{money(quotedGrandTotal)}</strong></div>{bookingError && <div className="booking-error">{bookingError}</div>}<button disabled={bookingBusy || paymentSecondsLeft <= 0} onClick={payWithVnPay}>{bookingBusy ? 'Đang kết nối VNPay...' : paymentSecondsLeft <= 0 ? 'Thời gian giữ giá đã hết' : 'Tiếp tục đến VNPay →'}</button><small>🔒 Giao dịch được bảo mật bởi VNPay</small></aside>
         </div>
       </section>
     </main>;
   }
 
-  return <main className="stay-detail-page">
+  return <main className="stay-detail-page reference-detail-page">
     <CustomerNav active="homestays" user={user} onHome={onHome} onHomestays={onBack} onBookings={onBookings} onAccount={onAccount} />
-    <section className="stay-hero" style={{ backgroundImage: `linear-gradient(90deg,rgba(4,19,45,.48),rgba(4,19,45,.03)), url('${homestayCover(data.name)}')` }}>
+    <section className="stay-hero" style={{ backgroundImage: `linear-gradient(90deg,rgba(4,19,45,.48),rgba(4,19,45,.03)), url('${freshImageUrl(data.thumbnailUrl || data.images?.find((image) => image.isThumbnail)?.url || data.images?.[0]?.url, imageVersion) || homestayCover(data.name)}')` }}>
       <div className="stay-hero-copy"><p>HOMESTAY CAO CẤP</p><h1>{data.name}</h1><div><b>★ <span>{reviews.total ? Number(reviews.average).toFixed(1) : 'Mới'}</span></b><span>({reviews.total} đánh giá)</span><i /><span>●</span><span>{address}</span></div></div>
       <button className="photo-button" onClick={() => onDeveloping('Thư viện ảnh')}>▣ &nbsp; Xem thêm ảnh</button>
     </section>
     <section className="detail-search" aria-label="Kiểm tra phòng trống">
-      <label><span>▣</span><div><small>Ngày nhận</small><input type="date" value={arrival} onChange={(e) => setArrival(e.target.value)} /></div></label>
-      <label><span>▣</span><div><small>Ngày trả</small><input type="date" value={departure} min={arrival} onChange={(e) => setDeparture(e.target.value)} /></div></label>
+      <label><span>▣</span><div><small>Ngày nhận</small><input type="date" lang="vi-VN" placeholder="dd/mm/yyyy" value={arrival} onChange={(e) => setArrival(e.target.value)} /></div></label>
+      <label><span>▣</span><div><small>Ngày trả</small><input type="date" lang="vi-VN" placeholder="dd/mm/yyyy" value={departure} min={arrival} onChange={(e) => setDeparture(e.target.value)} /></div></label>
       <label><span>♙</span><div><small>Khách và phòng</small><b>{adultCount} người lớn · {childCount} trẻ em · {roomQuantity} phòng</b></div></label>
       <button onClick={checkRooms}>Kiểm tra phòng <span>→</span></button>
     </section>
@@ -237,7 +247,7 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
       <section id="overview" className="detail-intro redesigned-intro"><div><small>KHÁM PHÁ KHÔNG GIAN</small><h2>Giới thiệu homestay</h2><p>{data.description}</p></div><aside><article><b>{data.roomTypes.length}</b><span>Loại phòng</span></article><article><b>{data.roomTypes.reduce((sum, room) => sum + room.availableRoomCount, 0)}</b><span>Phòng còn trống</span></article><article><b>{reviews.total ? Number(reviews.average).toFixed(1) : '—'}</b><span>Điểm đánh giá</span></article></aside></section>
       <section id="amenities" className="detail-box featured-amenities"><header className="section-title"><small>TRẢI NGHIỆM TIỆN NGHI</small><h2>Tiện ích nổi bật</h2><p>Mọi tiện nghi cần thiết cho một kỳ nghỉ thoải mái và trọn vẹn.</p></header><div>{amenities.map((item) => <article key={item.id}><i>{amenityIcons[item.category] || '✦'}</i><span>{item.name}<small>{item.category}</small></span></article>)}</div></section>
       <section id="rooms" className="rooms-section"><div className="rooms-heading"><div><small>LỰA CHỌN LƯU TRÚ</small><h2>Chọn căn phòng dành cho bạn</h2></div><p>Giá minh bạch · Xem chi tiết ngay trên trang</p></div><div className="detail-room-list">{data.roomTypes.map((room, index) => <article className={`detail-room-card ${selectedRoom?.id === room.id ? 'selected' : ''}`} key={room.id}>
-        <img src={room.thumbnailUrl || roomFallbacks[index % roomFallbacks.length]} alt={room.name} />
+        <img src={freshImageUrl(room.thumbnailUrl, imageVersion) || roomFallbacks[index % roomFallbacks.length]} alt={room.name} />
         <div className="room-card-shade" />
         <div className="room-card-top"><span>♙ Tối đa {room.maxAdults} người lớn · {room.maxChildren} trẻ em</span><span>{room.availableRoomCount > 0 ? `${room.availableRoomCount} phòng trống` : 'Đã hết phòng'}</span></div>
         <div className="room-copy"><h3>{room.name}</h3><div className="room-facts"><span>▰ {room.bedType}</span><span>△ {room.roomSize || '—'} m²</span></div><p>{room.description}</p></div>
@@ -245,16 +255,26 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
       </article>)}</div></section>
       {selectedRoom && <section id="room-detail-inline" className="inline-room-detail">
         <header><div><small>CHI TIẾT PHÒNG TẠI {data.name.toUpperCase()}</small><h2>{selectedRoom.name}</h2></div><button type="button" onClick={closeRoomDetail}>Thu gọn ×</button></header>
-        <div className="room-page-gallery"><img className="room-page-main-image" src={selectedRoomImages[Math.min(activeRoomImage,selectedRoomImages.length-1)]?.url} alt={selectedRoomImages[Math.min(activeRoomImage,selectedRoomImages.length-1)]?.caption || selectedRoom.name} /><div className="room-page-thumbs">{selectedRoomImages.map((image, index) => <button className={index === activeRoomImage ? 'active' : ''} key={`${image.id}-${image.url}`} onClick={() => setActiveRoomImage(index)}><img src={image.url} alt={image.caption || `Xem ảnh ${index + 1}`} /></button>)}</div></div>
+        <div className="room-page-gallery"><img className="room-page-main-image" src={freshImageUrl(selectedRoomImages[Math.min(activeRoomImage,selectedRoomImages.length-1)]?.url, imageVersion)} alt={selectedRoomImages[Math.min(activeRoomImage,selectedRoomImages.length-1)]?.caption || selectedRoom.name} /><div className="room-page-thumbs">{selectedRoomImages.map((image, index) => <button className={index === activeRoomImage ? 'active' : ''} key={`${image.id}-${image.url}`} onClick={() => setActiveRoomImage(index)}><img src={freshImageUrl(image.url, imageVersion)} alt={image.caption || `Xem ảnh ${index + 1}`} /></button>)}</div></div>
         <div className="room-page-layout">
-          <article className="room-page-info"><div className="room-page-facts"><span>♙ {selectedRoom.maxAdults + selectedRoom.maxChildren} khách</span><span>▰ {selectedRoom.bedType}</span><span>△ {selectedRoom.roomSize || '—'} m²</span></div><p>{selectedRoom.description} Không gian được thiết kế ấm cúng, nhiều ánh sáng tự nhiên và đầy đủ tiện nghi cho một kỳ nghỉ thoải mái.</p><hr /><h2>Tiện nghi trong phòng</h2><ul className="room-page-amenities"><li>WiFi tốc độ cao miễn phí</li><li>Máy điều hòa</li><li>Phòng tắm riêng &amp; nước nóng</li><li>TV màn hình phẳng</li><li>Ấm đun nước và minibar</li><li>{selectedRoom.name.toLowerCase().includes('ban công') ? 'Ban công riêng, nhìn ra thành phố' : 'Dọn phòng hằng ngày'}</li></ul><hr /><h2>Chính sách phòng</h2><div className="room-page-policy"><p><b>Nhận phòng</b><span>Từ {data.checkInTime.slice(0, 5)}</span></p><p><b>Trả phòng</b><span>Trước {data.checkOutTime.slice(0, 5)}</span></p><p><b>Hủy phòng</b><span>Miễn phí trước 7 ngày</span></p></div></article>
-          <aside className="room-page-booking"><small>GIÁ PHÒNG</small><div><strong>{money(selectedRoom.basePrice)}</strong><span>/ phòng / đêm</span></div><p>✓ {selectedRoom.availableRoomCount} phòng đang còn trống</p><label>Ngày nhận<input type="date" min={new Date().toISOString().slice(0, 10)} value={arrival} onChange={(e) => { setArrival(e.target.value); setBookingError(''); }} /></label><label>Ngày trả<input type="date" min={arrival || new Date().toISOString().slice(0,10)} value={departure} onChange={(e) => { setDeparture(e.target.value); setBookingError(''); }} /></label><div className="guest-room-fields"><label>Người lớn<select value={adultCount} onChange={(e) => { setAdultCount(Number(e.target.value)); setBookingError(''); }}>{Array.from({ length: selectedRoom.maxAdults * roomQuantity }, (_, i) => i + 1).map((value) => <option key={value}>{value}</option>)}</select></label><label>Trẻ em<select value={childCount} onChange={(e) => { setChildCount(Number(e.target.value)); setBookingError(''); }}>{Array.from({ length: selectedRoom.maxChildren * roomQuantity + 1 }, (_, i) => i).map((value) => <option key={value}>{value}</option>)}</select></label><label>Số phòng<select value={roomQuantity} onChange={(e) => { const quantity = Number(e.target.value); setRoomQuantity(quantity); setAdultCount((value) => Math.min(value, selectedRoom.maxAdults * quantity)); setChildCount((value) => Math.min(value, selectedRoom.maxChildren * quantity)); setBookingError(''); }}>{Array.from({ length: Math.min(selectedRoom.availableRoomCount, 10) }, (_, i) => i + 1).map((value) => <option key={value}>{value}</option>)}</select></label></div><small className="capacity-note">Giá gồm tối đa {Math.min(2, selectedRoom.maxAdults)} người lớn/phòng. Phụ thu: người lớn 150.000đ và trẻ em 100.000đ mỗi đêm.</small>{bookingNights > 0 && <div className="booking-price-breakdown"><div><span>Tiền phòng</span><strong>{money(roomPriceTotal)}</strong></div>{extraAdultCount > 0 && <div><span>Thêm {extraAdultCount} người lớn</span><strong>+ {money(extraAdultTotal)}</strong></div>}{childCount > 0 && <div><span>Thêm {childCount} trẻ em</span><strong>+ {money(childFeeTotal)}</strong></div>}<div className="booking-total"><span>Tổng cộng</span><strong>{money(bookingGrandTotal)}</strong></div></div>}{bookingError && <div className="booking-error">{bookingError}</div>}<button disabled={selectedRoom.availableRoomCount === 0} onClick={openPaymentPage}>{selectedRoom.availableRoomCount > 0 ? 'Đến trang thanh toán →' : 'Phòng đã hết'}</button><em>Chưa phát sinh giao dịch ở bước này</em></aside>
+          <article className="room-page-info"><div className="room-page-facts"><span>♙ {selectedRoom.maxCapacity || selectedRoom.maxAdults + selectedRoom.maxChildren} khách</span><span>▰ {selectedRoom.bedType}</span><span>△ {selectedRoom.roomSize || '—'} m²</span></div><p>{selectedRoom.description} Không gian được thiết kế ấm cúng, nhiều ánh sáng tự nhiên và đầy đủ tiện nghi cho một kỳ nghỉ thoải mái.</p><hr /><h2>Tiện nghi trong phòng</h2><ul className="room-page-amenities"><li>WiFi tốc độ cao miễn phí</li><li>Máy điều hòa</li><li>Phòng tắm riêng &amp; nước nóng</li><li>TV màn hình phẳng</li><li>Ấm đun nước và minibar</li><li>{selectedRoom.name.toLowerCase().includes('ban công') ? 'Ban công riêng, nhìn ra thành phố' : 'Dọn phòng hằng ngày'}</li></ul><hr /><h2>Chính sách phòng</h2><div className="room-page-policy"><p><b>Nhận phòng</b><span>Từ {data.checkInTime.slice(0, 5)}</span></p><p><b>Trả phòng</b><span>Trước {data.checkOutTime.slice(0, 5)}</span></p><p><b>Hủy phòng</b><span>Miễn phí trước 7 ngày; trong 7 ngày phí 50%</span></p></div></article>
+          <aside className="room-page-booking">
+            <small>GIÁ PHÒNG</small><div><strong>{money(selectedRoom.basePrice)}</strong><span>/ phòng / đêm</span></div><p>✓ {selectedRoom.availableRoomCount} phòng đang còn trống</p>
+            <label>Ngày nhận<input type="date" lang="vi-VN" placeholder="dd/mm/yyyy" min={new Date().toISOString().slice(0,10)} value={arrival} onChange={e=>{setArrival(e.target.value);setBookingError('')}}/></label>
+            <label>Ngày trả<input type="date" lang="vi-VN" placeholder="dd/mm/yyyy" min={arrival||new Date().toISOString().slice(0,10)} value={departure} onChange={e=>{setDeparture(e.target.value);setBookingError('')}}/></label>
+            <div className="guest-booking-control"><span>Người lớn</span><GuestCounter value={adultCount} min={1} max={Math.max(1,bookingGuestMax-childCount)} onChange={value=>{setAdultCount(value);setBookingError('')}}/></div>
+            <div className="guest-booking-control"><span>Trẻ em</span><GuestCounter value={childCount} min={0} max={Math.max(0,bookingGuestMax-adultCount)} onChange={value=>{setChildCount(value);setBookingError('')}}/></div>
+            <small className="capacity-note">Tối đa {bookingGuestMax} khách · {selectedRoom.extraGuestAllowed&&selectedRoom.maxCapacity>selectedRoom.baseCapacity?`+${money(selectedRoom.extraGuestFee)}/khách từ khách thứ ${selectedRoom.baseCapacity+1}`:`Giá gồm tối đa ${selectedRoom.baseCapacity||bookingGuestMax} khách/phòng`}</small>
+            <label>Số phòng<select value={roomQuantity} onChange={e=>{const quantity=Number(e.target.value);const limit=((selectedRoom.extraGuestAllowed?selectedRoom.maxCapacity:selectedRoom.baseCapacity)||selectedRoom.maxAdults+selectedRoom.maxChildren)*quantity;setRoomQuantity(quantity);setAdultCount(value=>Math.min(value,limit));setChildCount(0);setBookingError('')}}>{Array.from({length:Math.min(selectedRoom.availableRoomCount,10)},(_,i)=>i+1).map(value=><option key={value}>{value}</option>)}</select></label>
+            {bookingNights>0&&<div className="booking-price-breakdown"><div><span>Tiền phòng</span><strong>{money(roomPriceTotal)}</strong></div>{extraAdultCount>0&&<div><span>Thêm {extraAdultCount} khách</span><strong>+ {money(extraAdultTotal)}</strong></div>}<div className="booking-total"><span>Tổng cộng</span><strong>{money(bookingGrandTotal)}</strong></div></div>}
+            {bookingError&&<div className="booking-error">{bookingError}</div>}<button disabled={selectedRoom.availableRoomCount===0} onClick={openPaymentPage}>{selectedRoom.availableRoomCount>0?'Đến trang thanh toán →':'Phòng đã hết'}</button><em>Chưa phát sinh giao dịch ở bước này</em>
+          </aside>
         </div>
       </section>}
       <section id="policy" className="detail-box policy-section"><header className="section-title"><small>THÔNG TIN CẦN BIẾT</small><h2>Chính sách homestay</h2></header><div className="policy-grid">
         <article><i>◷</i><div><b>Nhận phòng</b><strong>Từ {data.checkInTime.slice(0, 5)}</strong><small>Vui lòng xuất trình giấy tờ tùy thân</small></div></article>
         <article><i>◷</i><div><b>Trả phòng</b><strong>Trước {data.checkOutTime.slice(0, 5)}</strong><small>Hỗ trợ trả phòng linh hoạt (khi có thể)</small></div></article>
-        <article><i>▤</i><div><b>Hủy phòng</b><strong>Miễn phí hủy trước 7 ngày</strong><small>Các trường hợp khác tùy theo điều kiện đặt phòng</small></div></article>
+          <article><i>▤</i><div><b>Hủy phòng</b><strong>Miễn phí hủy trước ít nhất 7 ngày</strong><small>Hủy trong vòng 7 ngày trước nhận phòng: phí 50% số tiền đã thanh toán.</small></div></article>
         <article><i>♢</i><div><b>Quy định chung</b><ul><li>Không hút thuốc trong phòng</li><li>Không mang thú cưng</li><li>Giữ yên tĩnh sau 22:00</li></ul></div></article>
       </div></section>
       <section id="location" className="detail-box location-section"><div><small>KHÁM PHÁ KHU VỰC</small><h2>Vị trí thuận tiện</h2><strong>● &nbsp; {address}</strong><p>Nằm ngay trung tâm {data.ward || data.district}, dễ dàng di chuyển đến bãi biển, chợ đêm và các điểm tham quan nổi tiếng.</p><a href={`https://www.google.com/maps/search/?api=1&query=${data.latitude || ''},${data.longitude || ''}`} target="_blank" rel="noreferrer">Mở Google Maps &nbsp; →</a></div><div className="map-visual"><span className="map-water">Bãi biển</span><div className="map-road" /><b>●<small>{data.name}</small></b><em>{data.ward || data.district}</em></div></section>
@@ -268,5 +288,7 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
       </section>
     </div>}
     <section className="review-highlights"><header><div><small>CẢM NHẬN TỪ KHÁCH</small><h2>Đọc xem khách yêu thích điều gì nhất</h2></div>{reviews.total > 0 && <button onClick={() => setShowAllReviews(true)}>Đọc tất cả {reviews.total} đánh giá</button>}</header><div className="review-highlights-shell"><button className="review-arrow previous" aria-label="Đánh giá trước" onClick={() => document.querySelector('.review-highlights-track')?.scrollBy({ left: -390, behavior: 'smooth' })}>‹</button><div className="review-highlights-track">{reviews.items.length ? reviews.items.slice(0, 6).map((review) => <article key={review.id}><header><span>{review.customerName.split(/\s+/).map((part) => part[0]).slice(-1).join('').toUpperCase()}</span><div><strong>{review.customerName}</strong><small>🇻🇳 Việt Nam</small></div><em>{review.rating},0</em></header><p>“{review.comment || 'Khách hàng hài lòng với kỳ nghỉ tại homestay.'}”</p>{review.hostReply && <small className="review-replied">✓ Chủ homestay đã phản hồi</small>}<button onClick={() => setShowAllReviews(true)}>Tìm hiểu thêm</button></article>) : <p className="empty-reviews">Homestay chưa có đánh giá.</p>}</div><button className="review-arrow next" aria-label="Đánh giá tiếp theo" onClick={() => document.querySelector('.review-highlights-track')?.scrollBy({ left: 390, behavior: 'smooth' })}>›</button></div></section>
+    <section className="detail-closing"><span>✦</span><p>Du khách tìm kiếm những trải nghiệm <em>độc bản</em> và<br/><em>giàu cảm hứng</em> sẽ tìm thấy sự tinh tế tại</p><h2>{data.name}</h2><small>TRỌN VẸN · TIN CẬY · TẬN TÂM</small></section>
+    <footer className="detail-footer"><div><a className="detail-footer-logo" href="#top" onClick={(event)=>{event.preventDefault();onHome()}}>tripio</a><p>Nơi mỗi chuyến đi trở thành một trải nghiệm đáng nhớ. Tận hưởng kỳ nghỉ riêng tư, tiện nghi và đầy cảm hứng.</p></div><div><b>TRẢI NGHIỆM</b><button onClick={onBack}>Khám phá Homestay</button><button onClick={()=>document.getElementById('rooms')?.scrollIntoView({behavior:'smooth'})}>Chọn phòng</button></div><div><b>THÔNG TIN</b><button onClick={()=>document.getElementById('policy')?.scrollIntoView({behavior:'smooth'})}>Chính sách</button><button onClick={()=>document.getElementById('reviews')?.scrollIntoView({behavior:'smooth'})}>Đánh giá</button></div><div><b>LIÊN HỆ</b><p>{address}</p><p>tripio@gmail.com</p></div></footer>
   </main>;
 }

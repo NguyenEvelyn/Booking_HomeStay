@@ -197,6 +197,7 @@ const offers = [
 
 export default function HomePage({
   user,
+  refreshKey = 0,
   onLogout,
   onDeveloping,
   onBrowseHomestays,
@@ -237,27 +238,27 @@ export default function HomePage({
     let mounted = true;
     homestayApi
       .list({ pageSize: 6 })
-      .then((res) => {
-        if (mounted && res?.items?.length) {
-          setApiStays(
-            res.items.map((item, idx) => ({
+      .then(async (res) => {
+        const items = await Promise.all((res?.items || []).map(async (item, idx) => {
+          const review = await homestayApi.reviews(item.id).catch(() => ({ average: 0 }));
+          return {
               id: item.id,
               name: item.name,
               location: `${item.district || ''}, ${item.province || ''}`.replace(/^,\s*/, '') || 'Việt Nam',
               price: typeof item.fromPrice === 'number'
                 ? `Từ ${new Intl.NumberFormat('vi-VN').format(item.fromPrice)} đ`
                 : item.fromPrice || '1,456k VND',
-              rating: item.averageRating ? Number(item.averageRating).toFixed(1).replace('.', ',') : '4,8',
-              image: item.thumbnailUrl || stays[idx % stays.length].image,
-            }))
-          );
-        }
+              rating: review.average ? Number(review.average).toFixed(1).replace('.', ',') : 'Mới',
+              image: item.thumbnailUrl ? freshImageUrl(item.thumbnailUrl, `${Date.now()}-${refreshKey}`) : stays[idx % stays.length].image,
+          };
+        }));
+        if (mounted) setApiStays(items);
       })
       .catch(() => {});
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [refreshKey]);
 
   const displayStays = apiStays.length > 0 ? apiStays : stays;
 
