@@ -232,11 +232,13 @@ export default function HomePage({
   const [searchCheckOut, setSearchCheckOut] = useState('');
   const [searchGuests, setSearchGuests] = useState('');
   const [apiStays, setApiStays] = useState([]);
+  const [staysLoading, setStaysLoading] = useState(true);
 
   useEffect(() => {
     let mounted = true;
+    setStaysLoading(true);
     homestayApi
-      .list({ pageSize: 6 })
+      .list({ pageSize: 4, sort: 'rating' })
       .then((res) => {
         if (mounted && res?.items?.length) {
           setApiStays(
@@ -253,13 +255,15 @@ export default function HomePage({
           );
         }
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => { if (mounted) setStaysLoading(false); });
     return () => {
       mounted = false;
     };
   }, []);
 
-  const displayStays = apiStays.length > 0 ? apiStays : stays;
+  /* Luôn hiện đúng 4 card. Nếu API trả về thì dùng API, không thì dùng data mặc định */
+  const displayStays = (apiStays.length > 0 ? apiStays : stays).slice(0, 4);
 
   const navItems = [
     ['home', 'Trang chủ', '#home'],
@@ -999,6 +1003,19 @@ export default function HomePage({
             <article
               className="stay-card"
               key={stay.id || stay.name}
+              style={stay.id ? { cursor: 'pointer' } : undefined}
+              onClick={(e) => {
+                if (stayDrag.current.moved) return;
+                /* Nếu click vào heart-btn hoặc footer button thì không nav toàn card */
+                if (e.target.closest('.stay-heart-btn') || e.target.closest('.stay-info footer button')) return;
+                if (stay.id && typeof onOpenHomestay === 'function') {
+                  onOpenHomestay(stay.id);
+                } else if (typeof onBrowseHomestays === 'function') {
+                  onBrowseHomestays();
+                } else {
+                  onDeveloping('Đặt phòng');
+                }
+              }}
             >
               {/* Background Image */}
               <img
@@ -1020,6 +1037,7 @@ export default function HomePage({
                   className="stay-heart-btn"
                   aria-label="Yêu thích"
                   onClick={(e) => {
+                    e.stopPropagation();
                     if (stayDrag.current.moved) return;
                     onDeveloping('Yêu thích homestay');
                   }}
@@ -1049,6 +1067,7 @@ export default function HomePage({
                   <button
                     type="button"
                     onClick={(e) => {
+                      e.stopPropagation();
                       if (stayDrag.current.moved) return;
                       if (stay.id && typeof onOpenHomestay === 'function') {
                         onOpenHomestay(stay.id);
