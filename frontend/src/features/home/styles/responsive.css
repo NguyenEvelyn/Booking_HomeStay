@@ -77,10 +77,7 @@
       minmax(0, 1fr);
   }
 
-  .stay-grid {
-    grid-template-columns:
-      repeat(5, 320px);
-  }
+  /* stay-grid is now flex; card widths are fixed on .stay-card */
 }
 
 
@@ -555,14 +552,16 @@
   }
 
 
+
+
   .stats span {
     font-size: 12px;
   }
 
 
-  .stay-grid {
-    grid-template-columns:
-      repeat(5, 82vw);
+  .stay-grid .stay-card {
+    flex: 0 0 82vw;
+    width: 82vw;
   }
 
 

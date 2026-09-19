@@ -45,6 +45,7 @@ export default function App() {
   const [selectedHomestayId, setSelectedHomestayId] = useState(null);
   const [homestaySearch, setHomestaySearch] = useState(null);
   const [paymentResult, setPaymentResult] = useState(null);
+  const [previousView, setPreviousView] = useState('home');
 
   /* =========================================================
      ERROR PAGE CHECK
@@ -304,6 +305,7 @@ export default function App() {
 
   const openCatalog = (searchCriteria = null) => {
     setHomestaySearch(searchCriteria);
+    setPreviousView('home');
     setView('catalog');
   };
 
@@ -312,6 +314,7 @@ export default function App() {
     if (searchCriteria) {
       setHomestaySearch(searchCriteria);
     }
+    setPreviousView(view); // remember where we came from (home or catalog)
     setView('detail');
   };
 
@@ -469,7 +472,7 @@ export default function App() {
             initialSearch={homestaySearch}
             user={user}
             onHome={() => setView('home')}
-            onBack={() => setView('catalog')}
+            onBack={() => setView(previousView === 'catalog' ? 'catalog' : 'home')}
             onBookings={() => setView('bookings')}
             onAccount={() => {
               setMode('change-password');
@@ -543,7 +546,7 @@ export default function App() {
             initialSearch={homestaySearch}
             user={null}
             onHome={() => setView('home')}
-            onBack={() => setView('catalog')}
+            onBack={() => setView(previousView === 'catalog' ? 'catalog' : 'home')}
             onAccount={() => {
               setShowHome(false);
               setMode('login');

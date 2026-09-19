@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import './styles/home.css';
 import { homestayApi } from '../homestays/api/homestayApi.js';
+import GuestPickerDropdown from '../../shared/components/GuestPickerDropdown.jsx';
 
 const heroImage = '/assets/figma/hero.png';
 const aboutImage = '/assets/figma/about.jpg';
@@ -230,15 +231,13 @@ export default function HomePage({
   const [searchLocation, setSearchLocation] = useState('');
   const [searchCheckIn, setSearchCheckIn] = useState('');
   const [searchCheckOut, setSearchCheckOut] = useState('');
-  const [searchGuests, setSearchGuests] = useState('');
+  const [guestsConfig, setGuestsConfig] = useState({ adults: 2, children: 0, rooms: 1 });
   const [apiStays, setApiStays] = useState([]);
-  const [staysLoading, setStaysLoading] = useState(true);
 
   useEffect(() => {
     let mounted = true;
-    setStaysLoading(true);
     homestayApi
-      .list({ pageSize: 4, sort: 'rating' })
+      .list({ pageSize: 6 })
       .then((res) => {
         if (mounted && res?.items?.length) {
           setApiStays(
@@ -251,19 +250,18 @@ export default function HomePage({
                 : item.fromPrice || '1,456k VND',
               rating: item.averageRating ? Number(item.averageRating).toFixed(1).replace('.', ',') : '4,8',
               image: item.thumbnailUrl || stays[idx % stays.length].image,
+              description: item.description || null,
             }))
           );
         }
       })
-      .catch(() => {})
-      .finally(() => { if (mounted) setStaysLoading(false); });
+      .catch(() => {});
     return () => {
       mounted = false;
     };
   }, []);
 
-  /* Luôn hiện đúng 4 card. Nếu API trả về thì dùng API, không thì dùng data mặc định */
-  const displayStays = (apiStays.length > 0 ? apiStays : stays).slice(0, 4);
+  const displayStays = apiStays.length > 0 ? apiStays : stays;
 
   const navItems = [
     ['home', 'Trang chủ', '#home'],
@@ -363,7 +361,7 @@ export default function HomePage({
     const onWindowMouseMove = (moveEvent) => {
       if (!stayDrag.current.active) return;
       const dx = moveEvent.clientX - stayDrag.current.startX;
-      if (Math.abs(dx) > 3) {
+      if (Math.abs(dx) > 5) {
         stayDrag.current.moved = true;
       }
       el.scrollLeft = stayDrag.current.scrollLeft - dx;
@@ -372,6 +370,10 @@ export default function HomePage({
     const onWindowMouseUp = () => {
       stayDrag.current.active = false;
       el.classList.remove('is-dragging');
+      // Delay reset so onClick can read moved first, then reset for next interaction
+      setTimeout(() => {
+        stayDrag.current.moved = false;
+      }, 0);
       window.removeEventListener('mousemove', onWindowMouseMove);
       window.removeEventListener('mouseup', onWindowMouseUp);
     };
@@ -764,7 +766,7 @@ export default function HomePage({
               search: searchLocation,
               checkIn: searchCheckIn,
               checkOut: searchCheckOut,
-              guests: searchGuests.includes('2') ? 2 : searchGuests.includes('Gia đình') ? 4 : 1,
+              guests: guestsConfig.adults + guestsConfig.children,
             });
           } else {
             onDeveloping('Tìm phòng');
@@ -831,33 +833,10 @@ export default function HomePage({
           </span>
         </label>
 
-        <label>
-          Khách và phòng
-
-          <select
-            value={searchGuests}
-            onChange={(e) => setSearchGuests(e.target.value)}
-          >
-            <option
-              value=""
-              disabled
-            >
-              Chọn số người
-            </option>
-
-            <option value="1">
-              1 khách · 1 phòng
-            </option>
-
-            <option value="2">
-              2 khách · 1 phòng
-            </option>
-
-            <option value="family">
-              Gia đình · 2 phòng
-            </option>
-          </select>
-        </label>
+        <GuestPickerDropdown
+          value={guestsConfig}
+          onChange={setGuestsConfig}
+        />
 
         <button type="submit">
           Tìm phòng
@@ -999,91 +978,91 @@ export default function HomePage({
           ref={stayGridRef}
           onMouseDown={onStayMouseDown}
         >
-          {displayStays.map((stay) => (
-            <article
-              className="stay-card"
-              key={stay.id || stay.name}
-              style={stay.id ? { cursor: 'pointer' } : undefined}
-              onClick={(e) => {
-                if (stayDrag.current.moved) return;
-                /* Nếu click vào heart-btn hoặc footer button thì không nav toàn card */
-                if (e.target.closest('.stay-heart-btn') || e.target.closest('.stay-info footer button')) return;
-                if (stay.id && typeof onOpenHomestay === 'function') {
-                  onOpenHomestay(stay.id);
-                } else if (typeof onBrowseHomestays === 'function') {
-                  onBrowseHomestays();
-                } else {
-                  onDeveloping('Đặt phòng');
-                }
-              }}
-            >
-              {/* Background Image */}
-              <img
-                className="stay-card-bg"
-                src={stay.image}
-                alt={stay.name}
-                draggable="false"
-              />
+          {displayStays.map((stay) => {
+            const goToDetail = (wasMoved) => {
+              if (wasMoved) return;
+              if (stay.id && typeof onOpenHomestay === 'function') {
+                onOpenHomestay(stay.id);
+              } else if (typeof onBrowseHomestays === 'function') {
+                onBrowseHomestays();
+              } else {
+                onDeveloping('Đặt phòng');
+              }
+            };
 
-              {/* Top: Location Badge | Heart Button */}
-              <div className="stay-top">
-                <span className="stay-location-badge">
-                  <Icon name="location" />
-                  <span>{stay.location}</span>
-                </span>
+            return (
+              <article
+                className="stay-card"
+                key={stay.id || stay.name}
+                style={{ cursor: 'pointer' }}
+                onMouseUp={(e) => {
+                  if (e.button !== 0) return;
+                  goToDetail(stayDrag.current.moved);
+                }}
+              >
+                {/* Background Image */}
+                <img
+                  className="stay-card-bg"
+                  src={stay.image}
+                  alt={stay.name}
+                  draggable="false"
+                />
 
-                <button
-                  type="button"
-                  className="stay-heart-btn"
-                  aria-label="Yêu thích"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (stayDrag.current.moved) return;
-                    onDeveloping('Yêu thích homestay');
-                  }}
-                >
-                  <Icon name="heart" />
-                </button>
-              </div>
-
-              {/* Rectangle blur overlay W 350 H 185 từ Figma */}
-              <div className="stay-blur-overlay" aria-hidden="true" />
-
-              {/* Card info */}
-              <div className="stay-info">
-                <div className="stay-title-row">
-                  <h3>{stay.name}</h3>
-                  <span className="stay-rating-badge">
-                    {stay.rating} <span className="star-icon">★</span>
+                {/* Top: Location Badge | Heart Button */}
+                <div className="stay-top">
+                  <span className="stay-location-badge">
+                    <Icon name="location" />
+                    <span>{stay.location}</span>
                   </span>
-                </div>
 
-                <p>
-                  Khám phá điểm dừng chân hoàn hảo với trải nghiệm nghỉ dưỡng tiện nghi và đầy cảm hứng
-                </p>
-
-                <footer>
-                  <b>{stay.price}</b>
                   <button
                     type="button"
-                    onClick={(e) => {
+                    className="stay-heart-btn"
+                    aria-label="Yêu thích"
+                    onMouseUp={(e) => {
                       e.stopPropagation();
                       if (stayDrag.current.moved) return;
-                      if (stay.id && typeof onOpenHomestay === 'function') {
-                        onOpenHomestay(stay.id);
-                      } else if (typeof onBrowseHomestays === 'function') {
-                        onBrowseHomestays();
-                      } else {
-                        onDeveloping('Đặt phòng');
-                      }
+                      onDeveloping('Yêu thích homestay');
                     }}
                   >
-                    Đặt phòng
+                    <Icon name="heart" />
                   </button>
-                </footer>
-              </div>
-            </article>
-          ))}
+                </div>
+
+                {/* Rectangle blur overlay W 350 H 185 từ Figma */}
+                <div className="stay-blur-overlay" aria-hidden="true" />
+
+                {/* Card info */}
+                <div className="stay-info">
+                  <div className="stay-title-row">
+                    <h3>{stay.name}</h3>
+                    <span className="stay-rating-badge">
+                      {stay.rating} <span className="star-icon">★</span>
+                    </span>
+                  </div>
+
+                  <p>
+                    {stay.description || 'Khám phá điểm dừng chân hoàn hảo với trải nghiệm nghỉ dưỡng tiện nghi và đầy cảm hứng'}
+                  </p>
+
+                  <footer>
+                    <b>{stay.price}</b>
+                    <button
+                      type="button"
+                      onMouseUp={(e) => {
+                        e.stopPropagation();
+                        goToDetail(stayDrag.current.moved);
+                      }}
+                    >
+                      Đặt phòng
+                    </button>
+                  </footer>
+                </div>
+              </article>
+            );
+          })}
+
+
         </div>
       </section>
 

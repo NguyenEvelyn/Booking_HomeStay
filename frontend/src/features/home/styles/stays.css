@@ -131,12 +131,14 @@
 
 
 /* =========================================================
-   CARD GRID — 4 cards, 1 hàng, kéo-thả mượt
+   CARD GRID — Horizontal Scroll & Drag-to-scroll
    ========================================================= */
 
 .stay-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: stretch;
   gap: 16px;
   padding: 10px 0;
 
@@ -166,20 +168,19 @@
 }
 
 .stay-grid.is-dragging * {
+  cursor: grabbing !important;
   user-select: none !important;
   -webkit-user-select: none !important;
-  pointer-events: none !important;
 }
 
 
 /* =========================================================
-   STAY CARD — tự giãn theo cột, H: 500px, Radius: 20px
+   STAY CARD — W: 350px, H: 500px, Radius: 20px
    ========================================================= */
 
 .stay-card {
   position: relative;
-  width: 100%;
-  min-width: 260px;
+  width: 350px;
   height: 500px;
   border-radius: 20px;
   overflow: hidden;
