@@ -22,11 +22,15 @@ Có thể đổi API bằng `BOOKING_API_URL`. Bộ sinh dùng seed `20260920` (
 
 Mỗi homestay được chuẩn hóa thành: `homestayId`, tỉnh/huyện, tập tiện nghi, điểm và số đánh giá, danh sách loại phòng với giá/giới hạn khách/tồn phòng. Mỗi truy vấn có địa điểm, số khách/phòng, số đêm, ngân sách **tổng kỳ nghỉ**, tiện nghi bắt buộc/ưa thích và có thể có ngày lưu trú.
 
-1. **Lọc cứng:** địa điểm, tiện nghi bắt buộc, sức chứa, số phòng, ngân sách tổng. Khi dùng trên web cần gọi API khả dụng hiện có để lọc theo ngày trước khi xếp hạng; ảnh chụp offline chỉ biết trạng thái phòng tại lúc xuất dữ liệu.
+1. **Lọc cứng:** địa điểm, tiện nghi bắt buộc, sức chứa, số phòng, ngân sách tổng. Bản trên web kiểm tra phòng trống theo ngày và các đơn đang giữ phòng trước khi xếp hạng; ảnh chụp offline chỉ biết trạng thái phòng tại lúc xuất dữ liệu.
 2. **Điểm Top-K:** mức phù hợp ngân sách (40%), tiện nghi ưa thích (30%), điểm đánh giá đã làm mượt theo số lượng đánh giá (20%), hành vi trước đó (10%). Hành vi trống vẫn chạy được cho khách mới.
 3. Trả Top 5 cùng loại phòng phù hợp, chi phí dự kiến và lý do gợi ý. Chi phí offline chỉ là ước tính theo giá cơ bản và phụ thu khách; khi đặt phòng phải dùng `/api/bookings/quote` để lấy giá đúng theo ngày.
 
 Đây là **baseline có giải thích được**, chưa phải mô hình ML được huấn luyện. Không đánh giá chất lượng thật bằng các event giả, vì event được sinh theo thuộc tính của chính homestay.
+
+## Gợi ý trên web
+
+Trang tìm phòng gọi `GET /api/recommendations` với địa điểm, ngày lưu trú, số khách/phòng, ngân sách, loại phòng, điểm đánh giá và tiện nghi ưa thích. Backend đọc trực tiếp homestay và lịch sử đặt phòng thật trên Neon, kiểm tra phòng trống rồi trả Top-K cùng loại phòng, chi phí dự kiến và lý do. Dữ liệu sự kiện giả chỉ dùng cho bản demo offline và không được ghi vào Neon. Giá khi thanh toán vẫn lấy từ API báo giá đặt phòng.
 
 ## Bước tiếp theo để thành mô hình học từ dữ liệu
 

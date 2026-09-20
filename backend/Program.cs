@@ -1,5 +1,6 @@
 using HomestayAuth.Api.Features.Auth.Services;
 using HomestayAuth.Api.Features.Homestays.Services;
+using HomestayAuth.Api.Features.Recommendations;
 using HomestayAuth.Api.Infrastructure.Persistence;
 using HomestayAuth.Api.Utilities;
 using Microsoft.EntityFrameworkCore;
@@ -69,6 +70,7 @@ builder.WebHost.UseUrls($"http://localhost:{Environment.GetEnvironmentVariable("
 builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IHomestayQueryService, HomestayQueryService>();
+builder.Services.AddScoped<RecommendationService>();
 builder.Services.AddSingleton<HomestayAuth.Api.Features.Bookings.VnPayService>();
 builder.Services.AddSingleton<IEmailOtpSender, EmailOtpSender>();
 builder.Services.AddRateLimiter(options =>

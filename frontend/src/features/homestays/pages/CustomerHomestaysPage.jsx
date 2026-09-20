@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { homestayApi } from '../api/homestayApi.js';
 import CustomerNav from '../../../shared/components/CustomerNav.jsx';
 import pineHomestayImage from '../../../../assets/f6cd6879081dc8e8d4ff18669308ea86.jpg';
@@ -10,6 +10,7 @@ const money = (value) => value == null ? 'Liên hệ' : `${new Intl.NumberFormat
 const localToday = () => { const now = new Date(); return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`; };
 const covers = [pineHomestayImage, azureHomestayImage, sunsetHomestayImage];
 const roomFilters = ['Phòng đơn', 'Phòng đôi', 'Phòng có ban công', 'Phòng gia đình'];
+const amenityOptions = ['WiFi miễn phí', 'Hồ bơi', 'Nhà bếp', 'Chỗ đỗ xe miễn phí', 'Cho phép mang theo vật nuôi'];
 const SearchIcon = ({ type }) => <svg viewBox="0 0 24 24" aria-hidden="true">
   {type === 'location' && <><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" /><circle cx="12" cy="10" r="2.5" /></>}
   {type === 'calendar' && <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M16 3v4M8 3v4M3 10h18" /></>}
@@ -27,6 +28,10 @@ export default function CustomerHomestaysPage({ user, refreshKey = 0, initialSea
   const [roomType, setRoomType] = useState('');
   const [minRating, setMinRating] = useState(0);
   const [sort, setSort] = useState('recommended');
+  const [preferredAmenities, setPreferredAmenities] = useState([]);
+  const [recommendations, setRecommendations] = useState([]);
+  const [recommendationError, setRecommendationError] = useState('');
+  const latestRequest = useRef(0);
   const [page, setPage] = useState(1);
   const [favorites, setFavorites] = useState(() => JSON.parse(localStorage.getItem('tripio-favorites') || '[]'));
   const [loading, setLoading] = useState(true);
@@ -34,20 +39,32 @@ export default function CustomerHomestaysPage({ user, refreshKey = 0, initialSea
 
   const criteria = (targetPage = page) => ({ search, checkIn, checkOut, guests, rooms, maxPrice, roomType, minRating, sort, page: targetPage, pageSize: 12 });
   const load = async (targetPage = 1) => {
+    const requestId = ++latestRequest.current;
     setLoading(true); setError('');
     try {
       if ((checkIn && !checkOut) || (!checkIn && checkOut)) throw new Error('Vui lòng chọn đầy đủ ngày nhận và ngày trả phòng.');
       if (checkIn && checkOut && checkOut <= checkIn) throw new Error('Ngày trả phòng phải sau ngày nhận phòng.');
       if (checkIn && checkIn < localToday()) throw new Error('Ngày nhận phòng không được ở trong quá khứ.');
-      const response = await homestayApi.list(criteria(targetPage));
+      const nights = checkIn && checkOut ? Math.max(1, Math.round((new Date(checkOut) - new Date(checkIn)) / 86400000)) : 1;
+      const [catalogResult, recommendationResult] = await Promise.allSettled([
+        homestayApi.list(criteria(targetPage)),
+        homestayApi.recommendations({ search, checkIn, checkOut, guests, rooms,
+          totalBudget: maxPrice * rooms * nights, amenities: preferredAmenities, roomType, minRating, topK: 3 })
+      ]);
+      if (requestId !== latestRequest.current) return;
+      if (catalogResult.status === 'rejected') throw catalogResult.reason;
+      const response = catalogResult.value;
       const imageVersion = `${Date.now()}-${refreshKey}`;
       setResult({ ...response, items: response.items.map((item) => ({ ...item, thumbnailUrl: freshImageUrl(item.thumbnailUrl, imageVersion) })) }); setPage(targetPage);
-    } catch (e) { setError(e.message); }
-    finally { setLoading(false); }
+      setRecommendations(recommendationResult.status === 'fulfilled' ? recommendationResult.value.items : []);
+      setRecommendationError(recommendationResult.status === 'rejected' ? 'Chưa tải được gợi ý lúc này.' : '');
+    } catch (e) { if (requestId === latestRequest.current) { setError(e.message); setRecommendations([]); } }
+    finally { if (requestId === latestRequest.current) setLoading(false); }
   };
-  useEffect(() => { load(1); }, [maxPrice, roomType, minRating, sort, refreshKey]);
+  useEffect(() => { load(1); }, [maxPrice, roomType, minRating, sort, preferredAmenities, refreshKey]);
 
-  const resetFilters = () => { setMaxPrice(3000000); setRoomType(''); setMinRating(0); };
+  const resetFilters = () => { setMaxPrice(3000000); setRoomType(''); setMinRating(0); setPreferredAmenities([]); };
+  const toggleAmenity = (name) => setPreferredAmenities((current) => current.includes(name) ? current.filter((item) => item !== name) : [...current, name]);
   const toggleFavorite = (id) => { const next = favorites.includes(id) ? favorites.filter((item) => item !== id) : [...favorites, id]; setFavorites(next); localStorage.setItem('tripio-favorites', JSON.stringify(next)); };
   const openItem = (id) => onOpen(id, criteria(page));
   const pageCount = Math.max(1, Math.ceil(result.total / (result.pageSize || 12)));
@@ -68,10 +85,21 @@ export default function CustomerHomestaysPage({ user, refreshKey = 0, initialSea
         <header><div><small>BỘ LỌC</small><h2>Tìm nơi phù hợp</h2></div><button type="button" onClick={resetFilters}>Đặt lại</button></header>
         <div className="filter-group"><h3>Khoảng giá</h3><p>1 phòng, 1 đêm</p><input type="range" min="500000" max="3000000" step="100000" value={maxPrice} onChange={(e) => setMaxPrice(Number(e.target.value))} /><div className="price-range"><span>500.000 ₫</span><span>{money(maxPrice)}</span></div></div>
         <div className="filter-group"><h3>Loại phòng</h3><label><input type="radio" name="room-type" checked={!roomType} onChange={() => setRoomType('')} /> Tất cả</label>{roomFilters.map((name) => <label key={name}><input type="radio" name="room-type" checked={roomType === name} onChange={() => setRoomType(name)} /> {name}</label>)}</div>
+        <div className="filter-group"><h3>Tiện nghi yêu thích</h3><p>Gợi ý sẽ ưu tiên nơi có các tiện nghi này.</p>{amenityOptions.map((name) => <label key={name}><input type="checkbox" checked={preferredAmenities.includes(name)} onChange={() => toggleAmenity(name)} /> {name}</label>)}</div>
         <div className="filter-group"><h3>Đánh giá sao</h3>{[5, 4, 3, 0].map((rating) => <label key={rating}><input type="radio" name="rating" checked={minRating === rating} onChange={() => setMinRating(rating)} /> {rating ? `${rating} sao trở lên` : 'Tất cả đánh giá'} {rating > 0 && <b>★</b>}</label>)}</div>
       </aside>
       <div className="catalog-results">
         <header><div><small>DANH SÁCH LƯU TRÚ</small><h2>{result.total} homestay phù hợp</h2></div><select value={sort} onChange={(e) => setSort(e.target.value)}><option value="recommended">Đề xuất</option><option value="price-low">Giá thấp trước</option><option value="rating">Đánh giá cao</option></select></header>
+        {!loading && recommendations.length > 0 && <section className="recommendation-strip" aria-label="Gợi ý homestay phù hợp">
+          <div className="recommendation-heading"><div><small>GỢI Ý THEO NHU CẦU</small><h3>{recommendations.length} lựa chọn dành cho bạn</h3></div><span>Theo giá, tiện nghi và đánh giá</span></div>
+          <div className="recommendation-grid">{recommendations.map((item, index) => <button className="recommendation-card" key={item.id} type="button" onClick={() => openItem(item.id)}>
+            <span className="recommendation-rank">Gợi ý #{index + 1}</span>
+            <strong>{item.name}</strong><small>{item.district}, {item.province}</small>
+            <span>{item.reasons.join(' · ')}</span>
+            <em>{money(item.estimatedTotal)} <small>ước tính cả kỳ nghỉ</small></em>
+          </button>)}</div>
+        </section>}
+        {!loading && recommendationError && <p className="recommendation-note">{recommendationError}</p>}
         {loading && <p className="state-message">Đang tải homestay...</p>}{error && <p className="state-message error">{error}</p>}{!loading && !error && result.items.length === 0 && <p className="state-message">Không tìm thấy homestay phù hợp với bộ lọc.</p>}
         <div className="catalog-stay-grid">{result.items.map((item, index) => <article className="catalog-stay-card" key={item.id} onClick={() => openItem(item.id)} style={{ backgroundImage: `url('${item.thumbnailUrl || covers[index % covers.length]}')` }}>
           <div className="catalog-card-top"><span>⌖ {item.province || item.district}</span><button type="button" className={favorites.includes(item.id) ? 'favorite' : ''} aria-label="Lưu homestay" onClick={(e) => { e.stopPropagation(); toggleFavorite(item.id); }}>{favorites.includes(item.id) ? '♥' : '♡'}</button></div>

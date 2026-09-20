@@ -1511,6 +1511,22 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
+.recommendation-strip { margin: 0 0 30px; padding: 22px; border: 1px solid #dce8ff; border-radius: 18px; background: linear-gradient(135deg, #f7faff, #fffdf7); }
+.recommendation-heading { display: flex; justify-content: space-between; align-items: end; gap: 15px; margin-bottom: 16px; }
+.recommendation-heading small { color: #0b4ae6; font-size: 10px; font-weight: 800; letter-spacing: .12em; }
+.recommendation-heading h3 { margin: 5px 0 0; color: #09275f; font-size: 20px; }
+.recommendation-heading > span { color: #70809a; font-size: 11px; }
+.recommendation-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.recommendation-card { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-width: 0; padding: 17px; border: 1px solid #e0e8f5; border-radius: 13px; background: #fff; color: #243a5c; text-align: left; cursor: pointer; box-shadow: 0 5px 16px rgba(8, 35, 80, .05); }
+.recommendation-card:hover { border-color: #ffbd18; transform: translateY(-2px); }
+.recommendation-card .recommendation-rank { color: #0b4ae6; font-size: 10px; font-weight: 800; }
+.recommendation-card strong { color: #09275f; font-size: 15px; line-height: 1.25; }
+.recommendation-card > small,.recommendation-card > span:not(.recommendation-rank) { color: #70809a; font-size: 11px; line-height: 1.5; }
+.recommendation-card em { margin-top: auto; color: #0b4ae6; font-size: 15px; font-style: normal; font-weight: 800; }
+.recommendation-card em small { color: #8491a6; font-size: 10px; font-weight: 500; }
+.recommendation-note { margin: 0 0 20px; color: #70809a; font-size: 12px; }
+@media (max-width: 1100px) { .recommendation-grid { grid-template-columns: 1fr; } }
+
 /* Grid thẻ Homestay — dùng card đồng bộ với homepage */
 .catalog-stay-grid {
   display: grid;

@@ -11,6 +11,14 @@ export const homestayApi = {
   },
   detail: (id) => apiClient(`/homestays/${id}`),
   availability: (id, { checkIn, checkOut, guests, rooms }) => apiClient(`/homestays/${id}/availability?${new URLSearchParams({ checkIn, checkOut, guests, rooms })}`),
+  recommendations: ({ search = '', checkIn = '', checkOut = '', guests = 2, rooms = 1, totalBudget = '', amenities = [], roomType = '', minRating = 0, topK = 3 } = {}) => {
+    const params = new URLSearchParams({ search, guests, rooms, roomType, minRating, topK });
+    if (checkIn) params.set('checkIn', checkIn);
+    if (checkOut) params.set('checkOut', checkOut);
+    if (totalBudget) params.set('totalBudget', totalBudget);
+    if (amenities.length) params.set('amenities', amenities.join(','));
+    return apiClient(`/recommendations?${params}`);
+  },
   reviews: (id) => apiClient(`/homestays/${id}/reviews`),
   createReview: (payload) => apiClient('/reviews', { method: 'POST', body: JSON.stringify(payload) }),
   replyReview: (id, reply) => apiClient(`/reviews/${id}/reply`, { method: 'POST', body: JSON.stringify({ reply }) }),
