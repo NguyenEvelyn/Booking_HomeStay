@@ -1,6 +1,6 @@
 {
   "source": "public Neon catalog",
-  "exportedAt": "2026-09-20T15:53:35.564Z",
+  "exportedAt": "2026-09-20T16:01:16.180Z",
   "items": [
     {
       "id": 1,
@@ -83,7 +83,7 @@
     },
     {
       "id": 24,
-      "name": "Seed20 Homestay 01",
+      "name": "Bãi Dừa Retreat Phú Quốc",
       "province": "Kiên Giang",
       "district": "Phú Quốc",
       "averageRating": 4,
@@ -151,7 +151,7 @@
     },
     {
       "id": 25,
-      "name": "Seed20 Homestay 02",
+      "name": "Gió Nam Villa Sơn Trà",
       "province": "Đà Nẵng",
       "district": "Sơn Trà",
       "averageRating": 5,
@@ -219,7 +219,7 @@
     },
     {
       "id": 26,
-      "name": "Seed20 Homestay 03",
+      "name": "Mây Thông House Đà Lạt",
       "province": "Lâm Đồng",
       "district": "Đà Lạt",
       "averageRating": 3,
@@ -287,7 +287,7 @@
     },
     {
       "id": 28,
-      "name": "Seed20 Homestay 05",
+      "name": "Sóng Ngọc Stay Phú Quốc",
       "province": "Kiên Giang",
       "district": "Phú Quốc",
       "averageRating": 5,
@@ -355,7 +355,7 @@
     },
     {
       "id": 29,
-      "name": "Seed20 Homestay 06",
+      "name": "Nắng Biển House Đà Nẵng",
       "province": "Đà Nẵng",
       "district": "Sơn Trà",
       "averageRating": 3,
@@ -423,7 +423,7 @@
     },
     {
       "id": 30,
-      "name": "Seed20 Homestay 07",
+      "name": "Đồi Sương Homestay Đà Lạt",
       "province": "Lâm Đồng",
       "district": "Đà Lạt",
       "averageRating": 4,
@@ -559,7 +559,7 @@
     },
     {
       "id": 32,
-      "name": "Seed20 Homestay 09",
+      "name": "Cát Trắng Retreat Phú Quốc",
       "province": "Kiên Giang",
       "district": "Phú Quốc",
       "averageRating": 3,
@@ -627,7 +627,7 @@
     },
     {
       "id": 33,
-      "name": "Seed20 Homestay 10",
+      "name": "Hải Vân Breeze Stay",
       "province": "Đà Nẵng",
       "district": "Sơn Trà",
       "averageRating": 4,
@@ -695,7 +695,7 @@
     },
     {
       "id": 34,
-      "name": "Seed20 Homestay 11",
+      "name": "Thông Xanh Villa Đà Lạt",
       "province": "Lâm Đồng",
       "district": "Đà Lạt",
       "averageRating": 5,
@@ -835,7 +835,7 @@
     },
     {
       "id": 36,
-      "name": "Seed20 Homestay 13",
+      "name": "An Nhiên Bay Homestay",
       "province": "Kiên Giang",
       "district": "Phú Quốc",
       "averageRating": 4,
@@ -903,7 +903,7 @@
     },
     {
       "id": 37,
-      "name": "Seed20 Homestay 14",
+      "name": "Biển Lam House Sơn Trà",
       "province": "Đà Nẵng",
       "district": "Sơn Trà",
       "averageRating": 5,
@@ -971,7 +971,7 @@
     },
     {
       "id": 38,
-      "name": "Seed20 Homestay 15",
+      "name": "Mộc Sương Homestay Đà Lạt",
       "province": "Lâm Đồng",
       "district": "Đà Lạt",
       "averageRating": 3,
@@ -1107,7 +1107,7 @@
     },
     {
       "id": 40,
-      "name": "Seed20 Homestay 17",
+      "name": "Vườn Dừa Stay Phú Quốc",
       "province": "Kiên Giang",
       "district": "Phú Quốc",
       "averageRating": null,
@@ -1175,7 +1175,7 @@
     },
     {
       "id": 41,
-      "name": "Seed20 Homestay 18",
+      "name": "Ánh Dương Coastal House",
       "province": "Đà Nẵng",
       "district": "Sơn Trà",
       "averageRating": null,
@@ -1243,7 +1243,7 @@
     },
     {
       "id": 42,
-      "name": "Seed20 Homestay 19",
+      "name": "Hoa Thông Homestay Đà Lạt",
       "province": "Lâm Đồng",
       "district": "Đà Lạt",
       "averageRating": null,
