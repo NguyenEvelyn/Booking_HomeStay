@@ -2,6 +2,7 @@
 -- Du lieu gia phuc vu demo, nhan dien boi tien to seed20 / S20.
 -- Khong them homestay_images, room_type_images; icon_url va invoice_file_url de NULL.
 -- Script co the chay lai: cac dong da ton tai se duoc bo qua bang ON CONFLICT/NOT EXISTS.
+-- Sau khi seed xong, chay rename-demo-names.sql de doi ten hien thi tu nhien.
 
 BEGIN;
 
@@ -66,7 +67,12 @@ SELECT h.user_id, 'Seed20 Homestay ' || lpad(i::text, 2, '0'),
        TIME '14:00', TIME '12:00', 'Approved', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 FROM generate_series(1, 20) i
 JOIN users h ON h.email = 'seed20.host' || (1 + ((i - 1) % 4)) || '@tripio.demo'
-WHERE NOT EXISTS (SELECT 1 FROM homestays x WHERE x.name = 'Seed20 Homestay ' || lpad(i::text, 2, '0'));
+WHERE NOT EXISTS (
+  SELECT 1 FROM homestays x
+  WHERE x.name = 'Seed20 Homestay ' || lpad(i::text, 2, '0')
+     OR EXISTS (SELECT 1 FROM room_types rt JOIN rooms r ON r.room_type_id = rt.room_type_id
+                WHERE rt.homestay_id = x.homestay_id AND r.room_number = 'S20-' || lpad(i::text, 2, '0') || '-S')
+);
 
 -- Moi homestay co 4 loai: phong don, phong doi, phong ban cong, phong gia dinh.
 INSERT INTO room_types (homestay_id, name, description, base_price, max_adults, max_children, bed_type, room_size, status, created_at, updated_at)
@@ -236,8 +242,8 @@ COMMIT;
 
 -- Bao cao xem lai so dong seed sau khi chay (chi SELECT).
 SELECT 'users' AS table_name, count(*) AS seed_rows FROM users WHERE email LIKE 'seed20.%@tripio.demo'
-UNION ALL SELECT 'homestays', count(*) FROM homestays WHERE name LIKE 'Seed20 Homestay %'
-UNION ALL SELECT 'room_types', count(*) FROM room_types rt JOIN homestays h USING (homestay_id) WHERE h.name LIKE 'Seed20 Homestay %' AND rt.name IN ('Phòng đơn','Phòng đôi','Phòng có ban công','Phòng gia đình')
+UNION ALL SELECT 'homestays', count(DISTINCT rt.homestay_id) FROM rooms r JOIN room_types rt USING (room_type_id) WHERE r.room_number LIKE 'S20-%-S'
+UNION ALL SELECT 'room_types', count(*) FROM room_types rt WHERE EXISTS (SELECT 1 FROM rooms r WHERE r.room_type_id = rt.room_type_id AND r.room_number LIKE 'S20-%')
 UNION ALL SELECT 'rooms', count(*) FROM rooms WHERE room_number LIKE 'S20-%'
 UNION ALL SELECT 'bookings', count(*) FROM bookings WHERE booking_code LIKE 'S20-%'
 UNION ALL SELECT 'reviews', count(*) FROM reviews r JOIN bookings b USING (booking_id) WHERE b.booking_code LIKE 'S20-%'

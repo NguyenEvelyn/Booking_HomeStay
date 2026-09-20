@@ -1,3 +1,4 @@
+using HomestayAuth.Api.Features.Bookings;
 using System.Security.Claims;
 using HomestayAuth.Api.Features.Homestays.Services;
 using HomestayAuth.Api.Infrastructure.Persistence;
@@ -200,7 +201,7 @@ public sealed class HostHomestaysController(IHomestayQueryService service, AppDb
         var allowedStatuses = new[] { "Available", "Occupied", "Cleaning", "Maintenance", "Inactive" };
         if (!allowedStatuses.Contains(request.Status)) return BadRequest(new { message = "Trạng thái phòng không hợp lệ." });
         if (await db.Rooms.AnyAsync(r => r.Id != roomId && r.RoomTypeId == room.RoomTypeId && r.RoomNumber.ToLower() == request.RoomNumber.Trim().ToLower())) return Conflict(new { message = "Mã phòng đã tồn tại trong loại phòng này." });
-        if (request.Status is "Maintenance" or "Inactive" && await db.BookingDetails.AnyAsync(x => x.RoomId == roomId && x.Booking.CheckOutDate > DateOnly.FromDateTime(DateTime.UtcNow) && (x.Booking.Status == "PendingPayment" || x.Booking.Status == "Confirmed" || x.Booking.Status == "CheckedIn")))
+        if (request.Status is "Maintenance" or "Inactive" && await db.BookingDetails.AnyAsync(x => x.RoomId == roomId && x.Booking.CheckOutDate > BookingRules.Today && ((x.Booking.Status == "PendingPayment" && x.Booking.UpdatedAt > DateTime.UtcNow.AddMinutes(-15)) || BookingRules.ReservedStatuses.Contains(x.Booking.Status))))
             return Conflict(new { message = "Phòng có booking hiệu lực; hãy xử lý booking trước khi bảo trì hoặc ngưng phòng." });
         room.RoomNumber = request.RoomNumber.Trim(); room.FloorNumber = request.FloorNumber; room.Status = request.Status; room.Note = request.Note?.Trim(); room.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(); return Ok(new { message = "Đã cập nhật trạng thái phòng." });
@@ -402,13 +403,15 @@ public sealed class HostHomestaysController(IHomestayQueryService service, AppDb
     {
         var hostId = long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var items = await db.Bookings.AsNoTracking().Where(b => db.Homestays.Any(h => h.Id == b.HomestayId && h.HostId == hostId))
-            .OrderByDescending(b => b.CreatedAt).Select(b => new { b.Id, b.BookingCode, HomestayName = db.Homestays.Where(h => h.Id == b.HomestayId).Select(h => h.Name).First(), CustomerName = db.Users.Where(u => u.Id == b.CustomerId).Select(u => u.FullName).First(), b.CheckInDate, b.CheckOutDate, b.AdultCount, b.ChildCount, b.TotalAmount, b.Status, Rooms = b.Details.Where(d => d.RoomId != null).Select(d => db.Rooms.Where(r => r.Id == d.RoomId).Select(r => r.RoomNumber).First()).ToList(), Cancellation = db.Cancellations.Where(c => c.BookingId == b.Id).Select(c => new { c.Id, c.Reason, c.CancellationFee, c.RefundAmount, c.Status }).FirstOrDefault() }).ToListAsync();
+            .OrderByDescending(b => b.CreatedAt).Select(b => new { b.Id, b.BookingCode, HomestayName = db.Homestays.Where(h => h.Id == b.HomestayId).Select(h => h.Name).First(), CustomerName = db.Users.Where(u => u.Id == b.CustomerId).Select(u => u.FullName).First(), b.CheckInDate, b.CheckOutDate, b.AdultCount, b.ChildCount, b.TotalAmount, b.Status, Rooms = b.Details.Where(d => d.RoomId != null).Select(d => db.Rooms.Where(r => r.Id == d.RoomId).Select(r => r.RoomNumber).First()).ToList(), Cancellation = db.Cancellations.Where(c => c.BookingId == b.Id).Select(c => new { c.Id, c.Reason, c.CancellationFee, c.RefundAmount, Status = c.Status == "Approved" && db.Payments.Any(p => p.BookingId == b.Id && p.TransactionType == "Refund" && p.Status == "Pending") ? "RefundPending" : c.Status }).FirstOrDefault() }).ToListAsync();
         return Ok(new { items });
     }
 
     [HttpPatch("bookings/{bookingId:long}/status")]
     public async Task<IActionResult> UpdateBookingStatus(long bookingId, HostBookingStatusRequest request)
     {
+        await using var transaction = await db.Database.BeginTransactionAsync();
+        await BookingAvailability.LockBooking(db, bookingId);
         var hostId = long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var booking = await db.Bookings.Include(x => x.Details)
             .SingleOrDefaultAsync(x => x.Id == bookingId && db.Homestays.Any(h => h.Id == x.HomestayId && h.HostId == hostId));
@@ -421,11 +424,13 @@ public sealed class HostHomestaysController(IHomestayQueryService service, AppDb
             _ => false
         };
         if (!valid) return BadRequest(new { message = $"Không thể chuyển booking từ {booking.Status} sang {target}." });
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        if (target == "CheckedIn" && today < booking.CheckInDate)
-            return BadRequest(new { message = "Chưa đến ngày nhận phòng." });
+        var today = BookingRules.Today;
+        if (target == "CheckedIn" && (today < booking.CheckInDate || today >= booking.CheckOutDate))
+            return BadRequest(new { message = "Chỉ nhận phòng trong khoảng ngày lưu trú của đơn." });
 
         var roomIds = booking.Details.Where(x => x.RoomId.HasValue).Select(x => x.RoomId!.Value).ToList();
+        if (target == "CheckedIn" && await db.Rooms.AnyAsync(r => roomIds.Contains(r.Id) && r.Status != "Available"))
+            return Conflict(new { message = "Phòng chưa sẵn sàng. Vui lòng kiểm tra vệ sinh và khách đang lưu trú." });
         if (target == "CheckedIn")
             await db.Rooms.Where(x => roomIds.Contains(x.Id)).ExecuteUpdateAsync(s => s.SetProperty(x => x.Status, "Occupied").SetProperty(x => x.UpdatedAt, DateTime.UtcNow));
         else
@@ -433,12 +438,15 @@ public sealed class HostHomestaysController(IHomestayQueryService service, AppDb
         booking.Status = target!;
         booking.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
+        await transaction.CommitAsync();
         return Ok(new { message = target == "CheckedIn" ? "Đã nhận phòng cho khách." : "Đã hoàn tất kỳ lưu trú; phòng chuyển sang chờ vệ sinh." });
     }
 
     [HttpPatch("bookings/{bookingId:long}/cancellation")]
     public async Task<IActionResult> DecideCancellation(long bookingId, HostCancellationDecisionRequest request)
     {
+        await using var transaction = await db.Database.BeginTransactionAsync();
+        await BookingAvailability.LockBooking(db, bookingId);
         var hostId = long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var booking = await db.Bookings.SingleOrDefaultAsync(x => x.Id == bookingId && x.Status == "CancellationRequested"
             && db.Homestays.Any(h => h.Id == x.HomestayId && h.HostId == hostId));
@@ -453,16 +461,18 @@ public sealed class HostHomestaysController(IHomestayQueryService service, AppDb
             booking.Status = "Confirmed";
             booking.UpdatedAt = now;
             await db.SaveChangesAsync();
+            await transaction.CommitAsync();
             return Ok(new { message = "Đã từ chối yêu cầu hủy; booking vẫn được xác nhận." });
         }
 
-        cancellation.Status = cancellation.RefundAmount > 0 ? "RefundPending" : "Approved";
+        cancellation.Status = "Approved";
         booking.Status = "Cancelled";
         booking.UpdatedAt = now;
         if (cancellation.RefundAmount > 0)
             db.Payments.Add(new Payment { BookingId = booking.Id, TransactionCode = $"RF{now:yyyyMMddHHmmss}{Guid.NewGuid():N}"[..30].ToUpperInvariant(), PaymentMethod = "VNPay", TransactionType = "Refund", Amount = cancellation.RefundAmount, Status = "Pending", GatewayResponse = "Host approved; awaiting VNPay refund processing", CreatedAt = now, UpdatedAt = now });
         await db.SaveChangesAsync();
-        return Ok(new { message = cancellation.RefundAmount > 0 ? "Đã duyệt hủy. Khoản hoàn tiền đang chờ xử lý qua VNPay." : "Đã duyệt hủy booking.", cancellation.RefundAmount, cancellation.CancellationFee, cancellation.Status });
+        await transaction.CommitAsync();
+        return Ok(new { message = cancellation.RefundAmount > 0 ? "Đã duyệt hủy. Khoản hoàn tiền đang chờ xử lý qua VNPay." : "Đã duyệt hủy booking.", cancellation.RefundAmount, cancellation.CancellationFee, status = cancellation.RefundAmount > 0 ? "RefundPending" : cancellation.Status });
     }
 
     [HttpPost("{id:long}/submit")]

@@ -224,7 +224,8 @@ export default function App() {
       if (mode === 'login') {
         const result = await authApi.login(form);
         setUser(result.user);
-        setView(result.user.role === 'Host' ? 'host' : result.user.role === 'Admin' ? 'admin' : 'home');
+        setView(result.user.role === 'Host' ? 'host' : result.user.role === 'Admin' ? 'admin'
+          : ['catalog', 'detail'].includes(view) ? view : 'home');
         setShowHome(true);
         setNotice({
           type: 'success',
@@ -329,9 +330,7 @@ export default function App() {
 
   const openHomestay = (id, searchCriteria = null) => {
     setSelectedHomestayId(id);
-    if (searchCriteria) {
-      setHomestaySearch(searchCriteria);
-    }
+    setHomestaySearch(searchCriteria);
     setView('detail');
   };
 
@@ -355,14 +354,15 @@ export default function App() {
         >
           <button onClick={() => setPaymentResult(null)}>×</button>
           <strong>
-            {paymentResult.success
-              ? 'Thanh toán VNPay thành công!'
+            {paymentResult.success ? 'Thanh toán VNPay thành công!'
+              : paymentResult.status === 'refund-pending' ? 'Đã nhận tiền, đơn không còn giữ phòng'
               : 'Thanh toán chưa thành công'}
           </strong>
           <span>
-            {paymentResult.success
-              ? `Đơn đặt phòng ${paymentResult.code || ''} đã được xác nhận.`
-              : 'Giao dịch đã bị hủy, thất bại hoặc không hợp lệ.'}
+            {paymentResult.success ? `Đơn đặt phòng ${paymentResult.code || ''} đã được xác nhận.`
+              : paymentResult.status === 'refund-pending'
+                ? `Đơn ${paymentResult.code || ''} đã hết thời gian giữ phòng. Khoản tiền đang chờ xử lý hoàn lại; vui lòng liên hệ hỗ trợ.`
+                : 'Giao dịch đã bị hủy, thất bại hoặc không hợp lệ.'}
           </span>
         </div>
       )}
@@ -469,6 +469,7 @@ export default function App() {
         <>
           <CustomerHomestaysPage
             refreshKey={catalogVersion}
+            initialSearch={homestaySearch}
             user={user}
             onBack={() => setView('home')}
             onOpen={openHomestay}
@@ -547,6 +548,7 @@ export default function App() {
         <>
           <CustomerHomestaysPage
             refreshKey={catalogVersion}
+            initialSearch={homestaySearch}
             user={null}
             onBack={() => setView('home')}
             onOpen={openHomestay}
