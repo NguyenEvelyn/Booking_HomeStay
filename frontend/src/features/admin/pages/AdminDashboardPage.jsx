@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { adminApi } from '../api/adminApi.js';
-const money = (value) => `${new Intl.NumberFormat('vi-VN').format(value || 0)} đ`;
+const money = (value) => `${new Intl.NumberFormat('vi-VN').format(value || 0)}đ`;
 const labels = { Pending: 'Chờ duyệt', Approved: 'Đã duyệt', Rejected: 'Từ chối', Suspended: 'Tạm ngưng', Draft: 'Bản nháp', Active: 'Hoạt động', Locked: 'Đã khóa', Unverified: 'Chưa xác minh' };
 export default function AdminDashboardPage({ user, onLogout, onChangePassword }) {
   const [tab,setTab]=useState('overview'), [overview,setOverview]=useState({}), [homestays,setHomestays]=useState([]), [users,setUsers]=useState([]), [message,setMessage]=useState(''),[messageType,setMessageType]=useState('success'),[selected,setSelected]=useState(null);
