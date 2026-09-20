@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { homestayApi } from '../api/homestayApi.js';
+import { recordRecommendationEvent } from '../api/recommendationEvents.js';
 import CustomerNav from '../../../shared/components/CustomerNav.jsx';
 import GuestPickerDropdown from '../../../shared/components/GuestPickerDropdown.jsx';
 import { freshImageUrl } from '../../../shared/utils/freshImageUrl.js';
@@ -211,9 +212,16 @@ export default function HomestayDetailPage({ id, refreshKey = 0, initialSearch, 
     });
   };
 
+  const viewedId = useRef(null);
   useEffect(() => {
     window.scrollTo(0, 0);
-    homestayApi.detail(id).then((result) => { setImageVersion(`${Date.now()}-${refreshKey}`); setData(result); }).catch((e) => setError(e.message));
+    homestayApi.detail(id).then((result) => {
+      setImageVersion(`${Date.now()}-${refreshKey}`); setData(result);
+      if (viewedId.current !== id) {
+        viewedId.current = id;
+        recordRecommendationEvent({ eventType: 'view', homestayId: Number(id) });
+      }
+    }).catch((e) => setError(e.message));
   }, [id, refreshKey]);
 
   const loadReviews = () => homestayApi.reviews(id).then(setReviews).catch(() => {});

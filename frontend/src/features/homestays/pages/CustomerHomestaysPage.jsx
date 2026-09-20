@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { homestayApi } from '../api/homestayApi.js';
+import { recordRecommendationEvent } from '../api/recommendationEvents.js';
 import CustomerNav from '../../../shared/components/CustomerNav.jsx';
 import pineHomestayImage from '../../../../assets/f6cd6879081dc8e8d4ff18669308ea86.jpg';
 import azureHomestayImage from '../../../../assets/ecf184f6b6cd2b6e2aa898ff3195ab7e.jpg';
@@ -58,6 +59,11 @@ export default function CustomerHomestaysPage({ user, refreshKey = 0, initialSea
       setResult({ ...response, items: response.items.map((item) => ({ ...item, thumbnailUrl: freshImageUrl(item.thumbnailUrl, imageVersion) })) }); setPage(targetPage);
       setRecommendations(recommendationResult.status === 'fulfilled' ? recommendationResult.value.items : []);
       setRecommendationError(recommendationResult.status === 'rejected' ? 'Chưa tải được gợi ý lúc này.' : '');
+      if (targetPage === 1) recordRecommendationEvent({ eventType: 'search', search: search.trim(),
+        checkIn: checkIn || null, checkOut: checkOut || null, guests, rooms,
+        totalBudget: maxPrice * rooms * nights, amenities: preferredAmenities,
+        recommendedIds: recommendationResult.status === 'fulfilled'
+          ? recommendationResult.value.items.map((item) => item.id) : [] });
     } catch (e) { if (requestId === latestRequest.current) { setError(e.message); setRecommendations([]); } }
     finally { if (requestId === latestRequest.current) setLoading(false); }
   };

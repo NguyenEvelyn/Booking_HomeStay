@@ -21,9 +21,21 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<Review> Reviews => Set<Review>();
     public DbSet<Cancellation> Cancellations => Set<Cancellation>();
+    public DbSet<RecommendationEvent> RecommendationEvents => Set<RecommendationEvent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        var recommendationEvent = modelBuilder.Entity<RecommendationEvent>();
+        recommendationEvent.ToTable("recommendation_events");
+        recommendationEvent.HasKey(x => x.Id);
+        recommendationEvent.Property(x => x.Id).HasColumnName("event_id");
+        recommendationEvent.Property(x => x.OccurredAt).HasColumnName("occurred_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+        recommendationEvent.Property(x => x.CustomerId).HasColumnName("customer_id");
+        recommendationEvent.Property(x => x.SessionId).HasColumnName("session_id").HasMaxLength(100);
+        recommendationEvent.Property(x => x.EventType).HasColumnName("event_type").HasMaxLength(20);
+        recommendationEvent.Property(x => x.HomestayId).HasColumnName("homestay_id");
+        recommendationEvent.Property(x => x.QueryData).HasColumnName("query_data").HasColumnType("jsonb");
+        recommendationEvent.Property(x => x.Source).HasColumnName("source").HasMaxLength(20);
         var user = modelBuilder.Entity<User>();
         // PostgreSQL folds unquoted identifiers to lowercase.
         user.ToTable("users");

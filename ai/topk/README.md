@@ -32,9 +32,15 @@ Mỗi homestay được chuẩn hóa thành: `homestayId`, tỉnh/huyện, tập
 
 Trang tìm phòng gọi `GET /api/recommendations` với địa điểm, ngày lưu trú, số khách/phòng, ngân sách, loại phòng, điểm đánh giá và tiện nghi ưa thích. Backend đọc trực tiếp homestay và lịch sử đặt phòng thật trên Neon, kiểm tra phòng trống rồi trả Top-K cùng loại phòng, chi phí dự kiến và lý do. Dữ liệu sự kiện giả chỉ dùng cho bản demo offline và không được ghi vào Neon. Giá khi thanh toán vẫn lấy từ API báo giá đặt phòng.
 
+## Sự kiện thật và đánh giá
+
+- Backend tự tạo bảng `recommendation_events` khi khởi động. Sau khi tìm phòng thành công, web gửi `search` cùng tiêu chí và danh sách ID Top-K đã hiển thị. Khi mở trang chi tiết thành công, web gửi `view` với ID homestay. Hai sự kiện dùng cùng mã phiên ngẫu nhiên trong `sessionStorage`; nếu đã đăng nhập, backend tự gắn mã khách từ token. Frontend không gửi email, số điện thoại hoặc tên khách. Chỉ sự kiện `source=real` được ghi qua API này.
+- `GET /api/recommendation-events/summary?days=30` dành cho Admin trả tổng lượt tìm, lượt xem, số phiên và tỷ lệ lượt tìm có mở ít nhất một gợi ý trong 24 giờ. Đây là **tỷ lệ mở gợi ý**, không phải tỷ lệ đặt phòng hay độ chính xác của mô hình. Khi lượng sự kiện còn ít, không nên dùng tỷ lệ này để kết luận thuật toán tốt hơn.
+- Top-K hiện dùng lượt xem thật trong 90 ngày của cùng phiên làm một phần nhỏ của tín hiệu hành vi (tối đa 3/10 điểm), còn booking đã xác nhận có trọng số lớn hơn. Khách mới vẫn nhận gợi ý theo giá, tiện nghi và đánh giá. Có thể đối chiếu số liệu Admin trước/sau thay đổi trọng số; cần thí nghiệm nhóm A/B để kết luận tác động nhân quả.
+
 ## Bước tiếp theo để thành mô hình học từ dữ liệu
 
-1. Áp dụng `events-schema.sql` khi muốn bắt đầu ghi sự kiện thật. Ghi `search` khi người dùng tìm, `view` khi mở chi tiết và `booking` khi đơn được xác nhận; chỉ lưu mã phiên, mã khách (nếu có) và tiêu chí tìm kiếm, không lưu email/số điện thoại.
+1. Gắn sự kiện `booking` khi đơn được xác nhận và đối chiếu với lượt xem/gợi ý trước đó. Hiện `search` và `view` đã được ghi tự động; booking thật đã có trong bảng `bookings` nhưng chưa liên kết với phiên tìm kiếm.
 2. Trích xuất booking đã xác nhận làm tín hiệu mạnh, lượt xem làm tín hiệu nhẹ; phân biệt `source=real` và `source=synthetic`. Dữ liệu giả dùng demo/kiểm thử đường ống, không dùng để báo cáo độ chính xác thực tế.
 3. Chia tập theo **thời gian** và theo phiên/người dùng để tránh rò rỉ. So sánh Top-K với baseline giá thấp/đánh giá cao bằng Recall@5, NDCG@5, độ phủ homestay và tỷ lệ đặt phòng.
 4. Khi có đủ sự kiện thật, học trọng số hoặc huấn luyện mô hình xếp hạng; sau đó đưa kết quả vào API gợi ý. Mô hình dự báo nhu cầu theo khu vực/tháng nên làm sau, từ booking thật đã tổng hợp theo thời gian.

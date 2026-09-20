@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 namespace HomestayAuth.Api.Features.Recommendations;
 
 public sealed record RecommendationQuery(string? Search, DateOnly? CheckIn, DateOnly? CheckOut,
-    int Guests, int Rooms, decimal? TotalBudget, string? Amenities, string? RoomType, int MinRating, int TopK);
+    int Guests, int Rooms, decimal? TotalBudget, string? Amenities, string? RoomType, int MinRating, int TopK, string? SessionId);
 public sealed record RecommendationItem(long Id, string Name, string District, string Province,
     string? ThumbnailUrl, long RoomTypeId, string RoomTypeName, decimal EstimatedTotal,
     decimal Score, IReadOnlyList<string> Reasons);
@@ -68,6 +68,12 @@ public sealed class RecommendationService(AppDbContext db)
                 && new[] { "Confirmed", "CheckedIn", "Completed" }.Contains(b.Status))
                 .GroupBy(b => b.HomestayId).Select(g => new { HomestayId = g.Key, Count = g.Count() }).ToListAsync()
             : [];
+        var recentViews = !string.IsNullOrWhiteSpace(query.SessionId)
+            ? await db.RecommendationEvents.AsNoTracking().Where(e => e.Source == "real" && e.EventType == "view"
+                && e.SessionId == query.SessionId && e.OccurredAt >= now.AddDays(-90) && e.HomestayId.HasValue
+                && homeIds.Contains(e.HomestayId.Value))
+                .GroupBy(e => e.HomestayId).Select(g => new { HomestayId = g.Key, Count = g.Count() }).ToListAsync()
+            : [];
 
         var preferred = (query.Amenities ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Select(Normalize).Distinct().ToArray();
@@ -110,7 +116,9 @@ public sealed class RecommendationService(AppDbContext db)
                 : (double)(1 - best.Total / 10000000m);
             var amenityFit = preferred.Length == 0 ? 0 : (double)preferred.Count(homeAmenities.Contains) / preferred.Length;
             var historyCount = history.FirstOrDefault(h => h.HomestayId == home.Id)?.Count ?? 0;
-            var historyFit = Math.Min(1, Math.Log(1 + historyCount * 3d) / Math.Log(11));
+            var viewCount = recentViews.FirstOrDefault(v => v.HomestayId == home.Id)?.Count ?? 0;
+            var historyFit = Math.Min(1, 0.7 * Math.Log(1 + historyCount * 3d) / Math.Log(11)
+                + 0.3 * Math.Log(1 + viewCount) / Math.Log(6));
             var score = Math.Round((40 * Math.Clamp(priceFit, 0, 1) + 30 * amenityFit
                 + 20 * Math.Clamp((smoothedRating - 1) / 4, 0, 1) + 10 * historyFit), 2);
             var matchingAmenities = preferred.Count(homeAmenities.Contains);
