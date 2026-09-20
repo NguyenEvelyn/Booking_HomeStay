@@ -1245,7 +1245,7 @@
   min-height: 96px;
   margin: -48px auto 0;
   display: grid;
-  grid-template-columns: 1.45fr 1fr 1fr 1.05fr 125px;
+  grid-template-columns: minmax(180px, 1.45fr) repeat(2, minmax(145px, 1fr)) minmax(85px, .7fr) minmax(85px, .7fr) 125px;
   gap: 12px;
   align-items: end;
   padding: 18px 24px 16px;

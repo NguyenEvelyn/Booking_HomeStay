@@ -161,9 +161,12 @@ export default function HomestayDetailPage({ id, refreshKey = 0, initialSearch, 
   const [error, setError] = useState('');
   const [arrival, setArrival] = useState(initialSearch?.checkIn || '');
   const [departure, setDeparture] = useState(initialSearch?.checkOut || '');
-  const [adultCount, setAdultCount] = useState(initialSearch?.guests || 2);
-  const [childCount, setChildCount] = useState(0);
-  const [roomQuantity, setRoomQuantity] = useState(1);
+  const [adultCount, setAdultCount] = useState(initialSearch?.adults || initialSearch?.guests || 2);
+  const [childCount, setChildCount] = useState(initialSearch?.children || 0);
+  const [roomQuantity, setRoomQuantity] = useState(initialSearch?.rooms || 1);
+  const [availableRoomTypes, setAvailableRoomTypes] = useState(null);
+  const [availabilityError, setAvailabilityError] = useState('');
+  const [checkingAvailability, setCheckingAvailability] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [activeRoomImage, setActiveRoomImage] = useState(0);
   const [showPaymentPage, setShowPaymentPage] = useState(false);
@@ -284,16 +287,36 @@ export default function HomestayDetailPage({ id, refreshKey = 0, initialSearch, 
   const reviewPageCount = Math.max(1, Math.ceil(filteredReviews.length / reviewsPerPage));
   const visibleReviews = filteredReviews.slice((Math.min(reviewPage, reviewPageCount) - 1) * reviewsPerPage, Math.min(reviewPage, reviewPageCount) * reviewsPerPage);
   const changeReviewFilters = (change) => { change(); setReviewPage(1); };
-  const checkRooms = () => document.getElementById('rooms')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const checkRooms = async () => {
+    if (!arrival || !departure) {
+      setAvailabilityError('Chọn ngày nhận và trả phòng để kiểm tra phòng trống.');
+      document.querySelector('.detail-search')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+    if (departure <= arrival) {
+      setAvailabilityError('Ngày trả phòng phải sau ngày nhận phòng.');
+      return;
+    }
+    setCheckingAvailability(true);
+    setAvailabilityError('');
+    try {
+      const response = await homestayApi.availability(id, { checkIn: arrival, checkOut: departure,
+        guests: adultCount + childCount, rooms: roomQuantity });
+      setAvailableRoomTypes(new Map(response.items.map((item) => [item.roomTypeId, item.availableRooms])));
+      document.getElementById('rooms')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (e) { setAvailableRoomTypes(null); setAvailabilityError(e.message); }
+    finally { setCheckingAvailability(false); }
+  };
   const openRoomDetail = async (room) => {
-    const availableQuantity = Math.max(1, Math.min(roomQuantity, room.availableRoomCount || 1));
-    setSelectedRoom(room); setShowPaymentPage(false); setActiveRoomImage(0); setRoomQuantity(availableQuantity);
+    const availableCount = availableRoomTypes?.get(room.id) ?? room.availableRoomCount;
+    const availableQuantity = Math.max(1, Math.min(roomQuantity, availableCount || 1));
+    setSelectedRoom({ ...room, availableRoomCount: availableCount }); setShowPaymentPage(false); setActiveRoomImage(0); setRoomQuantity(availableQuantity);
     const limit = ((room.extraGuestAllowed ? room.maxCapacity : room.baseCapacity) || room.maxAdults + room.maxChildren) * availableQuantity;
     const nextAdults = Math.max(1, Math.min(adultCount, room.maxAdults * availableQuantity, limit));
     setAdultCount(nextAdults);
     setChildCount(Math.max(0, Math.min(childCount, room.maxChildren * availableQuantity, limit - nextAdults)));
     window.setTimeout(() => document.getElementById('room-detail-inline')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
-    try { const detail = await homestayApi.roomTypeDetail(room.id); setSelectedRoom((current) => current?.id === room.id ? { ...current, ...detail } : current); } catch { /* giữ dữ liệu danh sách nếu tải gallery thất bại */ }
+    try { const detail = await homestayApi.roomTypeDetail(room.id); setSelectedRoom((current) => current?.id === room.id ? { ...current, ...detail, availableRoomCount: availableCount } : current); } catch { /* giữ dữ liệu danh sách nếu tải gallery thất bại */ }
   };
   const closeRoomDetail = () => { setSelectedRoom(null); setShowPaymentPage(false); window.setTimeout(() => document.querySelector('.rooms-section')?.scrollIntoView({ behavior: 'smooth' }), 0); };
   const bookingNights = arrival && departure ? Math.max(0, Math.round((new Date(departure) - new Date(arrival)) / 86400000)) : 0;
@@ -457,6 +480,8 @@ export default function HomestayDetailPage({ id, refreshKey = 0, initialSearch, 
               onChange={(e) => {
                 setArrival(e.target.value);
                 if (departure && departure <= e.target.value) setDeparture('');
+                setAvailableRoomTypes(null);
+                setSelectedRoom(null);
               }}
               onFocus={(e) => { e.currentTarget.type = 'date'; }}
               onBlur={(e) => { if (!e.currentTarget.value) e.currentTarget.type = 'text'; }}
@@ -473,7 +498,7 @@ export default function HomestayDetailPage({ id, refreshKey = 0, initialSearch, 
               placeholder="Chọn ngày trả"
               min={arrival || undefined}
               value={departure}
-              onChange={(e) => setDeparture(e.target.value)}
+              onChange={(e) => { setDeparture(e.target.value); setAvailableRoomTypes(null); setSelectedRoom(null); }}
               onFocus={(e) => { e.currentTarget.type = 'date'; }}
               onBlur={(e) => { if (!e.currentTarget.value) e.currentTarget.type = 'text'; }}
             />
@@ -487,13 +512,17 @@ export default function HomestayDetailPage({ id, refreshKey = 0, initialSearch, 
             setAdultCount(adults);
             setChildCount(children);
             setRoomQuantity(rooms);
+            setAvailableRoomTypes(null);
+            setSelectedRoom(null);
           }}
         />
 
-        <button type="button" onClick={checkRooms}>
-          Kiểm tra phòng <span>→</span>
+        <button type="button" onClick={checkRooms} disabled={checkingAvailability}>
+          {checkingAvailability ? 'Đang kiểm tra...' : 'Kiểm tra phòng'} <span>→</span>
         </button>
       </section>
+
+      {availabilityError && <p className="state-message error" role="alert">{availabilityError}</p>}
 
       <div className="detail-content">
         <section id="overview" className="detail-intro redesigned-intro">
@@ -546,7 +575,8 @@ export default function HomestayDetailPage({ id, refreshKey = 0, initialSearch, 
             <p>Giá minh bạch · Xem chi tiết ngay trên trang</p>
           </div>
           <div className="detail-room-list">
-            {data.roomTypes.map((room, index) => (
+            {availableRoomTypes?.size === 0 && <p className="state-message">Không còn loại phòng phù hợp trong ngày đã chọn. Hãy thử ngày khác hoặc giảm số khách/phòng.</p>}
+            {data.roomTypes.filter((room) => availableRoomTypes === null || availableRoomTypes.has(room.id)).map((room, index) => (
               <article
                 className={`detail-room-card ${selectedRoom?.id === room.id ? 'selected' : ''}`}
                 key={room.id}
@@ -561,7 +591,7 @@ export default function HomestayDetailPage({ id, refreshKey = 0, initialSearch, 
                     <Icon name="user" size={12} />
                     Tối đa {(room.extraGuestAllowed ? room.maxCapacity : room.baseCapacity) || room.maxAdults + room.maxChildren} khách
                   </span>
-                  <span>{room.availableRoomCount > 0 ? `${room.availableRoomCount} phòng trống` : 'Đã hết phòng'}</span>
+                  <span>{(availableRoomTypes?.get(room.id) ?? room.availableRoomCount) > 0 ? `${availableRoomTypes?.get(room.id) ?? room.availableRoomCount} phòng trống` : 'Đã hết phòng'}</span>
                 </div>
                 <div className="room-copy">
                   <h3>{room.name}</h3>
@@ -584,10 +614,10 @@ export default function HomestayDetailPage({ id, refreshKey = 0, initialSearch, 
                   <button
                     type="button"
                     className="room-book-pill"
-                    disabled={room.availableRoomCount === 0}
+                    disabled={(availableRoomTypes?.get(room.id) ?? room.availableRoomCount) === 0}
                     onClick={() => openRoomDetail(room)}
                   >
-                    {room.availableRoomCount > 0 ? 'Đặt phòng →' : 'Hết phòng'}
+                    {(availableRoomTypes?.get(room.id) ?? room.availableRoomCount) > 0 ? 'Đặt phòng →' : 'Hết phòng'}
                   </button>
                 </div>
               </article>

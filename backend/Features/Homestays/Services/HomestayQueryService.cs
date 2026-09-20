@@ -1,3 +1,4 @@
+using HomestayAuth.Api.Features.Bookings;
 using HomestayAuth.Api.Features.Homestays.DTOs;
 using HomestayAuth.Api.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -7,7 +8,7 @@ namespace HomestayAuth.Api.Features.Homestays.Services;
 public sealed class HomestayQueryService(AppDbContext db) : IHomestayQueryService
 {
     public async Task<PagedResponse<HomestayListItemResponse>> GetApprovedAsync(
-        string? search, string? province, DateOnly? checkIn, DateOnly? checkOut, int guests,
+        string? search, string? province, DateOnly? checkIn, DateOnly? checkOut, int guests, int rooms,
         decimal? maxPrice, string? roomType, int minRating, string? sort, int page, int pageSize)
     {
         var query = db.Homestays.AsNoTracking().Where(h => h.Status == "Approved");
@@ -21,23 +22,31 @@ public sealed class HomestayQueryService(AppDbContext db) : IHomestayQueryServic
         if (!string.IsNullOrWhiteSpace(province))
             query = query.Where(h => EF.Functions.ILike(h.Province, province.Trim()));
 
-        var holdCutoff = DateTime.UtcNow.AddMinutes(-15);
+        var holdCutoff = DateTime.UtcNow.AddMinutes(-BookingRules.HoldMinutes);
+        var futureCheckIn = checkIn.HasValue && checkIn.Value > BookingRules.Today;
         query = query.Where(h => h.RoomTypes.Any(r => r.Status == "Active"
-            && (r.ExtraGuestAllowed ? r.MaxCapacity : r.BaseCapacity) >= guests
+            && (r.ExtraGuestAllowed ? r.MaxCapacity : r.BaseCapacity) * rooms >= guests
             && (!maxPrice.HasValue || r.BasePrice <= maxPrice.Value)
             && (string.IsNullOrWhiteSpace(roomType) || EF.Functions.ILike(r.Name, $"%{roomType!.Trim()}%"))
-            && (!checkIn.HasValue ||
-                r.Rooms.Count(room => room.Status == "Available") > (db.BookingDetails
-                    .Where(d => d.RoomTypeId == r.Id && (d.Booking.Status == "Confirmed" || d.Booking.Status == "CheckedIn" ||
-                            (d.Booking.Status == "PendingPayment" && d.Booking.CreatedAt >= holdCutoff))
-                        && d.Booking.CheckInDate < checkOut!.Value && d.Booking.CheckOutDate > checkIn.Value)
-                    .Sum(d => (int?)d.Quantity) ?? 0))));
+            && r.Rooms.Count(room => (room.Status == "Available" || (futureCheckIn && BookingRules.InventoryStatuses.Contains(room.Status)))
+                && (!checkIn.HasValue || !db.BookingDetails.Any(d => d.RoomId == room.Id
+                    && d.Booking.CheckInDate < checkOut!.Value && d.Booking.CheckOutDate > checkIn.Value
+                    && (BookingRules.ReservedStatuses.Contains(d.Booking.Status)
+                        || (d.Booking.Status == "PendingPayment" && d.Booking.UpdatedAt > holdCutoff)))))
+                >= rooms + (!checkIn.HasValue ? 0 : db.BookingDetails.Where(d => d.RoomTypeId == r.Id && d.RoomId == null
+                    && d.Booking.CheckInDate < checkOut!.Value && d.Booking.CheckOutDate > checkIn.Value
+                    && (BookingRules.ReservedStatuses.Contains(d.Booking.Status)
+                        || (d.Booking.Status == "PendingPayment" && d.Booking.UpdatedAt > holdCutoff)))
+                    .Sum(d => (int?)d.Quantity) ?? 0)));
         if (minRating > 0)
             query = query.Where(h => db.Reviews.Any(r => r.HomestayId == h.Id && r.Status == "Visible")
                 && db.Reviews.Where(r => r.HomestayId == h.Id && r.Status == "Visible").Average(r => r.Rating) >= minRating);
 
         var total = await query.CountAsync();
-        query = sort == "price-low" ? query.OrderBy(h => h.RoomTypes.Where(r => r.Status == "Active").Min(r => r.BasePrice))
+        query = sort == "price-low" ? query.OrderBy(h => h.RoomTypes.Where(r => r.Status == "Active"
+                && (r.ExtraGuestAllowed ? r.MaxCapacity : r.BaseCapacity) * rooms >= guests
+                && (!maxPrice.HasValue || r.BasePrice <= maxPrice.Value)
+                && (string.IsNullOrWhiteSpace(roomType) || EF.Functions.ILike(r.Name, $"%{roomType!.Trim()}%"))).Min(r => r.BasePrice))
             : sort == "rating" ? query.OrderByDescending(h => db.Reviews.Where(r => r.HomestayId == h.Id && r.Status == "Visible").Average(r => (double?)r.Rating) ?? 0)
             : query.OrderByDescending(h => h.CreatedAt);
         var items = await query
@@ -52,15 +61,34 @@ public sealed class HomestayQueryService(AppDbContext db) : IHomestayQueryServic
                 h.Images.OrderByDescending(i => i.IsThumbnail).ThenBy(i => i.SortOrder).Select(i => i.ImageUrl).FirstOrDefault()
                     ?? h.RoomTypes.SelectMany(r => r.Rooms).SelectMany(room => room.Images)
                         .OrderByDescending(i => i.IsThumbnail).ThenBy(i => i.SortOrder).Select(i => i.ImageUrl).FirstOrDefault(),
-                h.RoomTypes.Where(r => r.Status == "Active" && (r.ExtraGuestAllowed ? r.MaxCapacity : r.BaseCapacity) >= guests
+                h.RoomTypes.Where(r => r.Status == "Active" && (r.ExtraGuestAllowed ? r.MaxCapacity : r.BaseCapacity) * rooms >= guests
                     && (!maxPrice.HasValue || r.BasePrice <= maxPrice.Value)
-                    && (string.IsNullOrWhiteSpace(roomType) || EF.Functions.ILike(r.Name, $"%{roomType!.Trim()}%")))
+                    && (string.IsNullOrWhiteSpace(roomType) || EF.Functions.ILike(r.Name, $"%{roomType!.Trim()}%"))
+                    && r.Rooms.Count(room => (room.Status == "Available" || (futureCheckIn && BookingRules.InventoryStatuses.Contains(room.Status)))
+                        && (!checkIn.HasValue || !db.BookingDetails.Any(d => d.RoomId == room.Id
+                            && d.Booking.CheckInDate < checkOut!.Value && d.Booking.CheckOutDate > checkIn.Value
+                            && (BookingRules.ReservedStatuses.Contains(d.Booking.Status)
+                                || (d.Booking.Status == "PendingPayment" && d.Booking.UpdatedAt > holdCutoff)))))
+                        >= rooms + (!checkIn.HasValue ? 0 : db.BookingDetails.Where(d => d.RoomTypeId == r.Id && d.RoomId == null
+                            && d.Booking.CheckInDate < checkOut!.Value && d.Booking.CheckOutDate > checkIn.Value
+                            && (BookingRules.ReservedStatuses.Contains(d.Booking.Status)
+                                || (d.Booking.Status == "PendingPayment" && d.Booking.UpdatedAt > holdCutoff)))
+                            .Sum(d => (int?)d.Quantity) ?? 0))
                     .Select(r => (decimal?)r.BasePrice).Min(),
                 h.RoomTypes.Count(r => r.Status == "Active"),
-                h.RoomTypes.Where(r => r.Status == "Active").SelectMany(r => r.Rooms).Count(room => room.Status == "Available")
-                    - (!checkIn.HasValue ? 0 : db.BookingDetails.Where(d => d.Booking.HomestayId == h.Id && (d.Booking.Status == "Confirmed" || d.Booking.Status == "CheckedIn" ||
-                            (d.Booking.Status == "PendingPayment" && d.Booking.CreatedAt >= holdCutoff))
-                        && d.Booking.CheckInDate < checkOut!.Value && d.Booking.CheckOutDate > checkIn.Value).Sum(d => (int?)d.Quantity) ?? 0),
+                h.RoomTypes.Where(r => r.Status == "Active" && (r.ExtraGuestAllowed ? r.MaxCapacity : r.BaseCapacity) * rooms >= guests
+                    && (!maxPrice.HasValue || r.BasePrice <= maxPrice.Value)
+                    && (string.IsNullOrWhiteSpace(roomType) || EF.Functions.ILike(r.Name, $"%{roomType!.Trim()}%")))
+                    .SelectMany(r => r.Rooms).Count(room => (room.Status == "Available" || (futureCheckIn && BookingRules.InventoryStatuses.Contains(room.Status)))
+                        && (!checkIn.HasValue || !db.BookingDetails.Any(d => d.RoomId == room.Id
+                            && d.Booking.CheckInDate < checkOut!.Value && d.Booking.CheckOutDate > checkIn.Value
+                            && (BookingRules.ReservedStatuses.Contains(d.Booking.Status)
+                                || (d.Booking.Status == "PendingPayment" && d.Booking.UpdatedAt > holdCutoff)))))
+                    - (!checkIn.HasValue ? 0 : db.BookingDetails.Where(d => d.RoomId == null && d.Booking.HomestayId == h.Id
+                        && d.Booking.CheckInDate < checkOut!.Value && d.Booking.CheckOutDate > checkIn.Value
+                        && (BookingRules.ReservedStatuses.Contains(d.Booking.Status)
+                            || (d.Booking.Status == "PendingPayment" && d.Booking.UpdatedAt > holdCutoff)))
+                        .Sum(d => (int?)d.Quantity) ?? 0),
                 db.Reviews.Where(r => r.HomestayId == h.Id && r.Status == "Visible").Average(r => (decimal?)r.Rating),
                 db.Reviews.Count(r => r.HomestayId == h.Id && r.Status == "Visible"),
                 h.RoomTypes.Where(r => r.Status == "Active").OrderBy(r => r.BasePrice).Select(r => r.Name).ToList()))

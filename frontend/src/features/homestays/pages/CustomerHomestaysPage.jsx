@@ -7,6 +7,7 @@ import sunsetHomestayImage from '../../../../assets/2fc6b619bb0af3dc94971c099d25
 import { freshImageUrl } from '../../../shared/utils/freshImageUrl.js';
 
 const money = (value) => value == null ? 'Liên hệ' : `${new Intl.NumberFormat('vi-VN').format(value)}đ`;
+const localToday = () => { const now = new Date(); return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`; };
 const covers = [pineHomestayImage, azureHomestayImage, sunsetHomestayImage];
 const roomFilters = ['Phòng đơn', 'Phòng đôi', 'Phòng có ban công', 'Phòng gia đình'];
 const SearchIcon = ({ type }) => <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -15,13 +16,14 @@ const SearchIcon = ({ type }) => <svg viewBox="0 0 24 24" aria-hidden="true">
   {type === 'guests' && <><circle cx="9" cy="8" r="3" /><path d="M3.5 20v-2.2A4.8 4.8 0 0 1 8.3 13h1.4a4.8 4.8 0 0 1 4.8 4.8V20M16 5.5a3 3 0 0 1 0 5.8M16.5 14a4.5 4.5 0 0 1 4 4.5V20" /></>}
 </svg>;
 
-export default function CustomerHomestaysPage({ user, refreshKey = 0, onBack, onOpen, onBookings, onAccount }) {
-  const [search, setSearch] = useState('');
+export default function CustomerHomestaysPage({ user, refreshKey = 0, initialSearch = null, onBack, onOpen, onBookings, onAccount }) {
+  const [search, setSearch] = useState(initialSearch?.search || '');
   const [result, setResult] = useState({ items: [], total: 0 });
   const [maxPrice, setMaxPrice] = useState(3000000);
-  const [checkIn, setCheckIn] = useState('');
-  const [checkOut, setCheckOut] = useState('');
-  const [guests, setGuests] = useState(2);
+  const [checkIn, setCheckIn] = useState(initialSearch?.checkIn || '');
+  const [checkOut, setCheckOut] = useState(initialSearch?.checkOut || '');
+  const [guests, setGuests] = useState(initialSearch?.guests || 2);
+  const [rooms, setRooms] = useState(initialSearch?.rooms || 1);
   const [roomType, setRoomType] = useState('');
   const [minRating, setMinRating] = useState(0);
   const [sort, setSort] = useState('recommended');
@@ -30,12 +32,13 @@ export default function CustomerHomestaysPage({ user, refreshKey = 0, onBack, on
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const criteria = (targetPage = page) => ({ search, checkIn, checkOut, guests, maxPrice, roomType, minRating, sort, page: targetPage, pageSize: 12 });
+  const criteria = (targetPage = page) => ({ search, checkIn, checkOut, guests, rooms, maxPrice, roomType, minRating, sort, page: targetPage, pageSize: 12 });
   const load = async (targetPage = 1) => {
     setLoading(true); setError('');
     try {
       if ((checkIn && !checkOut) || (!checkIn && checkOut)) throw new Error('Vui lòng chọn đầy đủ ngày nhận và ngày trả phòng.');
       if (checkIn && checkOut && checkOut <= checkIn) throw new Error('Ngày trả phòng phải sau ngày nhận phòng.');
+      if (checkIn && checkIn < localToday()) throw new Error('Ngày nhận phòng không được ở trong quá khứ.');
       const response = await homestayApi.list(criteria(targetPage));
       const imageVersion = `${Date.now()}-${refreshKey}`;
       setResult({ ...response, items: response.items.map((item) => ({ ...item, thumbnailUrl: freshImageUrl(item.thumbnailUrl, imageVersion) })) }); setPage(targetPage);
@@ -54,9 +57,10 @@ export default function CustomerHomestaysPage({ user, refreshKey = 0, onBack, on
     <section className="catalog-hero"><div><p>KHÁM PHÁ ĐIỂM ĐẾN</p><h1>Tìm không gian nghỉ dưỡng<br /><em>dành riêng cho bạn</em></h1><span>Những điểm lưu trú được chọn lọc cho hành trình đáng nhớ cùng Tripio.</span></div></section>
     <form className="search-bar catalog-search" onSubmit={(event) => { event.preventDefault(); load(1); }}>
       <label>Địa điểm hoặc tên homestay<span className="search-control"><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Bạn muốn đến đâu?" /><SearchIcon type="location" /></span></label>
-      <label>Ngày nhận<span className="search-control"><input type="date" lang="vi-VN" placeholder="dd/mm/yyyy" min={new Date().toISOString().slice(0, 10)} value={checkIn} onChange={(e) => { setCheckIn(e.target.value); if (checkOut && checkOut <= e.target.value) setCheckOut(''); }} /><SearchIcon type="calendar" /></span></label>
-      <label>Ngày trả<span className="search-control"><input type="date" lang="vi-VN" placeholder="dd/mm/yyyy" min={checkIn || new Date().toISOString().slice(0, 10)} value={checkOut} onChange={(e) => setCheckOut(e.target.value)} /><SearchIcon type="calendar" /></span></label>
+      <label>Ngày nhận<span className="search-control"><input type="date" lang="vi-VN" placeholder="dd/mm/yyyy" min={localToday()} value={checkIn} onChange={(e) => { setCheckIn(e.target.value); if (checkOut && checkOut <= e.target.value) setCheckOut(''); }} /><SearchIcon type="calendar" /></span></label>
+      <label>Ngày trả<span className="search-control"><input type="date" lang="vi-VN" placeholder="dd/mm/yyyy" min={checkIn || localToday()} value={checkOut} onChange={(e) => setCheckOut(e.target.value)} /><SearchIcon type="calendar" /></span></label>
       <label>Số khách<span className="search-control guest-number-control"><input type="number" min="1" max="30" step="1" value={guests} onChange={(e) => setGuests(Math.max(1, Math.min(30, Number(e.target.value) || 1)))} inputMode="numeric" aria-label="Số khách" /><SearchIcon type="guests" /></span></label>
+      <label>Số phòng<span className="search-control guest-number-control"><input type="number" min="1" max="10" step="1" value={rooms} onChange={(e) => setRooms(Math.max(1, Math.min(10, Number(e.target.value) || 1)))} inputMode="numeric" aria-label="Số phòng" /></span></label>
       <button>Tìm phòng</button>
     </form>
     <section className="catalog-workspace">

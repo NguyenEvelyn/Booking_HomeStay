@@ -767,6 +767,9 @@ export default function HomePage({
               checkIn: searchCheckIn,
               checkOut: searchCheckOut,
               guests: guestsConfig.adults + guestsConfig.children,
+              adults: guestsConfig.adults,
+              children: guestsConfig.children,
+              rooms: guestsConfig.rooms,
             });
           } else {
             onDeveloping('Tìm phòng');
