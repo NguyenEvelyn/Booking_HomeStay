@@ -45,7 +45,7 @@ export default function App() {
   const [selectedHomestayId, setSelectedHomestayId] = useState(null);
   const [homestaySearch, setHomestaySearch] = useState(null);
   const [paymentResult, setPaymentResult] = useState(null);
-  const [previousView, setPreviousView] = useState('home');
+  const [catalogVersion, setCatalogVersion] = useState(0);
 
   /* =========================================================
      ERROR PAGE CHECK
@@ -94,6 +94,25 @@ export default function App() {
         }
       });
   }, []);
+
+  useEffect(() => {
+    const refreshCatalog = (event) => {
+      if (!event || event.key === 'tripio-catalog-version') {
+        setCatalogVersion((current) => current + 1);
+      }
+    };
+    window.addEventListener('storage', refreshCatalog);
+    window.addEventListener('focus', refreshCatalog);
+    return () => {
+      window.removeEventListener('storage', refreshCatalog);
+      window.removeEventListener('focus', refreshCatalog);
+    };
+  }, []);
+
+  const markCatalogChanged = () => {
+    localStorage.setItem('tripio-catalog-version', String(Date.now()));
+    setCatalogVersion((current) => current + 1);
+  };
 
   /* =========================================================
      SWITCH LOGIN / REGISTER
@@ -305,7 +324,6 @@ export default function App() {
 
   const openCatalog = (searchCriteria = null) => {
     setHomestaySearch(searchCriteria);
-    setPreviousView('home');
     setView('catalog');
   };
 
@@ -314,7 +332,6 @@ export default function App() {
     if (searchCriteria) {
       setHomestaySearch(searchCriteria);
     }
-    setPreviousView(view); // remember where we came from (home or catalog)
     setView('detail');
   };
 
@@ -418,6 +435,7 @@ export default function App() {
             user={user}
             onLogout={logout}
             onCustomerMode={() => setView('home')}
+            onCatalogChanged={markCatalogChanged}
             onChangePassword={() => {
               setMode('change-password');
               setNotice(null);
@@ -450,6 +468,7 @@ export default function App() {
       return (
         <>
           <CustomerHomestaysPage
+            refreshKey={catalogVersion}
             user={user}
             onBack={() => setView('home')}
             onOpen={openHomestay}
@@ -468,11 +487,12 @@ export default function App() {
       return (
         <>
           <HomestayDetailPage
+            refreshKey={catalogVersion}
             id={selectedHomestayId}
             initialSearch={homestaySearch}
             user={user}
             onHome={() => setView('home')}
-            onBack={() => setView(previousView === 'catalog' ? 'catalog' : 'home')}
+            onBack={() => setView('catalog')}
             onBookings={() => setView('bookings')}
             onAccount={() => {
               setMode('change-password');
@@ -489,6 +509,7 @@ export default function App() {
     return (
       <>
         <HomePage
+          refreshKey={catalogVersion}
           user={user}
           onLogout={logout}
           onChangePassword={() => {
@@ -525,6 +546,7 @@ export default function App() {
       return (
         <>
           <CustomerHomestaysPage
+            refreshKey={catalogVersion}
             user={null}
             onBack={() => setView('home')}
             onOpen={openHomestay}
@@ -542,11 +564,12 @@ export default function App() {
       return (
         <>
           <HomestayDetailPage
+            refreshKey={catalogVersion}
             id={selectedHomestayId}
             initialSearch={homestaySearch}
             user={null}
             onHome={() => setView('home')}
-            onBack={() => setView(previousView === 'catalog' ? 'catalog' : 'home')}
+            onBack={() => setView('catalog')}
             onAccount={() => {
               setShowHome(false);
               setMode('login');
@@ -561,6 +584,7 @@ export default function App() {
     return (
       <>
         <HomePage
+          refreshKey={catalogVersion}
           user={{ fullName: 'Khách' }}
           onLogout={() => {
             setShowHome(false);

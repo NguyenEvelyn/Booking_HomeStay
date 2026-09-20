@@ -1,5 +1,5 @@
 import React from'react';
-const money=v=>`${new Intl.NumberFormat('vi-VN').format(v||0)} đ`;
+const money=v=>`${new Intl.NumberFormat('vi-VN').format(v||0)}đ`;
 const labels={Confirmed:'Đã xác nhận',Completed:'Hoàn tất',PendingPayment:'Chờ thanh toán',Cancelled:'Đã hủy'};
 function Stat({name,value}){return <article><small>{name}</small><strong>{value}</strong></article>}
 function Panel({title,children}){return <section className="host-panel"><header><div><small>PHÂN TÍCH VẬN HÀNH</small><h2>{title}</h2></div></header>{children}</section>}

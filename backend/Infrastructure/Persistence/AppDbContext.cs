@@ -90,6 +90,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         roomType.Property(x => x.BasePrice).HasColumnName("base_price").HasPrecision(18, 2);
         roomType.Property(x => x.MaxAdults).HasColumnName("max_adults");
         roomType.Property(x => x.MaxChildren).HasColumnName("max_children");
+        roomType.Property(x => x.BaseCapacity).HasColumnName("base_capacity").HasDefaultValue(2);
+        roomType.Property(x => x.MaxCapacity).HasColumnName("max_capacity").HasDefaultValue(2);
+        roomType.Property(x => x.ExtraGuestAllowed).HasColumnName("extra_guest_allowed").HasDefaultValue(false);
+        roomType.Property(x => x.ExtraGuestFee).HasColumnName("extra_guest_fee").HasPrecision(18, 2).HasDefaultValue(0);
         roomType.Property(x => x.BedType).HasColumnName("bed_type").HasMaxLength(100).IsRequired();
         roomType.Property(x => x.RoomSize).HasColumnName("room_size").HasPrecision(8, 2);
         roomType.Property(x => x.Status).HasColumnName("status").HasMaxLength(20).IsRequired();
