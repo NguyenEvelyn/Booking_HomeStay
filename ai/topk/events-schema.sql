@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS recommendation_events (
     session_id VARCHAR(100) NOT NULL,
     event_type VARCHAR(20) NOT NULL CHECK (event_type IN ('search', 'view', 'booking')),
     homestay_id BIGINT REFERENCES homestays(homestay_id) ON DELETE SET NULL,
+    booking_id BIGINT REFERENCES bookings(booking_id) ON DELETE SET NULL,
     query_data JSONB NOT NULL DEFAULT '{}'::jsonb,
     source VARCHAR(20) NOT NULL DEFAULT 'real' CHECK (source IN ('real', 'synthetic')),
     CHECK (event_type = 'search' OR homestay_id IS NOT NULL)
@@ -18,3 +19,8 @@ CREATE INDEX IF NOT EXISTS ix_recommendation_events_homestay_time
     ON recommendation_events(homestay_id, occurred_at DESC);
 CREATE INDEX IF NOT EXISTS ix_recommendation_events_source_time
     ON recommendation_events(source, occurred_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS ux_recommendation_events_booking
+    ON recommendation_events(booking_id) WHERE booking_id IS NOT NULL;
+
+ALTER TABLE bookings
+    ADD COLUMN IF NOT EXISTS recommendation_session_id VARCHAR(100);

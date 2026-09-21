@@ -15,8 +15,12 @@ public class Booking
     public decimal ServiceFee { get; set; }
     public decimal TaxAmount { get; set; }
     public decimal TotalAmount { get; set; }
+    public decimal CommissionRate { get; set; }
     public required string Status { get; set; }
     public string? CustomerNote { get; set; }
+    public string? RecommendationSessionId { get; set; }
+    public string? HostNote { get; set; }
+    public DateTime? HostViewedAt { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public ICollection<BookingDetail> Details { get; set; } = [];

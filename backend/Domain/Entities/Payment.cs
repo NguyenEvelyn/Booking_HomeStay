@@ -11,6 +11,9 @@ public class Payment
     public required string Status { get; set; }
     public DateTime? PaidAt { get; set; }
     public string? GatewayResponse { get; set; }
+    public string? VnPayTransactionNo { get; set; }
+    public string? ResponseCode { get; set; }
+    public string? BankCode { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public Booking Booking { get; set; } = null!;

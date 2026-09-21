@@ -12,6 +12,8 @@ namespace HomestayAuth.Api.Features.Homestays.Controllers;
 
 public sealed record HostBookingStatusRequest(string Status);
 public sealed record HostCancellationDecisionRequest(bool Approve);
+public sealed record HostBookingNoteRequest(string? Note);
+public sealed record HostOfflinePaymentRequest(string Method);
 
 [ApiController]
 [Route("api/host/homestays")]
@@ -403,8 +405,85 @@ public sealed class HostHomestaysController(IHomestayQueryService service, AppDb
     {
         var hostId = long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var items = await db.Bookings.AsNoTracking().Where(b => db.Homestays.Any(h => h.Id == b.HomestayId && h.HostId == hostId))
-            .OrderByDescending(b => b.CreatedAt).Select(b => new { b.Id, b.BookingCode, HomestayName = db.Homestays.Where(h => h.Id == b.HomestayId).Select(h => h.Name).First(), CustomerName = db.Users.Where(u => u.Id == b.CustomerId).Select(u => u.FullName).First(), b.CheckInDate, b.CheckOutDate, b.AdultCount, b.ChildCount, b.TotalAmount, b.Status, Rooms = b.Details.Where(d => d.RoomId != null).Select(d => db.Rooms.Where(r => r.Id == d.RoomId).Select(r => r.RoomNumber).First()).ToList(), Cancellation = db.Cancellations.Where(c => c.BookingId == b.Id).Select(c => new { c.Id, c.Reason, c.CancellationFee, c.RefundAmount, Status = c.Status == "Approved" && db.Payments.Any(p => p.BookingId == b.Id && p.TransactionType == "Refund" && p.Status == "Pending") ? "RefundPending" : c.Status }).FirstOrDefault() }).ToListAsync();
+            .OrderByDescending(b => b.CreatedAt).Select(b => new {
+                b.Id, b.BookingCode, b.HomestayId,
+                HomestayName = db.Homestays.Where(h => h.Id == b.HomestayId).Select(h => h.Name).First(),
+                CustomerName = db.Users.Where(u => u.Id == b.CustomerId).Select(u => u.FullName).First(),
+                CustomerEmail = db.Users.Where(u => u.Id == b.CustomerId).Select(u => u.Email).First(),
+                CustomerPhone = db.Users.Where(u => u.Id == b.CustomerId).Select(u => u.PhoneNumber).FirstOrDefault(),
+                b.CheckInDate, b.CheckOutDate, Nights = b.Details.Select(d => (int?)d.NumberOfNights).FirstOrDefault() ?? 0,
+                b.AdultCount, b.ChildCount, b.Subtotal, b.DiscountAmount, b.ServiceFee, b.TaxAmount, b.TotalAmount,
+                b.Status, b.CustomerNote, b.HostNote, b.HostViewedAt, b.CreatedAt, b.UpdatedAt,
+                IsNew = b.HostViewedAt == null,
+                Details = b.Details.Select(d => new { d.Id, d.RoomTypeId, RoomTypeName = db.RoomTypes.Where(r => r.Id == d.RoomTypeId).Select(r => r.Name).First(),
+                    d.RoomId, RoomNumber = d.RoomId == null ? null : db.Rooms.Where(r => r.Id == d.RoomId).Select(r => r.RoomNumber).FirstOrDefault(),
+                    d.Quantity, d.PricePerNight, d.NumberOfNights, d.ExtraFee, d.LineTotal }).ToList(),
+                Rooms = b.Details.Where(d => d.RoomId != null).Select(d => db.Rooms.Where(r => r.Id == d.RoomId).Select(r => r.RoomNumber).First()).ToList(),
+                PaidAmount = b.Payments.Where(p => p.TransactionType == "Payment" && p.Status == "Success").Sum(p => (decimal?)p.Amount) ?? 0,
+                Payments = b.Payments.OrderByDescending(p => p.CreatedAt).Select(p => new { p.Id, p.TransactionCode, p.PaymentMethod,
+                    p.TransactionType, p.Amount, p.Status, p.PaidAt, p.CreatedAt }).ToList(),
+                Cancellation = db.Cancellations.Where(c => c.BookingId == b.Id).Select(c => new { c.Id, c.Reason, c.CancellationFee, c.RefundAmount,
+                    Status = c.Status == "Approved" && db.Payments.Any(p => p.BookingId == b.Id && p.TransactionType == "Refund" && p.Status == "Pending") ? "RefundPending" : c.Status,
+                    c.CancelledAt, c.ProcessedAt }).FirstOrDefault()
+            }).ToListAsync();
         return Ok(new { items });
+    }
+
+    [HttpPatch("bookings/{bookingId:long}/viewed")]
+    public async Task<IActionResult> MarkBookingViewed(long bookingId)
+    {
+        var booking = await db.Bookings.SingleOrDefaultAsync(b => b.Id == bookingId
+            && db.Homestays.Any(h => h.Id == b.HomestayId && h.HostId == HostId));
+        if (booking is null) return NotFound(new { message = "Không tìm thấy booking." });
+        booking.HostViewedAt ??= DateTime.UtcNow;
+        await db.SaveChangesAsync();
+        return Ok(new { message = "Đã đánh dấu đơn đã xem." });
+    }
+
+    [HttpPatch("bookings/{bookingId:long}/note")]
+    public async Task<IActionResult> UpdateBookingNote(long bookingId, HostBookingNoteRequest request)
+    {
+        var note = request.Note?.Trim();
+        if (note?.Length > 1000) return BadRequest(new { message = "Ghi chú nội bộ tối đa 1000 ký tự." });
+        var booking = await db.Bookings.SingleOrDefaultAsync(b => b.Id == bookingId
+            && db.Homestays.Any(h => h.Id == b.HomestayId && h.HostId == HostId));
+        if (booking is null) return NotFound(new { message = "Không tìm thấy booking." });
+        booking.HostNote = string.IsNullOrWhiteSpace(note) ? null : note;
+        booking.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+        return Ok(new { message = "Đã lưu ghi chú nội bộ." });
+    }
+
+    [HttpPost("bookings/{bookingId:long}/offline-payment")]
+    public async Task<IActionResult> ConfirmOfflinePayment(long bookingId, HostOfflinePaymentRequest request)
+    {
+        var method = request.Method?.Trim();
+        if (method is not ("Cash" or "BankTransfer")) return BadRequest(new { message = "Phương thức thanh toán không hợp lệ." });
+        await using var transaction = await db.Database.BeginTransactionAsync();
+        await BookingAvailability.LockBooking(db, bookingId);
+        var booking = await db.Bookings.SingleOrDefaultAsync(b => b.Id == bookingId
+            && db.Homestays.Any(h => h.Id == b.HomestayId && h.HostId == HostId));
+        if (booking is null) return NotFound(new { message = "Không tìm thấy booking." });
+        var now = DateTime.UtcNow;
+        var paymentCreatedAt = await db.Payments
+            .Where(p => p.BookingId == bookingId && p.Status == "Pending")
+            .OrderByDescending(p => p.CreatedAt)
+            .Select(p => (DateTime?)p.CreatedAt)
+            .FirstOrDefaultAsync() ?? booking.UpdatedAt;
+        if (!BookingRules.CanConfirm(booking.Status, booking.UpdatedAt, paymentCreatedAt, now))
+            return BadRequest(new { message = "Đơn đã hết thời gian giữ phòng hoặc không thể xác nhận thanh toán." });
+        if (await db.Payments.AnyAsync(p => p.BookingId == bookingId && p.TransactionType == "Payment" && p.Status == "Success"))
+            return Conflict(new { message = "Đơn đã có giao dịch thanh toán thành công." });
+        await db.Payments.Where(p => p.BookingId == bookingId && p.TransactionType == "Payment" && p.Status == "Pending")
+            .ExecuteUpdateAsync(update => update.SetProperty(p => p.Status, "Failed").SetProperty(p => p.UpdatedAt, now));
+        db.Payments.Add(new Payment { BookingId = booking.Id, TransactionCode = $"OFF{now:yyyyMMddHHmmss}{Guid.NewGuid():N}"[..30].ToUpperInvariant(),
+            PaymentMethod = method, TransactionType = "Payment", Amount = booking.TotalAmount, Status = "Success",
+            PaidAt = now, GatewayResponse = "Host confirmed offline payment", CreatedAt = now, UpdatedAt = now });
+        booking.Status = "Confirmed";
+        booking.UpdatedAt = now;
+        await db.SaveChangesAsync();
+        await transaction.CommitAsync();
+        return Ok(new { message = "Đã xác nhận nhận đủ tiền và giữ phòng cho khách." });
     }
 
     [HttpPatch("bookings/{bookingId:long}/status")]

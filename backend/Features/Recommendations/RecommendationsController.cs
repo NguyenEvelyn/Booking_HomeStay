@@ -26,6 +26,6 @@ public sealed class RecommendationsController(RecommendationService service) : C
         var query = new RecommendationQuery(search, checkIn, checkOut, guests, rooms, totalBudget, amenities,
             roomType, Math.Clamp(minRating, 0, 5),
             Math.Clamp(topK, 1, 10), sessionId);
-        return Ok(new { items = await service.Recommend(query, User) });
+        return Ok(new { modelVersion = service.ModelVersion, items = await service.Recommend(query, User) });
     }
 }

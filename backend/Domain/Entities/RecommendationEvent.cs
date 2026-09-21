@@ -8,6 +8,7 @@ public sealed class RecommendationEvent
     public string SessionId { get; set; } = "";
     public string EventType { get; set; } = "";
     public long? HomestayId { get; set; }
+    public long? BookingId { get; set; }
     public string QueryData { get; set; } = "{}";
     public string Source { get; set; } = "real";
 }

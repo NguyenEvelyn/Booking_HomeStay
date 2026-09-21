@@ -48,7 +48,7 @@ public sealed class HomestayQueryService(AppDbContext db) : IHomestayQueryServic
                 && (!maxPrice.HasValue || r.BasePrice <= maxPrice.Value)
                 && (string.IsNullOrWhiteSpace(roomType) || EF.Functions.ILike(r.Name, $"%{roomType!.Trim()}%"))).Min(r => r.BasePrice))
             : sort == "rating" ? query.OrderByDescending(h => db.Reviews.Where(r => r.HomestayId == h.Id && r.Status == "Visible").Average(r => (double?)r.Rating) ?? 0)
-            : query.OrderByDescending(h => h.CreatedAt);
+            : query.OrderByDescending(h => h.IsFeatured).ThenByDescending(h => h.CreatedAt);
         var items = await query
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
@@ -165,6 +165,7 @@ public sealed class HomestayQueryService(AppDbContext db) : IHomestayQueryServic
                 h.RoomTypes.SelectMany(r => r.Rooms).Count(r => r.Status == "Available"),
                 h.RoomTypes.Select(r => (decimal?)r.BasePrice).Min(),
                 h.Images.Count(),
-                h.UpdatedAt))
+                h.UpdatedAt,
+                h.RejectionReason))
             .ToListAsync();
 }

@@ -1,7 +1,9 @@
 const normalize = (value) => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/đ/g, 'd').trim();
 const clamp01 = (value) => Math.max(0, Math.min(1, value));
 
-export function rankHomestays(catalog, query, history = [], k = 5) {
+export const DEFAULT_WEIGHTS = Object.freeze({ price: 40, amenities: 30, rating: 20, history: 10 });
+
+export function rankHomestays(catalog, query, history = [], k = 5, options = {}) {
   const guests = Math.max(1, Number(query.guests) || 1);
   const rooms = Math.max(1, Number(query.rooms) || 1);
   const nights = Math.max(1, Number(query.nights) || 1);
@@ -10,10 +12,14 @@ export function rankHomestays(catalog, query, history = [], k = 5) {
   const required = (query.requiredAmenities || []).map(normalize).filter(Boolean);
   const province = normalize(query.province);
   const district = normalize(query.district);
+  const search = normalize(query.search);
+  const weights = { ...DEFAULT_WEIGHTS, ...(options.weights || {}) };
+  const weightTotal = Object.values(weights).reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0) || 1;
 
   return catalog.flatMap((homestay) => {
     if (province && normalize(homestay.province) !== province) return [];
     if (district && normalize(homestay.district) !== district) return [];
+    if (search && ![homestay.name, homestay.province, homestay.district].some((value) => normalize(value).includes(search))) return [];
     const amenities = new Set((homestay.amenities || []).map(normalize));
     if (required.some((amenity) => !amenities.has(amenity))) return [];
 
@@ -38,14 +44,19 @@ export function rankHomestays(catalog, query, history = [], k = 5) {
     const interactionWeight = history.filter((event) => event.homestayId === homestay.id)
       .reduce((sum, event) => sum + (event.action === 'booking' ? 3 : event.action === 'view' ? 1 : 0), 0);
     const historyFit = clamp01(Math.log1p(interactionWeight) / Math.log1p(10));
-    const score = Math.round((40 * priceFit + 30 * amenityFit + 20 * ratingFit + 10 * historyFit) * 100) / 100;
+    const score = Math.round((100 / weightTotal) * (weights.price * priceFit + weights.amenities * amenityFit
+      + weights.rating * ratingFit + weights.history * historyFit) * 100) / 100;
     const reasons = [
       `${rooms} × ${roomType.name} đủ cho ${guests} khách`,
       `${estimatedTotal.toLocaleString('vi-VN')}đ/${nights} đêm`,
       ...(desired.filter((amenity) => amenities.has(amenity)).length ? ['Có tiện nghi bạn chọn'] : []),
     ];
     return [{ homestayId: homestay.id, name: homestay.name, province: homestay.province,
-      district: homestay.district, roomTypeId: roomType.id, score, estimatedTotal, reasons }];
-  }).sort((a, b) => b.score - a.score || a.estimatedTotal - b.estimatedTotal || a.homestayId - b.homestayId)
+      district: homestay.district, roomTypeId: roomType.id, score, estimatedTotal, ratingFit, reasons }];
+  }).sort(options.strategy === 'lowest-price'
+    ? (a, b) => a.estimatedTotal - b.estimatedTotal || b.ratingFit - a.ratingFit || a.homestayId - b.homestayId
+    : options.strategy === 'highest-rating'
+      ? (a, b) => b.ratingFit - a.ratingFit || a.estimatedTotal - b.estimatedTotal || a.homestayId - b.homestayId
+      : (a, b) => b.score - a.score || a.estimatedTotal - b.estimatedTotal || a.homestayId - b.homestayId)
     .slice(0, Math.max(1, Math.min(Number(k) || 5, 20)));
 }

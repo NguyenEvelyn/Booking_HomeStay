@@ -5,6 +5,7 @@ import CustomerNav from '../../../shared/components/CustomerNav.jsx';
 import pineHomestayImage from '../../../../assets/f6cd6879081dc8e8d4ff18669308ea86.jpg';
 import azureHomestayImage from '../../../../assets/ecf184f6b6cd2b6e2aa898ff3195ab7e.jpg';
 import sunsetHomestayImage from '../../../../assets/2fc6b619bb0af3dc94971c099d25bbae.jpg';
+import catalogHeroImage from '../../../../assets/figma/hero.png';
 import { freshImageUrl } from '../../../shared/utils/freshImageUrl.js';
 
 const money = (value) => value == null ? 'Liên hệ' : `${new Intl.NumberFormat('vi-VN').format(value)}đ`;
@@ -31,6 +32,7 @@ export default function CustomerHomestaysPage({ user, refreshKey = 0, initialSea
   const [sort, setSort] = useState('recommended');
   const [preferredAmenities, setPreferredAmenities] = useState([]);
   const [recommendations, setRecommendations] = useState([]);
+  const [recommendationModelVersion, setRecommendationModelVersion] = useState('');
   const [recommendationError, setRecommendationError] = useState('');
   const latestRequest = useRef(0);
   const [page, setPage] = useState(1);
@@ -50,21 +52,23 @@ export default function CustomerHomestaysPage({ user, refreshKey = 0, initialSea
       const [catalogResult, recommendationResult] = await Promise.allSettled([
         homestayApi.list(criteria(targetPage)),
         homestayApi.recommendations({ search, checkIn, checkOut, guests, rooms,
-          totalBudget: maxPrice * rooms * nights, amenities: preferredAmenities, roomType, minRating, topK: 3 })
+          totalBudget: maxPrice * rooms * nights, amenities: preferredAmenities, roomType, minRating, topK: 5 })
       ]);
       if (requestId !== latestRequest.current) return;
       if (catalogResult.status === 'rejected') throw catalogResult.reason;
       const response = catalogResult.value;
       const imageVersion = `${Date.now()}-${refreshKey}`;
       setResult({ ...response, items: response.items.map((item) => ({ ...item, thumbnailUrl: freshImageUrl(item.thumbnailUrl, imageVersion) })) }); setPage(targetPage);
-      setRecommendations(recommendationResult.status === 'fulfilled' ? recommendationResult.value.items : []);
+      setRecommendations(recommendationResult.status === 'fulfilled'
+        ? recommendationResult.value.items.map((item) => ({ ...item, thumbnailUrl: freshImageUrl(item.thumbnailUrl, imageVersion) })) : []);
+      setRecommendationModelVersion(recommendationResult.status === 'fulfilled' ? recommendationResult.value.modelVersion || 'baseline' : '');
       setRecommendationError(recommendationResult.status === 'rejected' ? 'Chưa tải được gợi ý lúc này.' : '');
       if (targetPage === 1) recordRecommendationEvent({ eventType: 'search', search: search.trim(),
         checkIn: checkIn || null, checkOut: checkOut || null, guests, rooms,
         totalBudget: maxPrice * rooms * nights, amenities: preferredAmenities,
         recommendedIds: recommendationResult.status === 'fulfilled'
           ? recommendationResult.value.items.map((item) => item.id) : [] });
-    } catch (e) { if (requestId === latestRequest.current) { setError(e.message); setRecommendations([]); } }
+    } catch (e) { if (requestId === latestRequest.current) { setError(e.message); setRecommendations([]); setRecommendationModelVersion(''); } }
     finally { if (requestId === latestRequest.current) setLoading(false); }
   };
   useEffect(() => { load(1); }, [maxPrice, roomType, minRating, sort, preferredAmenities, refreshKey]);
@@ -77,7 +81,7 @@ export default function CustomerHomestaysPage({ user, refreshKey = 0, initialSea
 
   return <main className="catalog-page catalog-redesign">
     <CustomerNav active="homestays" user={user} onHome={onBack} onHomestays={() => {}} onBookings={onBookings} onAccount={onAccount} />
-    <section className="catalog-hero"><div><p>KHÁM PHÁ ĐIỂM ĐẾN</p><h1>Tìm không gian nghỉ dưỡng<br /><em>dành riêng cho bạn</em></h1><span>Những điểm lưu trú được chọn lọc cho hành trình đáng nhớ cùng Tripio.</span></div></section>
+    <section className="catalog-hero" style={{backgroundImage:`linear-gradient(90deg,rgba(3,24,58,.9),rgba(4,31,71,.3)),url('${catalogHeroImage}')`}}><div><p>KHÁM PHÁ ĐIỂM ĐẾN</p><h1>Tìm không gian nghỉ dưỡng<br /><em>dành riêng cho bạn</em></h1><span>Những điểm lưu trú được chọn lọc cho hành trình đáng nhớ cùng Tripio.</span></div></section>
     <form className="search-bar catalog-search" onSubmit={(event) => { event.preventDefault(); load(1); }}>
       <label>Địa điểm hoặc tên homestay<span className="search-control"><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Bạn muốn đến đâu?" /><SearchIcon type="location" /></span></label>
       <label>Ngày nhận<span className="search-control"><input type="date" lang="vi-VN" placeholder="dd/mm/yyyy" min={localToday()} value={checkIn} onChange={(e) => { setCheckIn(e.target.value); if (checkOut && checkOut <= e.target.value) setCheckOut(''); }} /><SearchIcon type="calendar" /></span></label>
@@ -96,14 +100,16 @@ export default function CustomerHomestaysPage({ user, refreshKey = 0, initialSea
       </aside>
       <div className="catalog-results">
         <header><div><small>DANH SÁCH LƯU TRÚ</small><h2>{result.total} homestay phù hợp</h2></div><select value={sort} onChange={(e) => setSort(e.target.value)}><option value="recommended">Đề xuất</option><option value="price-low">Giá thấp trước</option><option value="rating">Đánh giá cao</option></select></header>
-        {!loading && recommendations.length > 0 && <section className="recommendation-strip" aria-label="Gợi ý homestay phù hợp">
-          <div className="recommendation-heading"><div><small>GỢI Ý THEO NHU CẦU</small><h3>{recommendations.length} lựa chọn dành cho bạn</h3></div><span>Theo giá, tiện nghi và đánh giá</span></div>
-          <div className="recommendation-grid">{recommendations.map((item, index) => <button className="recommendation-card" key={item.id} type="button" onClick={() => openItem(item.id)}>
-            <span className="recommendation-rank">Gợi ý #{index + 1}</span>
-            <strong>{item.name}</strong><small>{item.district}, {item.province}</small>
-            <span>{item.reasons.join(' · ')}</span>
-            <em>{money(item.estimatedTotal)} <small>ước tính cả kỳ nghỉ</small></em>
-          </button>)}</div>
+        {!loading && recommendations.length > 0 && <section className="recommendation-strip" aria-label="Top 5 homestay phù hợp">
+          <div className="recommendation-heading"><div><small>TOP-K CÁ NHÂN HÓA</small><h3>Top {recommendations.length} homestay phù hợp với bạn</h3><p>Xếp hạng theo ngân sách, tiện nghi, đánh giá và hành vi trước đó.</p></div><span title={recommendationModelVersion}>Thuật toán: {recommendationModelVersion.startsWith('learned-') ? 'Trọng số đã học' : 'Top-K baseline'}</span></div>
+          <div className="recommendation-grid">{recommendations.map((item, index) => <article className={`recommendation-card rank-${index + 1}`} key={item.id}>
+            <button className="recommendation-card-main" type="button" onClick={() => openItem(item.id)}>
+              <span className="recommendation-cover" style={item.thumbnailUrl ? { backgroundImage: `url('${item.thumbnailUrl}')` } : undefined}><b>#{index + 1}</b><i>{Math.round(Number(item.score) || 0)}/100 phù hợp</i></span>
+              <span className="recommendation-content"><strong>{item.name}</strong><small>⌖ {item.district}, {item.province}</small><span className="recommendation-room">{item.roomTypeName}</span><span className="recommendation-score"><i><b style={{ width: `${Math.max(0, Math.min(100, Number(item.score) || 0))}%` }} /></i><small>{Math.round(Number(item.score) || 0)} điểm</small></span></span>
+            </button>
+            <ul>{item.reasons.map((reason) => <li key={reason}>✓ {reason}</li>)}</ul>
+            <footer><span><small>Ước tính cả kỳ nghỉ</small><strong>{money(item.estimatedTotal)}</strong></span><button type="button" onClick={() => openItem(item.id)}>Xem phòng →</button></footer>
+          </article>)}</div>
         </section>}
         {!loading && recommendationError && <p className="recommendation-note">{recommendationError}</p>}
         {loading && <p className="state-message">Đang tải homestay...</p>}{error && <p className="state-message error">{error}</p>}{!loading && !error && result.items.length === 0 && <p className="state-message">Không tìm thấy homestay phù hợp với bộ lọc.</p>}

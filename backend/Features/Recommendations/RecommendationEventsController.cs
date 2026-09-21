@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.RateLimiting;
+using HomestayAuth.Api.Features.Admin.Authorization;
 
 namespace HomestayAuth.Api.Features.Recommendations;
 
@@ -53,32 +54,91 @@ public sealed class RecommendationEventsController(AppDbContext db) : Controller
         return NoContent();
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = AdminPolicies.Access)]
     [HttpGet("summary")]
     public async Task<IActionResult> Summary([FromQuery] int days = 30)
     {
         days = Math.Clamp(days, 1, 365);
         var since = DateTime.UtcNow.AddDays(-days);
+        const int attributionDays = 7;
         var events = await db.RecommendationEvents.AsNoTracking()
             .Where(e => e.Source == "real" && e.OccurredAt >= since)
-            .Select(e => new { e.SessionId, e.EventType, e.HomestayId, e.QueryData, e.OccurredAt }).ToListAsync();
+            .Select(e => new { e.SessionId, e.EventType, e.HomestayId, e.BookingId, e.CustomerId, e.QueryData, e.OccurredAt }).ToListAsync();
         var searches = events.Where(e => e.EventType == "search").ToList();
         var views = events.Where(e => e.EventType == "view").ToList();
+        var bookings = events.Where(e => e.EventType == "booking").ToList();
+        var confirmedBookings = await db.Bookings.AsNoTracking().CountAsync(b => b.CreatedAt >= since
+            && new[] { "Confirmed", "CheckedIn", "Completed" }.Contains(b.Status));
+        var linkedBookingIds = bookings.Where(e => e.BookingId.HasValue).Select(e => e.BookingId!.Value).Distinct().Count();
+        var invalidSearchPayloads = 0;
         var recommendedSearches = 0;
         var searchesWithRecommendationView = 0;
+        var searchesWithBooking = 0;
+        var searchesWithRecommendedBooking = 0;
+        var reciprocalDiscountedGain = 0d;
         foreach (var search in searches)
         {
-            using var data = JsonDocument.Parse(search.QueryData);
-            if (!data.RootElement.TryGetProperty("recommendedIds", out var ids) || ids.ValueKind != JsonValueKind.Array || ids.GetArrayLength() == 0) continue;
+            long[] recommendedIds;
+            try
+            {
+                using var data = JsonDocument.Parse(search.QueryData);
+                if (!data.RootElement.TryGetProperty("recommendedIds", out var ids) || ids.ValueKind != JsonValueKind.Array) continue;
+                recommendedIds = ids.EnumerateArray().Select(id => id.TryGetInt64(out var value) ? value : 0)
+                    .Where(id => id > 0).Take(5).ToArray();
+            }
+            catch (JsonException) { invalidSearchPayloads++; continue; }
+            if (recommendedIds.Length == 0) continue;
             recommendedSearches++;
-            if (ids.EnumerateArray().Any(id => id.TryGetInt64(out var homeId)
-                && views.Any(view => view.SessionId == search.SessionId && view.HomestayId == homeId
+            if (recommendedIds.Any(homeId => views.Any(view => view.SessionId == search.SessionId && view.HomestayId == homeId
                     && view.OccurredAt >= search.OccurredAt && view.OccurredAt <= search.OccurredAt.AddHours(24))))
                 searchesWithRecommendationView++;
+            var attributedBooking = bookings.Where(booking => booking.SessionId == search.SessionId
+                    && booking.OccurredAt >= search.OccurredAt
+                    && booking.OccurredAt <= search.OccurredAt.AddDays(attributionDays)
+                    && !searches.Any(laterSearch => laterSearch.SessionId == search.SessionId
+                        && laterSearch.OccurredAt > search.OccurredAt && laterSearch.OccurredAt <= booking.OccurredAt))
+                .OrderBy(booking => booking.OccurredAt).FirstOrDefault();
+            if (attributedBooking is null) continue;
+            searchesWithBooking++;
+            var rank = Array.IndexOf(recommendedIds, attributedBooking.HomestayId ?? 0);
+            if (rank < 0) continue;
+            searchesWithRecommendedBooking++;
+            reciprocalDiscountedGain += 1d / Math.Log2(rank + 2);
         }
-        return Ok(new { days, searches = searches.Count, views = views.Count,
+        return Ok(new { days, attributionDays, searches = searches.Count, views = views.Count,
+            confirmedBookings = bookings.Count,
             uniqueSessions = events.Select(e => e.SessionId).Distinct().Count(), recommendedSearches,
             searchesWithRecommendationView,
-            recommendationViewRate = recommendedSearches == 0 ? 0 : Math.Round(100d * searchesWithRecommendationView / recommendedSearches, 2) });
+            recommendationViewRate = recommendedSearches == 0 ? 0 : Math.Round(100d * searchesWithRecommendationView / recommendedSearches, 2),
+            searchesWithBooking, searchesWithRecommendedBooking,
+            bookingConversionRate = recommendedSearches == 0 ? 0 : Math.Round(100d * searchesWithBooking / recommendedSearches, 2),
+            recallAt5 = searchesWithBooking == 0 ? 0 : Math.Round(100d * searchesWithRecommendedBooking / searchesWithBooking, 2),
+            ndcgAt5 = searchesWithBooking == 0 ? 0 : Math.Round(100d * reciprocalDiscountedGain / searchesWithBooking, 2),
+            dataQuality = new {
+                confirmedBookingsInDatabase = confirmedBookings,
+                linkedConfirmedBookings = linkedBookingIds,
+                bookingLinkageRate = confirmedBookings == 0 ? 0 : Math.Round(100d * linkedBookingIds / confirmedBookings, 2),
+                invalidSearchPayloads,
+                anonymousSearches = events.Count(e => e.EventType == "search" && e.CustomerId == null),
+                bookingsWithoutPriorSearch = bookings.Count(booking => !searches.Any(search => search.SessionId == booking.SessionId
+                    && search.OccurredAt <= booking.OccurredAt && search.OccurredAt >= booking.OccurredAt.AddDays(-attributionDays)))
+            }
+        });
+    }
+
+    [Authorize(Policy = AdminPolicies.Access)]
+    [HttpGet("export")]
+    public async Task<IActionResult> Export([FromQuery] int days = 365)
+    {
+        days = Math.Clamp(days, 1, 730);
+        var since = DateTime.UtcNow.AddDays(-days);
+        var events = await db.RecommendationEvents.AsNoTracking()
+            .Where(e => e.Source == "real" && e.OccurredAt >= since)
+            .OrderBy(e => e.OccurredAt).ThenBy(e => e.Id)
+            .Select(e => new { id = e.Id, occurredAt = e.OccurredAt, customerId = e.CustomerId,
+                sessionId = e.SessionId, eventType = e.EventType, homestayId = e.HomestayId,
+                bookingId = e.BookingId, queryData = e.QueryData, source = e.Source })
+            .ToListAsync();
+        return Ok(new { generatedAt = DateTime.UtcNow, days, source = "real", events });
     }
 }

@@ -15,6 +15,7 @@ public class Homestay
     public TimeOnly CheckInTime { get; set; }
     public TimeOnly CheckOutTime { get; set; }
     public required string Status { get; set; }
+    public bool IsFeatured { get; set; }
     public string? RejectionReason { get; set; }
     public long? ReviewedBy { get; set; }
     public DateTime? ReviewedAt { get; set; }

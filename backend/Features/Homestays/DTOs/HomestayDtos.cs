@@ -31,7 +31,8 @@ public sealed record HostHomestayListItemResponse(
     int AvailableRoomCount,
     decimal? FromPrice,
     int ImageCount,
-    DateTime UpdatedAt);
+    DateTime UpdatedAt,
+    string? RejectionReason);
 
 public sealed record RoomTypeListItemResponse(
     long Id,

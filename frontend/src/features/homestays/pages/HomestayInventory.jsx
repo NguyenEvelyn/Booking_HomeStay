@@ -4,7 +4,7 @@ import './HomestayInventory.css';
 
 const labels = {
   Draft: 'Bản nháp', Pending: 'Chờ duyệt', Approved: 'Đã duyệt',
-  Rejected: 'Từ chối', Suspended: 'Tạm ngưng'
+  Rejected: 'Từ chối', Suspended: 'Bị ẩn/khóa'
 };
 const money = value => value == null ? 'Chưa đặt giá' : `${new Intl.NumberFormat('vi-VN').format(value)}đ`;
 const date = value => value ? new Intl.DateTimeFormat('vi-VN').format(new Date(value)) : '—';
@@ -53,14 +53,14 @@ export default function HomestayInventory({ items, open, run, onCreate }) {
       <thead><tr><th>MÃ</th><th>ẢNH</th><th>TÊN HOMESTAY</th><th>ĐỊA CHỈ</th><th>LOẠI PHÒNG</th><th>SỐ PHÒNG</th><th>GIÁ TỪ / ĐÊM</th><th>TRẠNG THÁI</th><th>CẬP NHẬT</th><th>THAO TÁC</th></tr></thead>
       <tbody>{list.map(item => <tr key={item.id}>
         <td><b>HS{String(item.id).padStart(3, '0')}</b></td><td><PropertyImage item={item}/></td>
-        <td><strong>{item.name}</strong></td><td><span className="inventory-address">{item.address}, {item.district}, {item.province}</span></td>
+        <td><strong>{item.name}</strong>{item.rejectionReason && <small className="inventory-sub" role="status">Lý do xử lý: {item.rejectionReason}</small>}</td><td><span className="inventory-address">{item.address}, {item.district}, {item.province}</span></td>
         <td>{item.roomTypeCount} loại</td><td><b>{item.physicalRoomCount}</b><small className="inventory-sub">{item.availableRoomCount} còn trống</small></td>
         <td><b>{money(item.fromPrice)}</b></td><td><span className={`inventory-status status-${item.status.toLowerCase()}`}>{labels[item.status] || item.status}</span></td>
         <td>{date(item.updatedAt)}</td><td>{actions(item)}</td>
       </tr>)}</tbody>
     </table>{!list.length && <p className="inventory-empty">Không tìm thấy Homestay phù hợp.</p>}</div> :
     <div className="inventory-grid">{list.map(item => <article key={item.id} className="inventory-card">
-      <PropertyImage item={item}/><div className="inventory-card-body"><span className={`inventory-status status-${item.status.toLowerCase()}`}>{labels[item.status] || item.status}</span><h3>{item.name}</h3><p>{item.address}, {item.district}, {item.province}</p><div><span>{item.roomTypeCount} loại phòng</span><span>{item.physicalRoomCount} phòng</span><span>{item.availableRoomCount} còn trống</span></div><footer><b>Từ {money(item.fromPrice)}</b>{actions(item)}</footer></div>
+      <PropertyImage item={item}/><div className="inventory-card-body"><span className={`inventory-status status-${item.status.toLowerCase()}`}>{labels[item.status] || item.status}</span><h3>{item.name}</h3>{item.rejectionReason && <p role="status">Lý do xử lý: {item.rejectionReason}</p>}<p>{item.address}, {item.district}, {item.province}</p><div><span>{item.roomTypeCount} loại phòng</span><span>{item.physicalRoomCount} phòng</span><span>{item.availableRoomCount} còn trống</span></div><footer><b>Từ {money(item.fromPrice)}</b>{actions(item)}</footer></div>
     </article>)}{!list.length && <p className="inventory-empty">Không tìm thấy Homestay phù hợp.</p>}</div>}
   </section>;
 }

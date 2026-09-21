@@ -13,8 +13,9 @@ public sealed record RecommendationItem(long Id, string Name, string District, s
     string? ThumbnailUrl, long RoomTypeId, string RoomTypeName, decimal EstimatedTotal,
     decimal Score, IReadOnlyList<string> Reasons);
 
-public sealed class RecommendationService(AppDbContext db)
+public sealed class RecommendationService(AppDbContext db, RecommendationWeights weights)
 {
+    public string ModelVersion => weights.Version;
     private static string Normalize(string? value)
     {
         var source = (value ?? "").Normalize(NormalizationForm.FormD).ToLowerInvariant().Replace('đ', 'd');
@@ -119,8 +120,10 @@ public sealed class RecommendationService(AppDbContext db)
             var viewCount = recentViews.FirstOrDefault(v => v.HomestayId == home.Id)?.Count ?? 0;
             var historyFit = Math.Min(1, 0.7 * Math.Log(1 + historyCount * 3d) / Math.Log(11)
                 + 0.3 * Math.Log(1 + viewCount) / Math.Log(6));
-            var score = Math.Round((40 * Math.Clamp(priceFit, 0, 1) + 30 * amenityFit
-                + 20 * Math.Clamp((smoothedRating - 1) / 4, 0, 1) + 10 * historyFit), 2);
+            var totalWeight = Math.Max(1, weights.Price + weights.Amenities + weights.Rating + weights.History);
+            var score = Math.Round(100 / totalWeight * (weights.Price * Math.Clamp(priceFit, 0, 1)
+                + weights.Amenities * amenityFit + weights.Rating * Math.Clamp((smoothedRating - 1) / 4, 0, 1)
+                + weights.History * historyFit), 2);
             var matchingAmenities = preferred.Count(homeAmenities.Contains);
             var reasons = new List<string> { $"{query.Rooms} × {best.Name} đủ cho {query.Guests} khách",
                 $"Khoảng {best.Total:N0}đ cho {nights} đêm" };

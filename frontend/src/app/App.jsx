@@ -224,7 +224,7 @@ export default function App() {
       if (mode === 'login') {
         const result = await authApi.login(form);
         setUser(result.user);
-        setView(result.user.role === 'Host' ? 'host' : result.user.role === 'Admin' ? 'admin'
+        setView(result.user.role === 'Host' ? 'host' : ['Admin', 'Support'].includes(result.user.role) ? 'admin'
           : ['catalog', 'detail'].includes(view) ? view : 'home');
         setShowHome(true);
         setNotice({
@@ -412,7 +412,7 @@ export default function App() {
      USER ĐÃ ĐĂNG NHẬP
      ========================================================= */
   if (user) {
-    if (user.role === 'Admin' && view === 'admin') {
+    if (['Admin', 'Support'].includes(user.role) && view === 'admin') {
       return (
         <>
           <AdminDashboardPage
