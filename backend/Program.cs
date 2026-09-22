@@ -68,7 +68,7 @@ if (Uri.TryCreate(connectionString, UriKind.Absolute, out var databaseUri) &&
  * Configure it in the hosting platform's secret/environment-variable settings.
  */
 
-builder.WebHost.UseUrls($"http://localhost:{Environment.GetEnvironmentVariable("PORT") ?? "5000"}");
+builder.WebHost.UseUrls($"http://0.0.0.0:{Environment.GetEnvironmentVariable("PORT") ?? "5000"}");
 builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IHomestayQueryService, HomestayQueryService>();
