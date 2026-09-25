@@ -84,9 +84,9 @@ public sealed class ReviewsController(AppDbContext db) : ControllerBase
         if (!ValidCriteria(request)) return BadRequest(new { message = "Điểm tiêu chí phải từ 1 đến 5." });
         var booking = await db.Bookings.AsNoTracking().SingleOrDefaultAsync(x => x.Id == request.BookingId && x.CustomerId == UserId);
         if (booking is null) return NotFound(new { message = "Không tìm thấy đơn đặt phòng." });
-        if (booking.Status != "Completed") return BadRequest(new { message = "Bạn chỉ có thể đánh giá sau khi kỳ lưu trú đã hoàn tất." });
+        if (booking.Status != BookingStatus.CheckedOut) return BadRequest(new { message = "Bạn chỉ có thể đánh giá sau khi kỳ lưu trú đã hoàn tất." });
         if (await db.Reviews.AnyAsync(x => x.BookingId == booking.Id)) return Conflict(new { message = "Đơn đặt phòng này đã được đánh giá." });
-        if (BookingRules.Today > booking.CheckOutDate.AddDays(14)) return BadRequest(new { message = "Thời hạn đánh giá 14 ngày sau khi trả phòng đã kết thúc." });
+        if (BookingRules.Today > booking.ReviewCreateUntil) return BadRequest(new { message = "Thời hạn đánh giá sau khi trả phòng đã kết thúc." });
         var now = DateTime.UtcNow; var review = new Review { BookingId = booking.Id, CustomerId = UserId, HomestayId = booking.HomestayId, Rating = request.Rating, Comment = string.IsNullOrWhiteSpace(request.Comment) ? null : request.Comment.Trim(), CleanlinessRating = request.CleanlinessRating, LocationRating = request.LocationRating, HostRating = request.HostRating, ValueRating = request.ValueRating, Status = "Visible", CreatedAt = now, UpdatedAt = now };
         db.Reviews.Add(review); await db.SaveChangesAsync(); return Created($"/api/homestays/{booking.HomestayId}/reviews", new { review.Id, message = "Đã gửi đánh giá." });
     }
@@ -99,8 +99,8 @@ public sealed class ReviewsController(AppDbContext db) : ControllerBase
         if ((request.Comment?.Trim().Length ?? 0) > 1000) return BadRequest(new { message = "Nội dung đánh giá tối đa 1000 ký tự." });
         var review = await db.Reviews.SingleOrDefaultAsync(x => x.Id == reviewId && x.CustomerId == UserId);
         if (review is null) return NotFound(new { message = "Không tìm thấy đánh giá của bạn." });
-        var checkOut = await db.Bookings.Where(b => b.Id == review.BookingId).Select(b => b.CheckOutDate).SingleAsync();
-        if (BookingRules.Today > checkOut.AddDays(14)) return BadRequest(new { message = "Đã hết thời hạn sửa đánh giá." });
+        var reviewEditUntil = await db.Bookings.Where(b => b.Id == review.BookingId).Select(b => b.ReviewEditUntil).SingleAsync();
+        if (BookingRules.Today > reviewEditUntil) return BadRequest(new { message = "Đã hết thời hạn sửa đánh giá." });
         review.Rating = request.Rating; review.Comment = string.IsNullOrWhiteSpace(request.Comment) ? null : request.Comment.Trim();
         review.CleanlinessRating = request.CleanlinessRating; review.LocationRating = request.LocationRating; review.HostRating = request.HostRating; review.ValueRating = request.ValueRating; review.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(); return Ok(new { message = "Đã cập nhật đánh giá." });
@@ -145,8 +145,8 @@ public sealed class ReviewsController(AppDbContext db) : ControllerBase
         if (!string.IsNullOrWhiteSpace(search)) { var term = search.Trim().ToLower(); query = query.Where(u => u.FullName.ToLower().Contains(term) || u.Email.ToLower().Contains(term) || (u.PhoneNumber != null && u.PhoneNumber.Contains(term))); }
         var shaped = query.Select(u => new { u.Id, u.FullName, u.Email, u.PhoneNumber, u.AvatarUrl,
             BookingCount = db.Bookings.Count(b => b.CustomerId == u.Id && db.Homestays.Any(h => h.Id == b.HomestayId && h.HostId == hostId)),
-            CompletedCount = db.Bookings.Count(b => b.CustomerId == u.Id && b.Status == "Completed" && db.Homestays.Any(h => h.Id == b.HomestayId && h.HostId == hostId)),
-            TotalSpent = db.Bookings.Where(b => b.CustomerId == u.Id && db.Homestays.Any(h => h.Id == b.HomestayId && h.HostId == hostId)).SelectMany(b => b.Payments).Where(p => p.TransactionType == "Payment" && p.Status == "Success").Sum(p => (decimal?)p.Amount) ?? 0,
+            CompletedCount = db.Bookings.Count(b => b.CustomerId == u.Id && b.Status == BookingStatus.CheckedOut && db.Homestays.Any(h => h.Id == b.HomestayId && h.HostId == hostId)),
+            TotalSpent = db.Bookings.Where(b => b.CustomerId == u.Id && db.Homestays.Any(h => h.Id == b.HomestayId && h.HostId == hostId)).SelectMany(b => b.Payments).Where(p => p.TransactionType != "Refund" && p.Status == "Success").Sum(p => (decimal?)p.Amount) ?? 0,
             LastStay = db.Bookings.Where(b => b.CustomerId == u.Id && db.Homestays.Any(h => h.Id == b.HomestayId && h.HostId == hostId)).Max(b => (DateOnly?)b.CheckOutDate),
             Note = db.HostCustomerNotes.Where(n => n.HostId == hostId && n.CustomerId == u.Id).Select(n => n.Note).FirstOrDefault() });
         shaped = sort == "spending" ? shaped.OrderByDescending(x => x.TotalSpent) : shaped.OrderByDescending(x => x.BookingCount);

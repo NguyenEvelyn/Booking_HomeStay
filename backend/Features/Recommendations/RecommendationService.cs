@@ -66,7 +66,7 @@ public sealed class RecommendationService(AppDbContext db, RecommendationWeights
         var userId = long.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var parsed) ? parsed : 0;
         var history = userId > 0
             ? await db.Bookings.AsNoTracking().Where(b => b.CustomerId == userId && homeIds.Contains(b.HomestayId)
-                && new[] { "Confirmed", "CheckedIn", "Completed" }.Contains(b.Status))
+                && new[] { BookingStatus.Confirmed, BookingStatus.CheckedIn, BookingStatus.CheckoutPendingPayment, BookingStatus.CheckedOut }.Contains(b.Status))
                 .GroupBy(b => b.HomestayId).Select(g => new { HomestayId = g.Key, Count = g.Count() }).ToListAsync()
             : [];
         var recentViews = !string.IsNullOrWhiteSpace(query.SessionId)

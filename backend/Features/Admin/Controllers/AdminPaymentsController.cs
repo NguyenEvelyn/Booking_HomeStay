@@ -19,7 +19,7 @@ public sealed class AdminPaymentsController(AppDbContext db, VnPayService vnPay,
     {
         var reason = request.Reason?.Trim();
         if (string.IsNullOrWhiteSpace(reason) || reason.Length > 500) return BadRequest(new { message = "Vui lòng nhập lý do đối soát, tối đa 500 ký tự." });
-        var original = await db.Payments.AsNoTracking().Where(p => p.Id == id && p.TransactionType == "Payment" && p.PaymentMethod == "VNPay")
+        var original = await db.Payments.AsNoTracking().Where(p => p.Id == id && p.TransactionType != "Refund" && p.PaymentMethod == "VNPay")
             .Select(p => new { p.BookingId, p.TransactionCode, p.Amount, p.CreatedAt }).SingleOrDefaultAsync(cancellationToken);
         if (original is null) return NotFound(new { message = "Không tìm thấy giao dịch VNPAY." });
         VnPayQueryResult result;
@@ -41,8 +41,8 @@ public sealed class AdminPaymentsController(AppDbContext db, VnPayService vnPay,
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         await BookingAvailability.LockBooking(db, original.BookingId);
         var payment = await db.Payments.Include(p => p.Booking).SingleAsync(p => p.Id == id, cancellationToken);
-        if (payment.Amount != payment.Booking.TotalAmount)
-            return Conflict(new { message = "Số tiền giao dịch không khớp đơn; cần kiểm tra thủ công trước khi đổi trạng thái." });
+        if (payment.TransactionType == "Deposit" && payment.Amount < payment.Booking.DepositAmount)
+            return Conflict(new { message = "Số tiền giao dịch thấp hơn tiền cọc phải thu." });
         var now = DateTime.UtcNow;
         var success = result.TransactionStatus == "00";
         if (payment.Status == "Success" && !success)
@@ -54,22 +54,22 @@ public sealed class AdminPaymentsController(AppDbContext db, VnPayService vnPay,
         payment.BankCode = result.BankCode;
         payment.UpdatedAt = now;
         payment.PaidAt = success ? payment.PaidAt ?? now : null;
-        if (success && BookingRules.CanConfirm(payment.Booking.Status, payment.Booking.UpdatedAt, payment.CreatedAt, now))
+        if (success && BookingRules.CanConfirm(payment.Booking.Status, payment.Booking.HoldExpiresAt ?? payment.Booking.UpdatedAt, payment.CreatedAt, now))
         {
-            payment.Booking.Status = "Confirmed";
+            payment.Booking.Status = BookingStatus.Confirmed; payment.Booking.PaymentStatus = PaymentStatus.Deposited;
             payment.Booking.UpdatedAt = now;
         }
-        else if (!success && payment.Booking.Status == "PendingPayment")
+        else if (!success && payment.Booking.Status == BookingStatus.Hold)
         {
             payment.Booking.Status = "PaymentFailed";
             payment.Booking.UpdatedAt = now;
         }
-        else if (success && payment.Booking.Status == "PendingPayment" && !BookingRules.IsActiveHold(payment.Booking.Status, payment.Booking.UpdatedAt, now))
+        else if (success && payment.Booking.Status == BookingStatus.Hold && !BookingRules.IsActiveHold(payment.Booking.Status, payment.Booking.HoldExpiresAt ?? payment.Booking.UpdatedAt, now))
         {
             payment.Booking.Status = "Expired";
             payment.Booking.UpdatedAt = now;
         }
-        if (success && payment.Booking.Status is ("Cancelled" or "Expired" or "PaymentFailed" or "CancellationRequested")
+        if (success && payment.Booking.Status is (BookingStatus.Cancelled or "Expired" or "PaymentFailed")
             && !await db.Payments.AnyAsync(p => p.TransactionCode == "RF" + payment.TransactionCode, cancellationToken))
         {
             db.Payments.Add(new Payment { BookingId = original.BookingId, TransactionCode = "RF" + payment.TransactionCode,
@@ -90,7 +90,7 @@ public sealed class AdminPaymentsController(AppDbContext db, VnPayService vnPay,
         [FromQuery] DateOnly? from = null, [FromQuery] DateOnly? to = null, [FromQuery] string sort = "createdAt_desc")
     {
         page = Math.Max(1, page); pageSize = Math.Clamp(pageSize, 10, 100);
-        var query = db.Payments.AsNoTracking().Where(p => p.TransactionType == "Payment");
+        var query = db.Payments.AsNoTracking().Where(p => p.TransactionType != "Refund");
         if (!string.IsNullOrWhiteSpace(search))
         {
             var term = $"%{search.Trim()}%";
@@ -105,8 +105,8 @@ public sealed class AdminPaymentsController(AppDbContext db, VnPayService vnPay,
         if (from.HasValue) { var startUtc = VietNamStart(from.Value); query = query.Where(p => p.CreatedAt >= startUtc); }
         if (to.HasValue) { var endUtc = VietNamStart(to.Value.AddDays(1)); query = query.Where(p => p.CreatedAt < endUtc); }
         if (discrepancy) query = query.Where(p => p.Status == "Success" &&
-            (p.Amount != p.Booking.TotalAmount || p.Booking.Status == "PendingPayment" ||
-             p.Booking.Status == "Cancelled" || p.Booking.Status == "Expired" || p.Booking.Status == "PaymentFailed"));
+            ((p.TransactionType == "Deposit" && p.Amount < p.Booking.DepositAmount) || p.Booking.Status == BookingStatus.Hold ||
+             p.Booking.Status == BookingStatus.Cancelled || p.Booking.Status == "Expired" || p.Booking.Status == "PaymentFailed"));
         query = sort switch { "createdAt_asc" => query.OrderBy(p => p.CreatedAt),
             "amount_desc" => query.OrderByDescending(p => p.Amount), "amount_asc" => query.OrderBy(p => p.Amount),
             _ => query.OrderByDescending(p => p.CreatedAt) };
@@ -116,8 +116,8 @@ public sealed class AdminPaymentsController(AppDbContext db, VnPayService vnPay,
             p.Id, p.BookingId, p.Booking.BookingCode, bookingStatus = p.Booking.Status, p.TransactionCode,
             p.VnPayTransactionNo, p.Amount, bookingAmount = p.Booking.TotalAmount, p.PaymentMethod,
             p.ResponseCode, p.BankCode, p.Status, p.CreatedAt, p.PaidAt,
-            discrepancy = p.Status == "Success" && (p.Amount != p.Booking.TotalAmount ||
-                p.Booking.Status == "PendingPayment" || p.Booking.Status == "Cancelled" ||
+            discrepancy = p.Status == "Success" && ((p.TransactionType == "Deposit" && p.Amount < p.Booking.DepositAmount) ||
+                p.Booking.Status == BookingStatus.Hold || p.Booking.Status == BookingStatus.Cancelled ||
                 p.Booking.Status == "Expired" || p.Booking.Status == "PaymentFailed")
         }).ToListAsync();
         return Ok(new { items, page, pageSize, total, totalPages = (int)Math.Ceiling(total / (double)pageSize) });
@@ -155,7 +155,7 @@ public sealed class AdminPaymentsController(AppDbContext db, VnPayService vnPay,
         var rows = (from b in db.Bookings.AsNoTracking()
             join h in db.Homestays on b.HomestayId equals h.Id
             join u in db.Users on h.HostId equals u.Id
-            where b.Status == "Completed" && b.UpdatedAt >= start && b.UpdatedAt < end
+            where b.Status == BookingStatus.CheckedOut && b.UpdatedAt >= start && b.UpdatedAt < end
             select new { Booking = b, Host = u })
             .GroupBy(x => new { HostId = x.Host.Id, x.Host.FullName, x.Host.Email })
             .Select(g => new { hostId = g.Key.HostId, hostName = g.Key.FullName, email = g.Key.Email,
@@ -194,7 +194,7 @@ public sealed class AdminPaymentsController(AppDbContext db, VnPayService vnPay,
             var rows = await (from b in db.Bookings.AsNoTracking()
                 join h in db.Homestays on b.HomestayId equals h.Id
                 join u in db.Users on h.HostId equals u.Id
-                where b.Status == "Completed" && b.UpdatedAt >= start && b.UpdatedAt < end
+                where b.Status == BookingStatus.CheckedOut && b.UpdatedAt >= start && b.UpdatedAt < end
                 select new { Booking = b, Host = u })
                 .GroupBy(x => new { x.Host.Id, x.Host.FullName, x.Host.Email })
                 .Select(g => new { g.Key.FullName, g.Key.Email, Count = g.Count(), Gmv = g.Sum(x => x.Booking.TotalAmount),

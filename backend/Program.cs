@@ -76,6 +76,15 @@ builder.Services.AddScoped<RecommendationService>();
 builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 builder.Services.AddSingleton(RecommendationWeights.Load(builder.Environment.ContentRootPath));
 builder.Services.AddSingleton<HomestayAuth.Api.Features.Bookings.VnPayService>();
+builder.Services.AddHostedService<HomestayAuth.Api.Features.Bookings.ExpiredBookingWorker>();
+builder.Services.AddHostedService<HomestayAuth.Api.Features.Bookings.OutboxWorker>();
+builder.Services.AddSingleton<HomestayAuth.Api.Features.Bookings.IHomestayClock, HomestayAuth.Api.Features.Bookings.HomestayClock>();
+builder.Services.AddScoped<HomestayAuth.Api.Features.Bookings.RoomInventoryService>();
+builder.Services.AddScoped<HomestayAuth.Api.Features.Bookings.PaymentService>();
+builder.Services.AddScoped<HomestayAuth.Api.Features.Bookings.IdempotencyService>();
+builder.Services.AddScoped<HomestayAuth.Api.Features.Bookings.BookingService>();
+builder.Services.AddScoped<HomestayAuth.Api.Features.Bookings.AdditionalChargeService>();
+builder.Services.AddScoped<HomestayAuth.Api.Features.Bookings.PolicyService>();
 builder.Services.AddSingleton<IEmailOtpSender, EmailOtpSender>();
 builder.Services.AddRateLimiter(options =>
 {

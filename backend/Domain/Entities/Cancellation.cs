@@ -9,6 +9,10 @@ public class Cancellation
     public DateTime CancelledAt { get; set; }
     public decimal CancellationFee { get; set; }
     public decimal RefundAmount { get; set; }
+    public decimal RefundPercent { get; set; }
+    public decimal PaidAmountAtCancellation { get; set; }
+    public long? OverrideBy { get; set; }
+    public string? OverrideReason { get; set; }
     public required string Status { get; set; }
     public long? ProcessedBy { get; set; }
     public DateTime? ProcessedAt { get; set; }

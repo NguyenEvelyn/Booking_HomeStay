@@ -189,8 +189,8 @@ CREATE TABLE IF NOT EXISTS bookings (
   tax_amount NUMERIC(18,2) NOT NULL DEFAULT 0 CHECK (tax_amount >= 0),
   total_amount NUMERIC(18,2) NOT NULL CHECK (total_amount >= 0),
   commission_rate NUMERIC(5,4) NOT NULL DEFAULT 0.10 CHECK (commission_rate BETWEEN 0 AND 1),
-  status VARCHAR(30) NOT NULL DEFAULT 'PendingPayment'
-    CHECK (status IN ('PendingPayment','Confirmed','CheckedIn','Completed','CancellationRequested','Cancelled','Expired','PaymentFailed')),
+  status VARCHAR(30) NOT NULL DEFAULT 'Hold'
+    CHECK (status IN ('Hold','Confirmed','CheckedIn','CheckoutPendingPayment','CheckedOut','Cancelled','NoShow','Expired','PaymentFailed')),
   customer_note VARCHAR(500),
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -233,7 +233,7 @@ CREATE TABLE IF NOT EXISTS payments (
   booking_id BIGINT NOT NULL REFERENCES bookings(booking_id) ON DELETE RESTRICT,
   transaction_code VARCHAR(100) NOT NULL UNIQUE,
   payment_method VARCHAR(30) NOT NULL,
-  transaction_type VARCHAR(20) NOT NULL CHECK (transaction_type IN ('Payment','Refund')),
+  transaction_type VARCHAR(20) NOT NULL CHECK (transaction_type IN ('Deposit','FinalPayment','AdditionalPayment','Refund')),
   amount NUMERIC(18,2) NOT NULL CHECK (amount >= 0),
   status VARCHAR(30) NOT NULL DEFAULT 'Pending' CHECK (status IN ('Pending','Success','Failed')),
   paid_at TIMESTAMPTZ,

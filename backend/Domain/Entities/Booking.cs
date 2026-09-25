@@ -15,6 +15,14 @@ public class Booking
     public decimal ServiceFee { get; set; }
     public decimal TaxAmount { get; set; }
     public decimal TotalAmount { get; set; }
+    public decimal RoomAmount { get; set; }
+    public decimal DepositAmount { get; set; }
+    public string PaymentStatus { get; set; } = "Unpaid";
+    public DateTime? HoldExpiresAt { get; set; }
+    public string PricingSnapshotJson { get; set; } = "{}";
+    public string PolicySnapshotJson { get; set; } = "{}";
+    public DateOnly ReviewCreateUntil { get; set; }
+    public DateOnly ReviewEditUntil { get; set; }
     public decimal CommissionRate { get; set; }
     public required string Status { get; set; }
     public string? CustomerNote { get; set; }
@@ -25,4 +33,7 @@ public class Booking
     public DateTime UpdatedAt { get; set; }
     public ICollection<BookingDetail> Details { get; set; } = [];
     public ICollection<Payment> Payments { get; set; } = [];
+    public ICollection<AdditionalCharge> AdditionalCharges { get; set; } = [];
+    public ICollection<BookingRoomStay> RoomStays { get; set; } = [];
+    public Homestay Homestay { get; set; } = null!;
 }

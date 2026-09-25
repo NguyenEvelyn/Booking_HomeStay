@@ -75,11 +75,10 @@ public sealed class AdminBookingsController(AppDbContext db, IAuditLogService au
         await BookingAvailability.LockBooking(db, id);
         var booking = await db.Bookings.SingleOrDefaultAsync(b => b.Id == id);
         if (booking is null) return NotFound(new { message = "Không tìm thấy đơn đặt phòng." });
-        var allowed = booking.Status switch { "PendingPayment" => request.Status == "Confirmed", "Confirmed" => request.Status == "CheckedIn",
-            "CheckedIn" => request.Status == "Completed", _ => false };
+        var allowed = booking.Status switch { BookingStatus.Hold => request.Status == BookingStatus.Confirmed, BookingStatus.Confirmed => request.Status == BookingStatus.CheckedIn, _ => false };
         if (!allowed) return BadRequest(new { message = "Bước chuyển trạng thái không hợp lệ." });
-        if (request.Status == "Confirmed" && !await db.Payments.AnyAsync(p => p.BookingId == id && p.TransactionType == "Payment" && p.Status == "Success" && p.Amount == booking.TotalAmount))
-            return BadRequest(new { message = "Chưa có giao dịch thành công khớp số tiền; không thể xác nhận thủ công." });
+        if (request.Status == BookingStatus.Confirmed && !await db.Payments.AnyAsync(p => p.BookingId == id && p.TransactionType == "Deposit" && p.Status == "Success" && p.Amount >= booking.DepositAmount))
+            return BadRequest(new { message = "Chưa nhận đủ tiền cọc; không thể xác nhận thủ công." });
         var before = new { booking.Status };
         booking.Status = request.Status!; booking.UpdatedAt = DateTime.UtcNow;
         audit.Add(HttpContext, "booking.status_change", "booking", id, before, new { booking.Status }, request.Reason);
@@ -97,17 +96,17 @@ public sealed class AdminBookingsController(AppDbContext db, IAuditLogService au
         await BookingAvailability.LockBooking(db, id);
         var booking = await db.Bookings.SingleOrDefaultAsync(b => b.Id == id);
         if (booking is null) return NotFound(new { message = "Không tìm thấy đơn đặt phòng." });
-        if (!BookingRules.CanCancel(booking.Status, booking.UpdatedAt, booking.CheckInDate, BookingRules.Today, DateTime.UtcNow))
+        if (!BookingRules.CanCancel(booking.Status, booking.HoldExpiresAt ?? booking.UpdatedAt, booking.CheckInDate, BookingRules.Today, DateTime.UtcNow))
             return BadRequest(new { message = "Đơn không còn đủ điều kiện hủy." });
         if (await db.Cancellations.AnyAsync(c => c.BookingId == id)) return Conflict(new { message = "Đơn đã có yêu cầu hủy." });
-        var paid = await db.Payments.Where(p => p.BookingId == id && p.TransactionType == "Payment" && p.Status == "Success").SumAsync(p => (decimal?)p.Amount) ?? 0;
+        var paid = await db.Payments.Where(p => p.BookingId == id && p.TransactionType != "Refund" && p.Status == "Success").SumAsync(p => (decimal?)p.Amount) ?? 0;
         var days = booking.CheckInDate.DayNumber - BookingRules.Today.DayNumber;
-        var fee = days >= 7 ? 0m : decimal.Round(paid * .5m, 0);
-        var refund = paid - fee;
+        var policy = PolicyService.ParseSnapshot(booking.PolicySnapshotJson); var percent = PolicyService.RefundPercent(policy, days);
+        var result = BookingRules.Cancellation(paid, days, percent); var fee = result.Penalty; var refund = result.Refund;
         var actorId = long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var now = DateTime.UtcNow;
         var before = new { booking.Status };
-        booking.Status = "Cancelled"; booking.UpdatedAt = now;
+        booking.Status = BookingStatus.Cancelled; booking.PaymentStatus = refund > 0 ? PaymentStatus.RefundPending : booking.PaymentStatus; booking.UpdatedAt = now;
         db.Cancellations.Add(new Cancellation { BookingId = id, CancelledBy = actorId, Reason = reason,
             CancelledAt = now, CancellationFee = fee, RefundAmount = refund, Status = refund > 0 ? "Approved" : "Refunded",
             ProcessedBy = actorId, ProcessedAt = now });

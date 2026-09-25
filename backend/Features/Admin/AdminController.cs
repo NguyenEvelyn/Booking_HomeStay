@@ -19,7 +19,7 @@ public sealed class AdminController(AppDbContext db, IAuditLogService audit, IAu
     public async Task<IActionResult> Overview() => Ok(new {
         users = await db.Users.CountAsync(), hosts = await db.Users.CountAsync(u => u.Role == "Host"),
         homestays = await db.Homestays.CountAsync(), pendingHomestays = await db.Homestays.CountAsync(h => h.Status == "Pending"),
-        bookings = await db.Bookings.CountAsync(), revenue = await db.Payments.Where(p => p.Status == "Success" && p.TransactionType == "Payment").SumAsync(p => (decimal?)p.Amount) ?? 0
+        bookings = await db.Bookings.CountAsync(), revenue = await db.Payments.Where(p => p.Status == "Success" && p.TransactionType != "Refund").SumAsync(p => (decimal?)p.Amount) ?? 0
     });
 
     [HttpGet("homestays")]

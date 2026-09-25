@@ -22,7 +22,7 @@ public sealed class HomestayQueryService(AppDbContext db) : IHomestayQueryServic
         if (!string.IsNullOrWhiteSpace(province))
             query = query.Where(h => EF.Functions.ILike(h.Province, province.Trim()));
 
-        var holdCutoff = DateTime.UtcNow.AddMinutes(-BookingRules.HoldMinutes);
+        var now = DateTime.UtcNow;
         var futureCheckIn = checkIn.HasValue && checkIn.Value > BookingRules.Today;
         query = query.Where(h => h.RoomTypes.Any(r => r.Status == "Active"
             && (r.ExtraGuestAllowed ? r.MaxCapacity : r.BaseCapacity) * rooms >= guests
@@ -32,11 +32,11 @@ public sealed class HomestayQueryService(AppDbContext db) : IHomestayQueryServic
                 && (!checkIn.HasValue || !db.BookingDetails.Any(d => d.RoomId == room.Id
                     && d.Booking.CheckInDate < checkOut!.Value && d.Booking.CheckOutDate > checkIn.Value
                     && (BookingRules.ReservedStatuses.Contains(d.Booking.Status)
-                        || (d.Booking.Status == "PendingPayment" && d.Booking.UpdatedAt > holdCutoff)))))
+                        || (d.Booking.Status == BookingStatus.Hold && d.Booking.HoldExpiresAt > now)))))
                 >= rooms + (!checkIn.HasValue ? 0 : db.BookingDetails.Where(d => d.RoomTypeId == r.Id && d.RoomId == null
                     && d.Booking.CheckInDate < checkOut!.Value && d.Booking.CheckOutDate > checkIn.Value
                     && (BookingRules.ReservedStatuses.Contains(d.Booking.Status)
-                        || (d.Booking.Status == "PendingPayment" && d.Booking.UpdatedAt > holdCutoff)))
+                        || (d.Booking.Status == BookingStatus.Hold && d.Booking.HoldExpiresAt > now)))
                     .Sum(d => (int?)d.Quantity) ?? 0)));
         if (minRating > 0)
             query = query.Where(h => db.Reviews.Any(r => r.HomestayId == h.Id && r.Status == "Visible")
@@ -68,11 +68,11 @@ public sealed class HomestayQueryService(AppDbContext db) : IHomestayQueryServic
                         && (!checkIn.HasValue || !db.BookingDetails.Any(d => d.RoomId == room.Id
                             && d.Booking.CheckInDate < checkOut!.Value && d.Booking.CheckOutDate > checkIn.Value
                             && (BookingRules.ReservedStatuses.Contains(d.Booking.Status)
-                                || (d.Booking.Status == "PendingPayment" && d.Booking.UpdatedAt > holdCutoff)))))
+                                || (d.Booking.Status == BookingStatus.Hold && d.Booking.HoldExpiresAt > now)))))
                         >= rooms + (!checkIn.HasValue ? 0 : db.BookingDetails.Where(d => d.RoomTypeId == r.Id && d.RoomId == null
                             && d.Booking.CheckInDate < checkOut!.Value && d.Booking.CheckOutDate > checkIn.Value
                             && (BookingRules.ReservedStatuses.Contains(d.Booking.Status)
-                                || (d.Booking.Status == "PendingPayment" && d.Booking.UpdatedAt > holdCutoff)))
+                                || (d.Booking.Status == BookingStatus.Hold && d.Booking.HoldExpiresAt > now)))
                             .Sum(d => (int?)d.Quantity) ?? 0))
                     .Select(r => (decimal?)r.BasePrice).Min(),
                 h.RoomTypes.Count(r => r.Status == "Active"),
@@ -83,11 +83,11 @@ public sealed class HomestayQueryService(AppDbContext db) : IHomestayQueryServic
                         && (!checkIn.HasValue || !db.BookingDetails.Any(d => d.RoomId == room.Id
                             && d.Booking.CheckInDate < checkOut!.Value && d.Booking.CheckOutDate > checkIn.Value
                             && (BookingRules.ReservedStatuses.Contains(d.Booking.Status)
-                                || (d.Booking.Status == "PendingPayment" && d.Booking.UpdatedAt > holdCutoff)))))
+                                || (d.Booking.Status == BookingStatus.Hold && d.Booking.HoldExpiresAt > now)))))
                     - (!checkIn.HasValue ? 0 : db.BookingDetails.Where(d => d.RoomId == null && d.Booking.HomestayId == h.Id
                         && d.Booking.CheckInDate < checkOut!.Value && d.Booking.CheckOutDate > checkIn.Value
                         && (BookingRules.ReservedStatuses.Contains(d.Booking.Status)
-                            || (d.Booking.Status == "PendingPayment" && d.Booking.UpdatedAt > holdCutoff)))
+                            || (d.Booking.Status == BookingStatus.Hold && d.Booking.HoldExpiresAt > now)))
                         .Sum(d => (int?)d.Quantity) ?? 0),
                 db.Reviews.Where(r => r.HomestayId == h.Id && r.Status == "Visible").Average(r => (decimal?)r.Rating),
                 db.Reviews.Count(r => r.HomestayId == h.Id && r.Status == "Visible"),

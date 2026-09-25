@@ -89,7 +89,7 @@ public sealed record RoomTypeDetailResponse(
 public sealed record PagedResponse<T>(IReadOnlyList<T> Items, int Total, int Page, int PageSize);
 
 public sealed record SaveHomestayRequest(string Name, string Description, string AddressLine, string Ward, string District, string Province, TimeOnly? CheckInTime, TimeOnly? CheckOutTime);
-public sealed record SaveRoomTypeRequest(string Name, string Description, decimal BasePrice, int MaxAdults, int MaxChildren, string BedType, decimal? RoomSize, int? BaseCapacity, int? MaxCapacity, bool? ExtraGuestAllowed, decimal? ExtraGuestFee);
+public sealed record SaveRoomTypeRequest(string Name, string Description, decimal BasePrice, int MaxAdults, int MaxChildren, string BedType, decimal? RoomSize, int? BaseCapacity, int? MaxCapacity, bool? ExtraGuestAllowed, decimal? ExtraGuestFee, decimal? DepositPercent);
 public sealed record SaveCapacityRequest(int BaseCapacity, int MaxCapacity, bool ExtraGuestAllowed, decimal ExtraGuestFee);
 public sealed record BulkExtraGuestPolicyRequest(bool ExtraGuestAllowed, decimal ExtraGuestFee);
 public sealed record SaveRoomRequest(string RoomNumber, int? FloorNumber, string Status, string? Note);

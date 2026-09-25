@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Text.Json;
 using HomestayAuth.Api.Domain.Entities;
 using HomestayAuth.Api.Infrastructure.Persistence;
+using HomestayAuth.Api.Features.Bookings;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -68,7 +69,7 @@ public sealed class RecommendationEventsController(AppDbContext db) : Controller
         var views = events.Where(e => e.EventType == "view").ToList();
         var bookings = events.Where(e => e.EventType == "booking").ToList();
         var confirmedBookings = await db.Bookings.AsNoTracking().CountAsync(b => b.CreatedAt >= since
-            && new[] { "Confirmed", "CheckedIn", "Completed" }.Contains(b.Status));
+            && new[] { BookingStatus.Confirmed, BookingStatus.CheckedIn, BookingStatus.CheckoutPendingPayment, BookingStatus.CheckedOut }.Contains(b.Status));
         var linkedBookingIds = bookings.Where(e => e.BookingId.HasValue).Select(e => e.BookingId!.Value).Distinct().Count();
         var invalidSearchPayloads = 0;
         var recommendedSearches = 0;
