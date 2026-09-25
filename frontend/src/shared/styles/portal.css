@@ -532,107 +532,567 @@
   line-height: 1.65;
 }
 
-/* 1. Giới thiệu homestay */
-.redesigned-intro {
-  display: grid;
-  grid-template-columns: 1.4fr 1fr;
-  gap: 48px;
-  align-items: center;
+/* ==========================================================================
+   HOMESTAY DETAIL BODY REDESIGN
+   ========================================================================== */
+
+/* 1. Detail Photo Gallery Mosaic */
+.detail-gallery-mosaic {
+  display: flex;
+  gap: 10px;
+  height: 420px;
+  margin-bottom: 24px;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(5, 25, 55, 0.06);
 }
 
-.redesigned-intro aside {
+.gallery-mosaic-main {
+  flex: 0 0 42%;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  background: #091d42;
+}
+
+.gallery-mosaic-main img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.35s ease;
+}
+
+.gallery-mosaic-main:hover img {
+  transform: scale(1.03);
+}
+
+.gallery-mosaic-grid {
+  flex: 1;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  border: 1px solid #e8edf5;
-  border-radius: 12px;
-  background: #f8fafc;
-  overflow: hidden;
+  grid-template-rows: repeat(2, 1fr);
+  gap: 10px;
 }
 
-.redesigned-intro article {
+.gallery-mosaic-item {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  background: #091d42;
+  border-radius: 4px;
+}
+
+.gallery-mosaic-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.35s ease;
+}
+
+.gallery-mosaic-item:hover img {
+  transform: scale(1.05);
+}
+
+.gallery-mosaic-last {
+  position: relative;
+}
+
+.gallery-more-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(6, 25, 60, 0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 22px 12px;
-  border-right: 1px solid #e8edf5;
+  gap: 8px;
+  color: #fff;
+  transition: background 0.25s ease;
+  padding: 12px;
   text-align: center;
 }
 
-.redesigned-intro article:last-child {
-  border-right: none;
+.gallery-mosaic-last:hover .gallery-more-overlay {
+  background: rgba(6, 25, 60, 0.78);
 }
 
-.redesigned-intro article b {
+.gallery-more-overlay span {
+  font-family: 'Be Vietnam Pro', Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* 2. Detail Overview 3-Card Grid */
+.detail-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.overview-card {
+  background: #fff;
+  border: 1px solid #e8edf5;
+  border-radius: 16px;
+  padding: 22px 24px;
+  box-shadow: 0 4px 18px rgba(6, 28, 66, 0.04);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.overview-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(6, 28, 66, 0.08);
+  border-color: #cbd5e1;
+}
+
+.overview-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  min-height: 32px;
+}
+
+.overview-card-header h3 {
+  margin: 0;
+  color: #09275f;
+  font-family: 'Be Vietnam Pro', Arial, sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.overview-card-link {
+  background: none;
+  border: none;
+  padding: 0;
   color: #0b4ae6;
   font-family: 'Be Vietnam Pro', Arial, sans-serif;
-  font-size: 32px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-decoration: none;
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.overview-card-link:hover {
+  color: #0837a8;
+  transform: translateX(2px);
+}
+
+/* Review Card specifics */
+.overview-score-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.overview-score-row strong {
+  color: #0b4ae6;
+  font-family: 'Be Vietnam Pro', Arial, sans-serif;
+  font-size: 26px;
   font-weight: 800;
   line-height: 1;
 }
 
-.redesigned-intro article span {
+.overview-score-row .score-scale {
   color: #64748b;
-  font-size: 11px;
-  font-weight: 500;
-}
-
-/* 2. Tiện ích nổi bật */
-.featured-amenities > div {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 16px;
-}
-
-.featured-amenities article {
-  min-height: 110px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 18px 12px;
-  border: 1px solid #e8edf5;
-  border-radius: 12px;
-  background: #f8fafc;
-  text-align: center;
-  transition: all .2s ease;
-}
-
-.featured-amenities article:hover {
-  border-color: #ffb700;
-  background: #fff;
-  transform: translateY(-3px);
-  box-shadow: 0 8px 20px rgba(6, 31, 78, 0.08);
-}
-
-.featured-amenities article i {
-  width: 48px;
-  height: 48px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: #eef4ff;
-  color: #0b4ae6;
-}
-
-.featured-amenities article span {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  color: #09275f;
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 600;
 }
 
-.featured-amenities article small {
-  color: #8c9bb0;
-  font-size: 10px;
-  font-weight: 400;
+.overview-score-row .sentiment-badge {
+  background: #eef4ff;
+  color: #0b4ae6;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  margin-left: 4px;
 }
 
-/* 3. Danh sách phòng */
+.overview-subheading {
+  display: block;
+  color: #475569;
+  font-size: 12.5px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.overview-review-snippets {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+}
+
+.overview-review-item {
+  background: #f8fafc;
+  border: 1px solid #edf2f7;
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.overview-reviewer-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.overview-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #09275f;
+  color: #ffb700;
+  font-size: 10px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.overview-reviewer-name {
+  color: #09275f;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.overview-stars {
+  margin-left: auto;
+  color: #ffb700;
+  font-size: 11px;
+  letter-spacing: 1px;
+}
+
+.overview-review-quote {
+  margin: 0;
+  color: #475569;
+  font-size: 12px;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-style: italic;
+}
+
+/* Map Card specifics */
+.overview-map-address {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: #334155;
+  font-size: 12.5px;
+  line-height: 1.45;
+  margin-bottom: 12px;
+  min-height: 36px;
+}
+
+.overview-map-address svg {
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.overview-map-embed {
+  flex: 1;
+  min-height: 180px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  background: #f1f5f9;
+}
+
+.overview-map-embed iframe {
+  width: 100%;
+  height: 100%;
+  min-height: 180px;
+  display: block;
+}
+
+/* Amenities Card specifics */
+.overview-amenities-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 12px;
+  margin-top: 6px;
+}
+
+.overview-amenity-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.overview-amenity-item i {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: #eef4ff;
+  color: #0b4ae6;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.overview-amenity-item span {
+  color: #1e293b;
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+/* 3. Detail Description Card */
+.detail-description-card {
+  background: #fff;
+  border: 1px solid #e8edf5;
+  border-radius: 16px;
+  padding: 28px 32px;
+  margin-bottom: 32px;
+  box-shadow: 0 4px 18px rgba(6, 28, 66, 0.04);
+}
+
+.detail-description-card h2 {
+  margin: 0 0 14px;
+  color: #09275f;
+  font-family: 'Be Vietnam Pro', Arial, sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.detail-description-card p {
+  margin: 0;
+  color: #475569;
+  font-size: 14px;
+  line-height: 1.75;
+}
+
+.detail-description-card p.clamped {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
+.detail-description-card p.expanded {
+  display: block;
+}
+
+.desc-toggle-btn {
+  background: none;
+  border: none;
+  padding: 10px 0 0;
+  color: #0b4ae6;
+  font-family: 'Be Vietnam Pro', Arial, sans-serif;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: color 0.15s ease;
+}
+
+.desc-toggle-btn:hover {
+  color: #0837a8;
+}
+
+/* 4. Gallery Lightbox Modal */
+.gallery-lightbox-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(3, 12, 28, 0.94);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 20px 28px;
+  box-sizing: border-box;
+  animation: fadeInModal .2s ease;
+}
+
+@keyframes fadeInModal {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.gallery-lightbox-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 12px;
+}
+
+.gallery-lightbox-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: #fff;
+}
+
+.gallery-lightbox-counter {
+  padding: 5px 12px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.12);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.gallery-lightbox-title {
+  font-size: 15px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.gallery-lightbox-close {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 26px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.gallery-lightbox-close:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: scale(1.05);
+}
+
+.gallery-lightbox-stage {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  padding: 10px 0;
+  max-height: 72vh;
+}
+
+.gallery-lightbox-img {
+  max-width: 82vw;
+  max-height: 70vh;
+  object-fit: contain;
+  border-radius: 12px;
+  margin: 0 auto;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+  user-select: none;
+}
+
+.gallery-lightbox-arrow {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.12);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 2;
+  flex-shrink: 0;
+}
+
+.gallery-lightbox-arrow:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
+}
+
+.gallery-lightbox-thumbs {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 12px 0 4px;
+  justify-content: center;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+
+.gallery-lightbox-thumb {
+  width: 70px;
+  height: 50px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  opacity: 0.55;
+  transition: all 0.2s ease;
+}
+
+.gallery-lightbox-thumb:hover {
+  opacity: 0.85;
+}
+
+.gallery-lightbox-thumb.active {
+  opacity: 1;
+  border-color: #ffb700;
+  transform: scale(1.05);
+}
+
+.gallery-lightbox-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  .detail-gallery-mosaic {
+    height: 360px;
+  }
+  .detail-overview-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .detail-gallery-mosaic {
+    flex-direction: column;
+    height: auto;
+  }
+  .gallery-mosaic-main {
+    flex: none;
+    height: 260px;
+  }
+  .gallery-mosaic-grid {
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(2, 90px);
+  }
+  .gallery-lightbox-arrow {
+    width: 38px;
+    height: 38px;
+  }
+  .gallery-lightbox-modal {
+    padding: 16px;
+  }
+}
+
+/* 5. Danh sách phòng */
 .rooms-section {
   margin: 36px 0;
 }

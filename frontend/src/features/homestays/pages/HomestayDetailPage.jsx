@@ -123,6 +123,21 @@ function Icon({ name, size = 16, className = '', color = 'currentColor', fill = 
     sparkles: (
       <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z" />
     ),
+    chevronRight: <polyline points="9 18 15 12 9 6" />,
+    chevronLeft: <polyline points="15 18 9 12 15 6" />,
+    x: (
+      <>
+        <line x1="18" y1="6" x2="6" y2="18" />
+        <line x1="6" y1="6" x2="18" y2="18" />
+      </>
+    ),
+    image: (
+      <>
+        <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+        <circle cx="9" cy="9" r="2" />
+        <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+      </>
+    ),
   };
 
   return (
@@ -146,14 +161,15 @@ function Icon({ name, size = 16, className = '', color = 'currentColor', fill = 
 
 function getAmenitySvg(name = '', category = '') {
   const lower = (name + ' ' + category).toLowerCase();
-  if (lower.includes('wifi') || lower.includes('mạng') || lower.includes('internet')) return <Icon name="wifi" size={24} />;
-  if (lower.includes('xe') || lower.includes('đỗ') || lower.includes('parking')) return <Icon name="car" size={24} />;
-  if (lower.includes('điều hòa') || lower.includes('lạnh') || lower.includes('ac')) return <Icon name="snowflake" size={24} />;
-  if (lower.includes('ban công') || lower.includes('view') || lower.includes('sân')) return <Icon name="balcony" size={24} />;
-  if (lower.includes('vật nuôi') || lower.includes('pet') || lower.includes('chó') || lower.includes('mèo')) return <Icon name="paw" size={24} />;
-  if (lower.includes('bơi') || lower.includes('hồ')) return <Icon name="pool" size={24} />;
-  if (lower.includes('bếp') || lower.includes('ăn')) return <Icon name="kitchen" size={24} />;
-  return <Icon name="sparkles" size={24} />;
+  if (lower.includes('wifi') || lower.includes('mạng') || lower.includes('internet')) return <Icon name="wifi" size={20} />;
+  if (lower.includes('xe') || lower.includes('đỗ') || lower.includes('parking')) return <Icon name="car" size={20} />;
+  if (lower.includes('điều hòa') || lower.includes('lạnh') || lower.includes('ac')) return <Icon name="snowflake" size={20} />;
+  if (lower.includes('ban công') || lower.includes('view') || lower.includes('sân')) return <Icon name="balcony" size={20} />;
+  if (lower.includes('vật nuôi') || lower.includes('pet') || lower.includes('chó') || lower.includes('mèo')) return <Icon name="paw" size={20} />;
+  if (lower.includes('bơi') || lower.includes('hồ')) return <Icon name="pool" size={20} />;
+  if (lower.includes('bếp') || lower.includes('ăn')) return <Icon name="kitchen" size={20} />;
+  if (lower.includes('lễ tân') || lower.includes('24h') || lower.includes('reception') || lower.includes('hỗ trợ')) return <Icon name="clock" size={20} />;
+  return <Icon name="sparkles" size={20} />;
 }
 
 export default function HomestayDetailPage({ id, initialSearch, user, onHome, onBack, onBookings, onAccount, onDeveloping, refreshKey = 0 }) {
@@ -184,6 +200,9 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
   const [paymentExpiresAt, setPaymentExpiresAt] = useState(null);
   const [paymentSecondsLeft, setPaymentSecondsLeft] = useState(15 * 60);
   const [priceQuote, setPriceQuote] = useState(null);
+  const [galleryModalOpen, setGalleryModalOpen] = useState(false);
+  const [activePhotoIndex, setActivePhotoIndex] = useState(0);
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const nameParts = (user?.fullName || '').trim().split(/\s+/).filter(Boolean);
   const [guestInfo, setGuestInfo] = useState({
     firstName: nameParts.slice(0, -1).join(' '), lastName: nameParts.at(-1) || '',
@@ -271,6 +290,95 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
   const ratingNumber = reviews.total
     ? Number(reviews.average).toFixed(1).replace('.', ',')
     : (data.averageRating ? Number(data.averageRating).toFixed(1).replace('.', ',') : '4,8');
+  const rawScore = reviews.total ? reviews.average : (data.averageRating || 4.8);
+  const score10 = Number((rawScore * 2).toFixed(1));
+  const sentimentText = score10 >= 9.0 ? 'Tuyệt vời' : score10 >= 8.0 ? 'Ấn tượng' : score10 >= 7.0 ? 'Rất tốt' : 'Hài lòng';
+
+  const featuredReviews = reviews.items && reviews.items.length > 0
+    ? reviews.items.slice(0, 2)
+    : [
+        {
+          id: 'featured-sample-1',
+          customerName: 'Hoàng Long',
+          rating: 5,
+          comment: 'Không gian ấm cúng, view thoáng đãng và phòng ốc rất sạch sẽ. Chủ nhà hỗ trợ nhiệt tình từ lúc nhận phòng.'
+        },
+        {
+          id: 'featured-sample-2',
+          customerName: 'Minh Thư',
+          rating: 5,
+          comment: 'Vị trí thuận tiện đi lại, phòng đầy đủ tiện nghi như hình chụp. Rất đáng trải nghiệm cho kỳ nghỉ!'
+        }
+      ];
+
+  const keyAmenities = (data.amenities && data.amenities.length >= 6)
+    ? data.amenities.slice(0, 6)
+    : [
+        ...(data.amenities || []),
+        { id: 'ka-1', name: 'WiFi tốc độ cao', category: 'Internet' },
+        { id: 'ka-2', name: 'Máy điều hòa', category: 'Làm mát' },
+        { id: 'ka-3', name: 'Chỗ đỗ xe miễn phí', category: 'Tiện ích' },
+        { id: 'ka-4', name: 'Lễ tân hỗ trợ 24h', category: 'Dịch vụ' },
+        { id: 'ka-5', name: 'Bếp tiện nghi', category: 'Nấu nướng' },
+        { id: 'ka-6', name: 'Ban công thoáng mát', category: 'Không gian' }
+      ].filter((item, idx, arr) => arr.findIndex((t) => t.name.toLowerCase() === item.name.toLowerCase()) === idx).slice(0, 6);
+
+  const galleryImages = [
+    ...(data.images || []).map((img, i) => ({
+      id: img.id || `hs-img-${i}`,
+      url: freshImageUrl(img.imageUrl || img.url),
+      caption: img.caption || `${data.name} - Ảnh ${i + 1}`
+    })),
+    ...(data.roomTypes || []).flatMap((room) =>
+      (room.images || []).map((img, i) => ({
+        id: img.id || `room-img-${room.id}-${i}`,
+        url: freshImageUrl(img.imageUrl || img.url),
+        caption: img.caption || `${room.name} - Ảnh ${i + 1}`
+      }))
+    ),
+    ...(data.roomTypes || []).filter((r) => r.thumbnailUrl).map((room) => ({
+      id: `room-thumb-${room.id}`,
+      url: freshImageUrl(room.thumbnailUrl),
+      caption: room.name
+    }))
+  ];
+
+  const fallbackCovers = [
+    coverUrl,
+    pineHomestayImage,
+    azureHomestayImage,
+    sunsetHomestayImage,
+    deluxeRoomImage,
+    familySuiteImage,
+    gardenViewRoomImage,
+    ...eloraImages
+  ];
+  fallbackCovers.forEach((fallbackUrl, idx) => {
+    if (galleryImages.length < 8 && fallbackUrl) {
+      if (!galleryImages.some((g) => g.url === fallbackUrl)) {
+        galleryImages.push({
+          id: `mosaic-fallback-${idx}`,
+          url: fallbackUrl,
+          caption: `${data.name} - Không gian ${galleryImages.length + 1}`
+        });
+      }
+    }
+  });
+
+  useEffect(() => {
+    if (!galleryModalOpen) return undefined;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') setGalleryModalOpen(false);
+      else if (e.key === 'ArrowRight') {
+        setActivePhotoIndex((prev) => (prev < galleryImages.length - 1 ? prev + 1 : 0));
+      } else if (e.key === 'ArrowLeft') {
+        setActivePhotoIndex((prev) => (prev > 0 ? prev - 1 : galleryImages.length - 1));
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [galleryModalOpen, galleryImages.length]);
+
   const amenities = data.amenities.length ? data.amenities.slice(0, 5) : [
     { id: 1, name: 'WiFi miễn phí', category: 'Internet' }, { id: 2, name: 'Bể bơi ngoài trời', category: 'Giải trí' },
     { id: 3, name: 'Nhà hàng', category: 'Tiện ích' }, { id: 4, name: 'Spa & thư giãn', category: 'Dịch vụ' },
@@ -504,45 +612,152 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
       </section>
 
       <div className="detail-content">
-        <section id="overview" className="detail-intro redesigned-intro">
-          <div>
-            <small>KHÁM PHÁ KHÔNG GIAN</small>
-            <h2>Giới thiệu homestay</h2>
-            <p>{data.description}</p>
+        {/* 1. Bộ sưu tập ảnh Mosaic */}
+        <section className="detail-gallery-mosaic" aria-label="Thư viện ảnh homestay">
+          <div
+            className="gallery-mosaic-main"
+            onClick={() => { setActivePhotoIndex(0); setGalleryModalOpen(true); }}
+            title="Bấm để xem ảnh lớn"
+          >
+            <img src={galleryImages[0]?.url} alt={galleryImages[0]?.caption || data.name} />
           </div>
-          <aside>
-            <article>
-              <b>{data.roomTypes.length}</b>
-              <span>Loại phòng</span>
-            </article>
-            <article>
-              <b>{data.roomTypes.reduce((sum, room) => sum + room.availableRoomCount, 0)}</b>
-              <span>Phòng còn trống</span>
-            </article>
-            <article>
-              <b>{reviews.total ? Number(reviews.average).toFixed(1) : '—'}</b>
-              <span>Điểm đánh giá</span>
-            </article>
-          </aside>
+          <div className="gallery-mosaic-grid">
+            {galleryImages.slice(1, 7).map((img, index) => {
+              const photoIdx = index + 1;
+              const isLast = index === 5;
+              return (
+                <div
+                  key={img.id || photoIdx}
+                  className={`gallery-mosaic-item ${isLast ? 'gallery-mosaic-last' : ''}`}
+                  onClick={() => { setActivePhotoIndex(photoIdx); setGalleryModalOpen(true); }}
+                  title={isLast ? 'Xem tất cả hình ảnh' : `Bấm xem ảnh ${photoIdx + 1}`}
+                >
+                  <img src={img.url} alt={img.caption || `${data.name} ${photoIdx}`} />
+                  {isLast && (
+                    <div className="gallery-more-overlay">
+                      <Icon name="image" size={20} color="#fff" />
+                      <span>Xem tất cả hình ảnh</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </section>
 
-        <section id="amenities" className="detail-box featured-amenities">
-          <header className="section-title">
-            <small>TRẢI NGHIỆM TIỆN NGHI</small>
-            <h2>Tiện ích nổi bật</h2>
-            <p>Mọi tiện nghi cần thiết cho một kỳ nghỉ thoải mái và trọn vẹn.</p>
-          </header>
-          <div>
-            {amenities.map((item) => (
-              <article key={item.id}>
-                <i>{getAmenitySvg(item.name, item.category)}</i>
-                <span>
-                  {item.name}
-                  <small>{item.category}</small>
-                </span>
-              </article>
-            ))}
-          </div>
+        {/* 2. Hàng 3 thẻ tổng quan: Đánh giá, Bản đồ (không hiển thị địa điểm lân cận), Tiện ích nổi bật */}
+        <section className="detail-overview-grid">
+          {/* Thẻ 1: Đánh giá nổi bật */}
+          <article className="overview-card overview-review-card">
+            <header className="overview-card-header">
+              <div className="overview-score-row">
+                <strong>{score10}</strong>
+                <span className="score-scale">/ 10</span>
+                <span className="sentiment-badge">{sentimentText}</span>
+              </div>
+              <button
+                type="button"
+                className="overview-card-link"
+                onClick={() => setShowAllReviews(true)}
+              >
+                {reviews.total ? `${reviews.total} đánh giá` : 'Xem đánh giá'} <Icon name="chevronRight" size={13} />
+              </button>
+            </header>
+
+            <span className="overview-subheading">Khách nói gì về kỳ nghỉ của họ</span>
+
+            <div className="overview-review-snippets">
+              {featuredReviews.map((rev) => (
+                <div key={rev.id} className="overview-review-item">
+                  <div className="overview-reviewer-meta">
+                    <span className="overview-avatar">
+                      {(rev.customerName || 'KH').split(/\s+/).map((p) => p[0]).slice(-2).join('').toUpperCase()}
+                    </span>
+                    <strong className="overview-reviewer-name">{rev.customerName}</strong>
+                    <div className="overview-stars">
+                      {'★'.repeat(rev.rating || 5)}
+                    </div>
+                  </div>
+                  <p className="overview-review-quote">
+                    "{rev.comment || 'Không gian ấm cúng, chủ nhà thân thiện và hỗ trợ chu đáo.'}"
+                  </p>
+                </div>
+              ))}
+            </div>
+          </article>
+
+          {/* Thẻ 2: Bản đồ vị trí (không hiển thị các địa điểm gần đó) */}
+          <article className="overview-card overview-map-card">
+            <header className="overview-card-header">
+              <h3>Vị trí</h3>
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`}
+                target="_blank"
+                rel="noreferrer"
+                className="overview-card-link"
+              >
+                Xem bản đồ <Icon name="chevronRight" size={13} />
+              </a>
+            </header>
+
+            <div className="overview-map-address">
+              <Icon name="location" size={15} color="#0b4ae6" />
+              <span>{address}</span>
+            </div>
+
+            <div className="overview-map-embed">
+              <iframe
+                title={`Bản đồ ${data.name}`}
+                src={`https://maps.google.com/maps?q=${encodeURIComponent(address)}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
+                width="100%"
+                height="100%"
+                loading="lazy"
+                style={{ border: 0 }}
+                referrerPolicy="no-referrer-when-downgrade"
+              />
+            </div>
+          </article>
+
+          {/* Thẻ 3: Tiện ích chính */}
+          <article className="overview-card overview-amenity-card">
+            <header className="overview-card-header">
+              <h3>Tiện ích chính</h3>
+              <button
+                type="button"
+                className="overview-card-link"
+                onClick={checkRooms}
+              >
+                Xem thêm <Icon name="chevronRight" size={13} />
+              </button>
+            </header>
+
+            <div className="overview-amenities-grid">
+              {keyAmenities.map((item, idx) => (
+                <div key={item.id || idx} className="overview-amenity-item">
+                  <i>{getAmenitySvg(item.name, item.category)}</i>
+                  <span>{item.name}</span>
+                </div>
+              ))}
+            </div>
+          </article>
+        </section>
+
+        {/* 3. Đoạn giới thiệu mô tả về homestay */}
+        <section className="detail-description-card">
+          <h2>Giới thiệu về homestay</h2>
+          <p className={isDescriptionExpanded ? 'expanded' : 'clamped'}>
+            {data.description || 'Homestay mang đến không gian nghỉ dưỡng ấm cúng, thiết kế hiện đại và đầy đủ tiện nghi, lý tưởng cho kỳ nghỉ của bạn cùng gia đình và bạn bè.'}
+          </p>
+          {(data.description && data.description.length > 220) && (
+            <button
+              type="button"
+              className="desc-toggle-btn"
+              onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+            >
+              {isDescriptionExpanded ? 'Thu gọn' : 'Xem thêm'}
+              <Icon name={isDescriptionExpanded ? 'chevronLeft' : 'chevronRight'} size={13} />
+            </button>
+          )}
         </section>
 
         <section id="rooms" className="rooms-section">
@@ -803,36 +1018,6 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
           </div>
         </section>
 
-        <section id="location" className="detail-box location-section">
-          <div>
-            <small>KHÁM PHÁ KHU VỰC</small>
-            <h2>Vị trí thuận tiện</h2>
-            <strong>
-              <Icon name="location" size={16} />
-              {address}
-            </strong>
-            <p>
-              Nằm ngay trung tâm {data.ward || data.district}, dễ dàng di chuyển đến bãi biển, chợ đêm và các điểm tham quan nổi tiếng.
-            </p>
-            <a
-              href={`https://www.google.com/maps/search/?api=1&query=${data.latitude || ''},${data.longitude || ''}`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Mở Google Maps &nbsp; →
-            </a>
-          </div>
-          <div className="map-visual">
-            <span className="map-water">Bãi biển</span>
-            <div className="map-road" />
-            <b>
-              <Icon name="location" size={22} color="#0b4ae6" />
-              <small>{data.name}</small>
-            </b>
-            <em>{data.ward || data.district}</em>
-          </div>
-        </section>
-
         <section id="reviews" className="detail-box review-section">
           <header className="section-title review-title">
             <div>
@@ -920,6 +1105,82 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
           <div className="reviews-modal-main"><section className="reviews-filter-section"><h3>Bộ lọc</h3><div className="reviews-filters"><label><span>Phản hồi</span><select value={reviewReplyFilter} onChange={(e) => changeReviewFilters(() => setReviewReplyFilter(e.target.value))}><option value="all">Tất cả ({reviews.total})</option><option value="replied">Có phản hồi chủ nhà</option><option value="not-replied">Chưa có phản hồi</option></select></label><label><span>Điểm đánh giá</span><select value={reviewRatingFilter} onChange={(e) => changeReviewFilters(() => setReviewRatingFilter(Number(e.target.value)))}><option value="0">Tất cả mức sao</option>{[5,4,3,2,1].map((star) => <option value={star} key={star}>{star} sao</option>)}</select></label><label><span>Tiện ích được nhắc</span><select value={reviewAmenityFilter} onChange={(e) => changeReviewFilters(() => setReviewAmenityFilter(e.target.value))}><option value="">Tất cả tiện ích</option>{reviewAmenityOptions.map((item) => <option key={item}>{item}</option>)}</select></label><label><span>Thời gian</span><select value={reviewTimeFilter} onChange={(e) => changeReviewFilters(() => setReviewTimeFilter(e.target.value))}><option value="all">Tất cả thời gian</option><option value="year">Trong 1 năm</option><option value="month">Trong 1 tháng</option></select></label></div><div className="reviews-search"><input value={reviewSearch} onChange={(e) => changeReviewFilters(() => setReviewSearch(e.target.value))} placeholder="Tìm theo tên khách hoặc nội dung đánh giá" /><button>Tìm</button></div></section><header><div><h2>Đánh giá của khách ({filteredReviews.length})</h2></div><label>Sắp xếp theo:<select value={reviewSort} onChange={(e) => { setReviewSort(e.target.value); setReviewPage(1); }}><option value="newest">Mới nhất</option><option value="oldest">Cũ nhất</option><option value="highest">Điểm cao nhất</option><option value="lowest">Điểm thấp nhất</option></select></label></header><div className="reviews-modal-list">{visibleReviews.map((review) => <article key={review.id}><header><span>{review.customerName.split(/\s+/).map((part) => part[0]).slice(-2).join('').toUpperCase()}</span><div><strong>{review.customerName}</strong><small>Ngày đánh giá: {new Intl.DateTimeFormat('vi-VN').format(new Date(review.createdAt))}</small></div><em>{review.rating},0</em></header><p>{review.comment || 'Khách hàng không để lại nội dung.'}</p>{review.hostReply && <div className="host-review-reply"><b>Phản hồi từ chủ homestay</b><p>{review.hostReply}</p></div>}</article>)}{visibleReviews.length === 0 && <div className="reviews-empty"><b>Không tìm thấy đánh giá</b><span>Hãy thử thay đổi bộ lọc.</span></div>}</div><footer className="reviews-pagination"><button disabled={reviewPage <= 1} onClick={() => setReviewPage((page) => page - 1)}>← Trước</button><span>Trang {Math.min(reviewPage, reviewPageCount)} / {reviewPageCount}</span><button disabled={reviewPage >= reviewPageCount} onClick={() => setReviewPage((page) => page + 1)}>Sau →</button></footer></div>
         </section>
       </div>}
+
+      {/* Lightbox thư viện ảnh homestay */}
+      {galleryModalOpen && (
+        <div
+          className="gallery-lightbox-modal"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setGalleryModalOpen(false);
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Xem ảnh homestay"
+        >
+          <div className="gallery-lightbox-top">
+            <div className="gallery-lightbox-info">
+              <span className="gallery-lightbox-counter">
+                {activePhotoIndex + 1} / {galleryImages.length}
+              </span>
+              <span className="gallery-lightbox-title">
+                {galleryImages[activePhotoIndex]?.caption || data.name}
+              </span>
+            </div>
+            <button
+              type="button"
+              className="gallery-lightbox-close"
+              onClick={() => setGalleryModalOpen(false)}
+              aria-label="Đóng thư viện ảnh"
+            >
+              ×
+            </button>
+          </div>
+
+          <div className="gallery-lightbox-stage">
+            <button
+              type="button"
+              className="gallery-lightbox-arrow prev"
+              onClick={() =>
+                setActivePhotoIndex((prev) => (prev > 0 ? prev - 1 : galleryImages.length - 1))
+              }
+              aria-label="Ảnh trước"
+            >
+              <Icon name="chevronLeft" size={24} color="#fff" />
+            </button>
+
+            <img
+              src={galleryImages[activePhotoIndex]?.url}
+              alt={galleryImages[activePhotoIndex]?.caption || data.name}
+              className="gallery-lightbox-img"
+            />
+
+            <button
+              type="button"
+              className="gallery-lightbox-arrow next"
+              onClick={() =>
+                setActivePhotoIndex((prev) => (prev < galleryImages.length - 1 ? prev + 1 : 0))
+              }
+              aria-label="Ảnh tiếp theo"
+            >
+              <Icon name="chevronRight" size={24} color="#fff" />
+            </button>
+          </div>
+
+          <div className="gallery-lightbox-thumbs">
+            {galleryImages.map((img, idx) => (
+              <button
+                type="button"
+                key={img.id || idx}
+                className={`gallery-lightbox-thumb ${idx === activePhotoIndex ? 'active' : ''}`}
+                onClick={() => setActivePhotoIndex(idx)}
+                aria-label={`Xem ảnh ${idx + 1}`}
+              >
+                <img src={img.url} alt="" />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </main>
   );
 }
