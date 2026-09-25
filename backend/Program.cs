@@ -8,6 +8,7 @@ using HomestayAuth.Api.Utilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.IdentityModel.Tokens;
@@ -339,9 +340,25 @@ await using (var schemaScope = app.Services.CreateAsyncScope())
 
 app.UseExceptionHandler(errorApp => errorApp.Run(async context =>
 {
+    var exception = context.Features.Get<IExceptionHandlerFeature>()?.Error;
+    var logger = context.RequestServices
+        .GetRequiredService<ILoggerFactory>()
+        .CreateLogger("GlobalExceptionHandler");
+
+    logger.LogError(
+        exception,
+        "Unhandled exception while processing {Method} {Path}. TraceId: {TraceId}",
+        context.Request.Method,
+        context.Request.Path,
+        context.TraceIdentifier);
+
     context.Response.StatusCode = StatusCodes.Status500InternalServerError;
     context.Response.ContentType = "application/json";
-    await context.Response.WriteAsJsonAsync(new { message = "Lỗi máy chủ." });
+    await context.Response.WriteAsJsonAsync(new
+    {
+        message = "Lỗi máy chủ.",
+        traceId = context.TraceIdentifier
+    });
 }));
 app.UseCors("Frontend");
 app.UseStaticFiles();
