@@ -17,7 +17,7 @@ public sealed class VnPayService
 
     public bool IsConfigured => !string.IsNullOrWhiteSpace(_tmnCode) && !string.IsNullOrWhiteSpace(_hashSecret);
 
-    public string CreatePaymentUrl(string transactionCode, decimal amount, string orderInfo, string ipAddress)
+    public string CreatePaymentUrl(string transactionCode, decimal amount, string orderInfo, string ipAddress, int expiryMinutes = 15)
     {
         if (!IsConfigured) throw new InvalidOperationException("VNPay chưa được cấu hình.");
         var vietnamTimeZone = TimeZoneInfo.FindSystemTimeZoneById(OperatingSystem.IsWindows() ? "SE Asia Standard Time" : "Asia/Ho_Chi_Minh");
@@ -29,7 +29,7 @@ public sealed class VnPayService
             ["vnp_CurrCode"] = "VND", ["vnp_IpAddr"] = string.IsNullOrWhiteSpace(ipAddress) ? "127.0.0.1" : ipAddress,
             ["vnp_Locale"] = "vn", ["vnp_OrderInfo"] = orderInfo, ["vnp_OrderType"] = "other",
             ["vnp_ReturnUrl"] = _returnUrl, ["vnp_TxnRef"] = transactionCode,
-            ["vnp_ExpireDate"] = now.AddMinutes(15).ToString("yyyyMMddHHmmss")
+            ["vnp_ExpireDate"] = now.AddMinutes(Math.Clamp(expiryMinutes, 5, 120)).ToString("yyyyMMddHHmmss")
         };
         var query = string.Join("&", values.Select(x => $"{WebUtility.UrlEncode(x.Key)}={WebUtility.UrlEncode(x.Value)}"));
         return $"{_paymentUrl}?{query}&vnp_SecureHash={Sign(query)}";

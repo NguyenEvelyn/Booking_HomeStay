@@ -8,10 +8,9 @@ public static class BookingAvailability
 {
     public static IQueryable<BookingDetail> BlockingDetails(AppDbContext db, DateOnly checkIn, DateOnly checkOut, DateTime now)
     {
-        var cutoff = now.AddMinutes(-BookingRules.HoldMinutes);
         return db.BookingDetails.Where(d => d.Booking.CheckInDate < checkOut && d.Booking.CheckOutDate > checkIn
             && (BookingRules.ReservedStatuses.Contains(d.Booking.Status)
-                || (d.Booking.Status == "PendingPayment" && d.Booking.UpdatedAt > cutoff)));
+                || (d.Booking.Status == BookingStatus.Hold && d.Booking.HoldExpiresAt > now)));
     }
 
     public static async Task<List<long>> AvailableRoomIds(AppDbContext db, long roomTypeId,
@@ -20,9 +19,12 @@ public static class BookingAvailability
         var futureCheckIn = checkIn > BookingRules.Today;
         var occupied = BlockingDetails(db, checkIn, checkOut, now)
             .Where(d => d.RoomTypeId == roomTypeId && (!excludingBookingId.HasValue || d.BookingId != excludingBookingId));
+        var occupiedStayRooms = db.BookingRoomStays.Where(s => s.StartDate < checkOut && s.EndDate > checkIn && s.Status == "Active"
+            && (!excludingBookingId.HasValue || s.BookingId != excludingBookingId)).Select(s => s.RoomId);
         var legacyCount = await occupied.Where(d => d.RoomId == null).SumAsync(d => (int?)d.Quantity) ?? 0;
         return await db.Rooms.Where(r => r.RoomTypeId == roomTypeId && (r.Status == "Available" || (futureCheckIn && BookingRules.InventoryStatuses.Contains(r.Status)))
-                && !occupied.Any(d => d.RoomId == r.Id))
+                && !occupiedStayRooms.Contains(r.Id)
+                && !occupied.Any(d => d.RoomId == r.Id && !db.BookingRoomStays.Any(s => s.BookingId == d.BookingId)))
             .OrderBy(r => r.RoomNumber).Skip(legacyCount).Select(r => r.Id).ToListAsync();
     }
 

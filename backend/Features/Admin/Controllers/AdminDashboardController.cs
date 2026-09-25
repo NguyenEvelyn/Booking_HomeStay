@@ -1,4 +1,5 @@
 using HomestayAuth.Api.Features.Admin.Authorization;
+using HomestayAuth.Api.Features.Bookings;
 using HomestayAuth.Api.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -10,7 +11,7 @@ namespace HomestayAuth.Api.Features.Admin.Controllers;
 [ApiController, Route("api/admin/dashboard"), Authorize(Policy = AdminPolicies.Access)]
 public sealed class AdminDashboardController(AppDbContext db) : ControllerBase
 {
-    private static readonly string[] OccupiedStatuses = ["Confirmed", "CheckedIn", "Completed"];
+    private static readonly string[] OccupiedStatuses = [BookingStatus.Confirmed, BookingStatus.CheckedIn, BookingStatus.CheckoutPendingPayment, BookingStatus.CheckedOut];
 
     [HttpGet]
     public async Task<IActionResult> Get([FromQuery] string range = "7days", [FromQuery] DateOnly? from = null, [FromQuery] DateOnly? to = null)
@@ -25,15 +26,14 @@ public sealed class AdminDashboardController(AppDbContext db) : ControllerBase
         var duration = end - start;
         var previousStart = start - duration;
         var previousEnd = start;
-        var commissionRate = decimal.TryParse(Environment.GetEnvironmentVariable("PLATFORM_COMMISSION_RATE"),
-            System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var configuredRate)
-            ? Math.Clamp(configuredRate, 0, 1) : .10m;
-
         var bookings = await CountPeriods(db.Bookings, x => x.CreatedAt, start, end, previousStart, previousEnd);
         var newUsers = await CountPeriods(db.Users.Where(x => x.Role == "Customer"), x => x.CreatedAt, start, end, previousStart, previousEnd);
         var newHosts = await CountPeriods(db.Users.Where(x => x.Role == "Host"), x => x.CreatedAt, start, end, previousStart, previousEnd);
         var gmv = await SumPayments(start, end);
         var previousGmv = await SumPayments(previousStart, previousEnd);
+        var commissionRevenue = await db.Bookings.Where(x => x.Status == BookingStatus.CheckedOut && x.UpdatedAt >= start && x.UpdatedAt < end).SumAsync(x => (decimal?)(x.TotalAmount * x.CommissionRate)) ?? 0;
+        var previousCommissionRevenue = await db.Bookings.Where(x => x.Status == BookingStatus.CheckedOut && x.UpdatedAt >= previousStart && x.UpdatedAt < previousEnd).SumAsync(x => (decimal?)(x.TotalAmount * x.CommissionRate)) ?? 0;
+        var commissionRate = gmv > 0 ? commissionRevenue / gmv : 0;
         var cancellation = await CancellationRate(start, end);
         var previousCancellation = await CancellationRate(previousStart, previousEnd);
         var occupancy = await OccupancyRate(startDate, endDate.AddDays(1));
@@ -43,7 +43,7 @@ public sealed class AdminDashboardController(AppDbContext db) : ControllerBase
 
         var bookingSeries = await db.Bookings.AsNoTracking().Where(x => x.CreatedAt >= start && x.CreatedAt < end)
             .GroupBy(x => x.CreatedAt.AddHours(7).Date).Select(g => new { date = g.Key, bookings = g.Count() }).OrderBy(x => x.date).ToListAsync();
-        var revenueSeries = await db.Payments.AsNoTracking().Where(x => x.TransactionType == "Payment" && x.Status == "Success" && x.PaidAt >= start && x.PaidAt < end)
+        var revenueSeries = await db.Payments.AsNoTracking().Where(x => x.TransactionType != "Refund" && x.Status == "Success" && x.PaidAt >= start && x.PaidAt < end)
             .GroupBy(x => x.PaidAt!.Value.AddHours(7).Date).Select(g => new { date = g.Key, revenue = g.Sum(x => x.Amount) }).OrderBy(x => x.date).ToListAsync();
         var userSeries = await db.Users.AsNoTracking().Where(x => x.CreatedAt >= start && x.CreatedAt < end)
             .GroupBy(x => x.CreatedAt.AddHours(7).Date).Select(g => new { date = g.Key, customers = g.Count(x => x.Role == "Customer"), hosts = g.Count(x => x.Role == "Host") }).OrderBy(x => x.date).ToListAsync();
@@ -63,12 +63,11 @@ public sealed class AdminDashboardController(AppDbContext db) : ControllerBase
         var bookingStatuses = await db.Bookings.AsNoTracking().Where(x => x.CreatedAt >= start && x.CreatedAt < end)
             .GroupBy(x => x.Status).Select(g => new { name = g.Key, value = g.Count() }).OrderByDescending(x => x.value).ToListAsync();
 
-        var staleAt = DateTime.UtcNow.AddMinutes(-15);
         var pendingHomestays = await db.Homestays.CountAsync(x => x.Status == "Pending");
         var reportedReviews = await db.ReviewReports.CountAsync(x => x.Status == "Pending");
-        var staleBookings = await db.Bookings.CountAsync(x => x.Status == "PendingPayment" && x.UpdatedAt < staleAt);
-        var reconciliationIssues = await db.Payments.CountAsync(p => p.TransactionType == "Payment" && p.Status == "Success" &&
-            (p.Booking.Status == "PendingPayment" || p.Booking.Status == "Cancelled" || p.Booking.Status == "Expired" || p.Amount != p.Booking.TotalAmount));
+        var staleBookings = await db.Bookings.CountAsync(x => x.Status == BookingStatus.Hold && x.HoldExpiresAt < DateTime.UtcNow);
+        var reconciliationIssues = await db.Payments.CountAsync(p => p.TransactionType == "Deposit" && p.Status == "Success" &&
+            (p.Booking.Status == BookingStatus.Hold || p.Booking.Status == BookingStatus.Cancelled || p.Amount < p.Booking.DepositAmount));
 
         return Ok(new
         {
@@ -78,7 +77,7 @@ public sealed class AdminDashboardController(AppDbContext db) : ControllerBase
             {
                 bookings = Kpi(bookings.Current, bookings.Previous),
                 gmv = Kpi(gmv, previousGmv),
-                commissionRevenue = Kpi(decimal.Round(gmv * commissionRate, 0), decimal.Round(previousGmv * commissionRate, 0)),
+                commissionRevenue = Kpi(decimal.Round(commissionRevenue, 0), decimal.Round(previousCommissionRevenue, 0)),
                 newUsers = Kpi(newUsers.Current, newUsers.Previous), newHosts = Kpi(newHosts.Current, newHosts.Previous),
                 activeHomestays = new { value = activeHomestays, change = Change(activeHomestays, previousActiveHomestays) },
                 cancellationRate = new { value = cancellation, change = Change(cancellation, previousCancellation) },
@@ -99,7 +98,7 @@ public sealed class AdminDashboardController(AppDbContext db) : ControllerBase
     }
 
     private async Task<decimal> SumPayments(DateTime start, DateTime end) => await db.Payments.AsNoTracking()
-        .Where(x => x.TransactionType == "Payment" && x.Status == "Success" && x.PaidAt >= start && x.PaidAt < end)
+        .Where(x => x.TransactionType != "Refund" && x.Status == "Success" && x.PaidAt >= start && x.PaidAt < end)
         .SumAsync(x => (decimal?)x.Amount) ?? 0;
 
     private async Task<decimal> CancellationRate(DateTime start, DateTime end)
