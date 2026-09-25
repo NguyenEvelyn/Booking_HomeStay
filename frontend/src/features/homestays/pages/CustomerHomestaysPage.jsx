@@ -21,6 +21,7 @@ const SearchIcon = ({ type }) => <svg viewBox="0 0 24 24" aria-hidden="true">
 
 export default function CustomerHomestaysPage({ user, refreshKey = 0, initialSearch = null, onBack, onOpen, onBookings, onAccount }) {
   const [search, setSearch] = useState(initialSearch?.search || '');
+  const [location, setLocation] = useState(initialSearch?.location || '');
   const [result, setResult] = useState({ items: [], total: 0 });
   const [maxPrice, setMaxPrice] = useState(3000000);
   const [checkIn, setCheckIn] = useState(initialSearch?.checkIn || '');
@@ -40,7 +41,7 @@ export default function CustomerHomestaysPage({ user, refreshKey = 0, initialSea
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const criteria = (targetPage = page) => ({ search, checkIn, checkOut, guests, rooms, maxPrice, roomType, minRating, sort, page: targetPage, pageSize: 12 });
+  const criteria = (targetPage = page) => ({ search, location, checkIn, checkOut, guests, rooms, maxPrice, roomType, minRating, sort, page: targetPage, pageSize: 12 });
   const load = async (targetPage = 1) => {
     const requestId = ++latestRequest.current;
     setLoading(true); setError('');
@@ -51,7 +52,7 @@ export default function CustomerHomestaysPage({ user, refreshKey = 0, initialSea
       const nights = checkIn && checkOut ? Math.max(1, Math.round((new Date(checkOut) - new Date(checkIn)) / 86400000)) : 1;
       const [catalogResult, recommendationResult] = await Promise.allSettled([
         homestayApi.list(criteria(targetPage)),
-        homestayApi.recommendations({ search, checkIn, checkOut, guests, rooms,
+        location ? Promise.resolve({ items: [], modelVersion: '' }) : homestayApi.recommendations({ search, checkIn, checkOut, guests, rooms,
           totalBudget: maxPrice * rooms * nights, amenities: preferredAmenities, roomType, minRating, topK: 5 })
       ]);
       if (requestId !== latestRequest.current) return;
@@ -83,7 +84,7 @@ export default function CustomerHomestaysPage({ user, refreshKey = 0, initialSea
     <CustomerNav active="homestays" user={user} onHome={onBack} onHomestays={() => {}} onBookings={onBookings} onAccount={onAccount} />
     <section className="catalog-hero" style={{backgroundImage:`linear-gradient(90deg,rgba(3,24,58,.9),rgba(4,31,71,.3)),url('${catalogHeroImage}')`}}><div><p>KHÁM PHÁ ĐIỂM ĐẾN</p><h1>Tìm không gian nghỉ dưỡng<br /><em>dành riêng cho bạn</em></h1><span>Những điểm lưu trú được chọn lọc cho hành trình đáng nhớ cùng Tripio.</span></div></section>
     <form className="search-bar catalog-search" onSubmit={(event) => { event.preventDefault(); load(1); }}>
-      <label>Địa điểm hoặc tên homestay<span className="search-control"><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Bạn muốn đến đâu?" /><SearchIcon type="location" /></span></label>
+      <label>Địa điểm hoặc tên homestay<span className="search-control"><input value={search} onChange={(event) => { setSearch(event.target.value); setLocation(''); }} placeholder="Bạn muốn đến đâu?" /><SearchIcon type="location" /></span></label>
       <label>Ngày nhận<span className="search-control"><input type="date" lang="vi-VN" placeholder="dd/mm/yyyy" min={localToday()} value={checkIn} onChange={(e) => { setCheckIn(e.target.value); if (checkOut && checkOut <= e.target.value) setCheckOut(''); }} /><SearchIcon type="calendar" /></span></label>
       <label>Ngày trả<span className="search-control"><input type="date" lang="vi-VN" placeholder="dd/mm/yyyy" min={checkIn || localToday()} value={checkOut} onChange={(e) => setCheckOut(e.target.value)} /><SearchIcon type="calendar" /></span></label>
       <label>Số khách<span className="search-control guest-number-control"><input type="number" min="1" max="30" step="1" value={guests} onChange={(e) => setGuests(Math.max(1, Math.min(30, Number(e.target.value) || 1)))} inputMode="numeric" aria-label="Số khách" /><SearchIcon type="guests" /></span></label>

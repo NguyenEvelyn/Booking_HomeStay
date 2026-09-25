@@ -2,8 +2,8 @@ import { apiClient } from '../../../shared/api/apiClient.js';
 import { recommendationSessionId } from './recommendationEvents.js';
 
 export const homestayApi = {
-  list: ({ search = '', province = '', checkIn = '', checkOut = '', guests = 1, rooms = 1, maxPrice = '', roomType = '', minRating = 0, sort = '', page = 1, pageSize = 12 } = {}) => {
-    const params = new URLSearchParams({ search, province, guests, rooms, minRating, sort, page, pageSize });
+  list: ({ search = '', location = '', province = '', checkIn = '', checkOut = '', guests = 1, rooms = 1, maxPrice = '', roomType = '', minRating = 0, sort = '', page = 1, pageSize = 12 } = {}) => {
+    const params = new URLSearchParams({ search, location, province, guests, rooms, minRating, sort, page, pageSize });
     if (checkIn) params.set('checkIn', checkIn);
     if (checkOut) params.set('checkOut', checkOut);
     if (maxPrice !== '') params.set('maxPrice', maxPrice);

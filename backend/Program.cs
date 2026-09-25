@@ -73,6 +73,7 @@ builder.WebHost.UseUrls($"http://0.0.0.0:{Environment.GetEnvironmentVariable("PO
 builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IHomestayQueryService, HomestayQueryService>();
+builder.Services.AddHttpClient<SupabaseStorageService>();
 builder.Services.AddScoped<RecommendationService>();
 builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 builder.Services.AddSingleton(RecommendationWeights.Load(builder.Environment.ContentRootPath));

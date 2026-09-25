@@ -218,7 +218,6 @@ export default function HomePage({
   const stayGridRef = useRef(null);
   const stayDrag = useRef({ active: false, startX: 0, scrollLeft: 0 });
   const destTrackRef = useRef(null);
-  const destDrag = useRef({ active: false, startX: 0, scrollLeft: 0, moved: false });
   const [canDestPrev, setCanDestPrev] = useState(false);
   const [canDestNext, setCanDestNext] = useState(true);
   const voucherListRef = useRef(null);
@@ -399,41 +398,6 @@ export default function HomePage({
       behavior: 'smooth',
     });
     setTimeout(checkDestScroll, 350);
-  };
-
-  const onDestMouseDown = (e) => {
-    if (e.button !== 0) return;
-    const el = destTrackRef.current;
-    if (!el) return;
-
-    destDrag.current = {
-      active: true,
-      startX: e.clientX,
-      scrollLeft: el.scrollLeft,
-      moved: false,
-    };
-    el.classList.add('is-dragging');
-
-    const onMouseMove = (moveEvent) => {
-      if (!destDrag.current.active) return;
-      const dx = moveEvent.clientX - destDrag.current.startX;
-      if (Math.abs(dx) > 4) {
-        destDrag.current.moved = true;
-      }
-      el.scrollLeft = destDrag.current.scrollLeft - dx;
-      checkDestScroll();
-    };
-
-    const onMouseUp = () => {
-      destDrag.current.active = false;
-      el.classList.remove('is-dragging');
-      checkDestScroll();
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
-    };
-
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
   };
 
   /* ---- voucher list vertical drag-to-scroll ---- */
@@ -1154,19 +1118,28 @@ export default function HomePage({
         <div
           className="destination-track"
           ref={destTrackRef}
-          onMouseDown={onDestMouseDown}
           onScroll={checkDestScroll}
         >
           {destinations.map(
             ([number, name, image]) => (
-              <article
+              <button
+                type="button"
                 className="dest-card"
                 key={name}
-                style={{ cursor: 'pointer' }}
+                aria-label={`Xem homestay tại ${name}`}
+                style={{ cursor: 'pointer', border: 0, padding: 0, textAlign: 'left', font: 'inherit' }}
                 onClick={() => {
-                  if (destDrag.current.moved) return;
                   if (typeof onBrowseHomestays === 'function') {
-                    onBrowseHomestays({ search: name });
+                    onBrowseHomestays({ search: name, location: name });
+                  } else {
+                    onDeveloping(`Điểm đến ${name}`);
+                  }
+                }}
+                onKeyDown={(event) => {
+                  if (event.key !== 'Enter' && event.key !== ' ') return;
+                  event.preventDefault();
+                  if (typeof onBrowseHomestays === 'function') {
+                    onBrowseHomestays({ search: name, location: name });
                   } else {
                     onDeveloping(`Điểm đến ${name}`);
                   }
@@ -1189,7 +1162,7 @@ export default function HomePage({
                     <Icon name="arrowRight" />
                   </span>
                 </div>
-              </article>
+              </button>
             )
           )}
         </div>

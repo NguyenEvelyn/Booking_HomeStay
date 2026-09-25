@@ -17,7 +17,15 @@ function staticAssets() {
     configureServer(server) {
       server.middlewares.use('/assets', (request, response, next) => {
         let pathname;
-        try { pathname = decodeURIComponent(new URL(request.url, 'http://localhost').pathname); }
+        try {
+          const requestUrl = new URL(request.url, 'http://localhost');
+          // Vite turns image imports into JavaScript modules. Let Vite handle
+          // those requests instead of returning the raw image bytes.
+          if (requestUrl.searchParams.has('import') || requestUrl.searchParams.has('url')) {
+            next(); return;
+          }
+          pathname = decodeURIComponent(requestUrl.pathname);
+        }
         catch { next(); return; }
         const filePath = resolve(assetsRoot, `.${pathname}`);
         if (!filePath.startsWith(`${assetsRoot}${sep}`) || !existsSync(filePath) || !statSync(filePath).isFile()) {

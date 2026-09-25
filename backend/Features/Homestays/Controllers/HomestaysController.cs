@@ -13,6 +13,7 @@ public sealed class HomestaysController(IHomestayQueryService service, AppDbCont
     [HttpGet]
     public async Task<IActionResult> GetAll(
         [FromQuery] string? search,
+        [FromQuery] string? location,
         [FromQuery] string? province,
         [FromQuery] DateOnly? checkIn,
         [FromQuery] DateOnly? checkOut,
@@ -36,7 +37,7 @@ public sealed class HomestaysController(IHomestayQueryService service, AppDbCont
         minRating = Math.Clamp(minRating, 0, 5);
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 1, 50);
-        return Ok(await service.GetApprovedAsync(search, province, checkIn, checkOut, guests, rooms, maxPrice, roomType, minRating, sort, page, pageSize));
+        return Ok(await service.GetApprovedAsync(search, location, province, checkIn, checkOut, guests, rooms, maxPrice, roomType, minRating, sort, page, pageSize));
     }
 
     [HttpGet("{homestayId:long}")]

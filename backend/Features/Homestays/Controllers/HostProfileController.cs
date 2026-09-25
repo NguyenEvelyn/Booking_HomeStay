@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using HomestayAuth.Api.Features.Homestays.DTOs;
+using HomestayAuth.Api.Features.Homestays.Services;
 using HomestayAuth.Api.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -8,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 namespace HomestayAuth.Api.Features.Homestays.Controllers;
 
 [ApiController, Route("api/host/profile"), Authorize(Roles = "Host")]
-public sealed class HostProfileController(AppDbContext db, IWebHostEnvironment environment) : ControllerBase
+public sealed class HostProfileController(AppDbContext db, SupabaseStorageService storage) : ControllerBase
 {
     private long HostId => long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
@@ -26,13 +27,22 @@ public sealed class HostProfileController(AppDbContext db, IWebHostEnvironment e
 
     [HttpPost("upload")]
     [RequestSizeLimit(8_000_000)]
-    public async Task<IActionResult> Upload(IFormFile file)
+    public async Task<IActionResult> Upload(IFormFile file, CancellationToken cancellationToken)
     {
         if (file.Length == 0 || file.Length > 8_000_000) return BadRequest(new { message = "Ảnh phải nhỏ hơn 8 MB." });
-        var allowed = new[] { ".jpg", ".jpeg", ".png", ".webp" }; var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
-        if (!allowed.Contains(extension)) return BadRequest(new { message = "Chỉ hỗ trợ JPG, PNG hoặc WEBP." });
-        var folder = Path.Combine(environment.WebRootPath ?? Path.Combine(environment.ContentRootPath, "wwwroot"), "uploads", "hosts", HostId.ToString()); Directory.CreateDirectory(folder);
-        var fileName = $"{Guid.NewGuid():N}{extension}"; await using var stream = System.IO.File.Create(Path.Combine(folder, fileName)); await file.CopyToAsync(stream);
-        var root = $"{Request.Scheme}://{Request.Host}"; return Ok(new { url = $"{root}/uploads/hosts/{HostId}/{fileName}" });
+        var allowed = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            [".jpg"] = "image/jpeg", [".jpeg"] = "image/jpeg",
+            [".png"] = "image/png", [".webp"] = "image/webp"
+        };
+        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (!allowed.TryGetValue(extension, out var contentType) ||
+            !string.Equals(file.ContentType, contentType, StringComparison.OrdinalIgnoreCase))
+            return BadRequest(new { message = "Chỉ hỗ trợ JPG, PNG hoặc WEBP hợp lệ." });
+
+        var objectPath = $"hosts/{HostId}/{DateTime.UtcNow:yyyy/MM}/{Guid.NewGuid():N}{extension}";
+        await using var stream = file.OpenReadStream();
+        var url = await storage.UploadPublicImageAsync(stream, objectPath, contentType, cancellationToken);
+        return Ok(new { url });
     }
 }

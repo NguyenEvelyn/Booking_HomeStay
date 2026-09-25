@@ -8,7 +8,7 @@ namespace HomestayAuth.Api.Features.Homestays.Services;
 public sealed class HomestayQueryService(AppDbContext db) : IHomestayQueryService
 {
     public async Task<PagedResponse<HomestayListItemResponse>> GetApprovedAsync(
-        string? search, string? province, DateOnly? checkIn, DateOnly? checkOut, int guests, int rooms,
+        string? search, string? location, string? province, DateOnly? checkIn, DateOnly? checkOut, int guests, int rooms,
         decimal? maxPrice, string? roomType, int minRating, string? sort, int page, int pageSize)
     {
         var query = db.Homestays.AsNoTracking().Where(h => h.Status == "Approved");
@@ -18,6 +18,12 @@ public sealed class HomestayQueryService(AppDbContext db) : IHomestayQueryServic
             query = query.Where(h => EF.Functions.ILike(h.Name, pattern)
                 || EF.Functions.ILike(h.District, pattern)
                 || EF.Functions.ILike(h.Province, pattern));
+        }
+        if (!string.IsNullOrWhiteSpace(location))
+        {
+            var locationPattern = $"%{location.Trim()}%";
+            query = query.Where(h => EF.Functions.ILike(h.District, locationPattern)
+                || EF.Functions.ILike(h.Province, locationPattern));
         }
         if (!string.IsNullOrWhiteSpace(province))
             query = query.Where(h => EF.Functions.ILike(h.Province, province.Trim()));
