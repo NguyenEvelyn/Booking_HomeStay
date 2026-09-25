@@ -86,7 +86,7 @@
   max-height: 640px;
   display: flex;
   align-items: flex-end;
-  padding: 100px max(80px, calc((100% - 1280px) / 2)) 44px;
+  padding: 100px max(80px, calc((100% - 1280px) / 2)) 70px;
   color: #fff;
   background-position: center;
   background-size: cover;
@@ -315,104 +315,169 @@
     padding-left: 24px;
     padding-right: 24px;
   }
-  .detail-search {
-    width: calc(100% - 48px);
-    grid-template-columns: 1fr;
-  }
   .detail-content {
     width: calc(100% - 48px);
   }
 }
 
-/* Search Bar trên trang chi tiết */
+/* Search Bar trên trang chi tiết homestay — đồng bộ với catalog-search và search-bar trang chủ */
 .detail-search {
   position: relative;
   z-index: 10;
   width: min(1280px, calc(100% - 160px));
   min-height: 96px;
-  margin: 28px auto 0;
+  margin: -48px auto 0;
   display: grid;
-  grid-template-columns: 1.15fr 1.15fr 1.35fr 200px;
+  grid-template-columns: 1.15fr 1.15fr 1.35fr 180px;
   gap: 14px;
   align-items: end;
   padding: 18px 24px 16px;
   background: #fff;
   border: 1px solid rgba(0, 0, 0, 0.06);
-  border-radius: 14px;
+  border-radius: 12px;
   box-shadow: 0 12px 35px rgba(5, 25, 55, 0.1);
   box-sizing: border-box;
 }
 
-.detail-search label {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+.detail-search > label,
+.detail-search .search-guest-field {
+  display: grid;
+  gap: 7px;
+  color: #151515;
   font-size: 11px;
-  font-weight: 700;
-  color: #09275f;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-weight: 600;
+  line-height: 1.2;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.detail-search .search-field-label {
+  color: #151515 !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  line-height: 1.2 !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  margin: 0 !important;
 }
 
 .detail-search .search-control {
   position: relative;
-  display: flex;
-  align-items: center;
+  display: block;
 }
 
 .detail-search input {
   width: 100%;
-  height: 48px;
+  height: 38px;
   box-sizing: border-box;
-  padding: 0 40px 0 14px;
-  border: 1px solid #dce4ef;
-  border-radius: 8px;
-  background: #f8fafc;
-  color: #09275f;
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 500;
+  padding: 0 36px 0 12px;
+  color: #333;
+  border: 1px solid #dedede;
+  border-radius: 6px;
   outline: none;
-  transition: border-color .2s, background .2s, box-shadow .2s;
+  background: #fff;
+  font-size: 11px;
+  font-family: inherit;
+  transition: border-color .2s, box-shadow .2s;
 }
 
 .detail-search input:focus {
   border-color: #0b4ae6;
-  background: #fff;
-  box-shadow: 0 0 0 3px rgba(11, 74, 230, 0.12);
+  box-shadow: 0 0 0 2px rgba(11, 74, 230, 0.08);
 }
 
 .detail-search .search-control i {
   position: absolute;
-  right: 14px;
-  display: flex;
-  align-items: center;
+  top: 50%;
+  right: 11px;
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  transform: translateY(-50%);
+  color: #8c8c8c;
   pointer-events: none;
-  color: #8c9bb0;
+}
+
+.detail-search .search-control i svg {
+  width: 16px;
+  height: 16px;
+  stroke: #8c8c8c;
+}
+
+.detail-search .search-guest-trigger {
+  width: 100% !important;
+  height: 38px !important;
+  box-sizing: border-box !important;
+  padding: 0 35px 0 12px !important;
+  border: 1px solid #dedede !important;
+  border-radius: 6px !important;
+  background: #fff !important;
+  color: #333 !important;
+  font-family: inherit !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  text-align: left !important;
+  box-shadow: none !important;
+  transition: border-color .2s, box-shadow .2s !important;
+}
+
+.detail-search .search-guest-trigger:hover,
+.detail-search .search-guest-trigger.is-active {
+  border-color: #0b4ae6 !important;
+  box-shadow: 0 0 0 2px rgba(11, 74, 230, 0.08) !important;
+}
+
+.detail-search .search-guest-icon {
+  position: absolute;
+  right: 11px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  color: #8c8c8c !important;
 }
 
 .detail-search > button {
-  height: 48px;
+  height: 38px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border: none;
-  border-radius: 8px;
+  border: 0;
+  border-radius: 6px;
+  color: #172b55;
   background: #ffb700;
-  color: #061f4e;
   font-family: inherit;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(255, 183, 0, 0.35);
-  transition: background .2s, transform .2s, box-shadow .2s;
+  box-shadow: 0 4px 14px rgba(255, 183, 0, 0.25);
+  transition: transform 0.2s ease, background 0.2s ease;
 }
 
 .detail-search > button:hover {
-  background: #e5a400;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(255, 183, 0, 0.45);
+  background: #ffc124;
+  transform: translateY(-1px);
+}
+
+@media (max-width: 992px) {
+  .detail-search {
+    width: min(1280px, calc(100% - 96px));
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: -36px;
+  }
+}
+
+@media (max-width: 640px) {
+  .detail-search {
+    width: calc(100% - 40px);
+    grid-template-columns: 1fr;
+    margin-top: 18px;
+    padding: 16px;
+  }
 }
 
 /* Nội dung trang chi tiết */
@@ -1070,8 +1135,8 @@
 .room-modal-close { position:absolute; z-index:5; top:15px; right:15px; width:42px; height:42px; border:0; border-radius:50%; color:#082d78; background:rgba(255,255,255,.92); box-shadow:0 4px 18px rgba(0,0,0,.16); font-size:28px; line-height:1; cursor:pointer; }
 .room-modal-gallery { padding:18px 18px 0; }.room-modal-main-image { display:block; width:100%; height:430px; border-radius:12px; object-fit:cover; }.room-modal-thumbs { display:flex; gap:9px; padding:11px 0 4px; overflow-x:auto; scrollbar-width:thin; }.room-modal-thumbs button { flex:0 0 92px; height:64px; overflow:hidden; padding:0; border:2px solid transparent; border-radius:7px; background:#fff; cursor:pointer; }.room-modal-thumbs button.active { border-color:#0b4ae6; }.room-modal-thumbs img { width:100%; height:100%; object-fit:cover; }
 .room-modal-content { padding:24px 34px 32px; color:#5e6d88; }.room-modal-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:30px; padding-bottom:22px; border-bottom:1px solid #e1e7f0; }.room-modal-heading small { color:#e4a900; font-size:10px; font-weight:800; letter-spacing:.12em; }.room-modal-heading h2 { margin:6px 0 14px; font-family:'Be Vietnam Pro',Arial,sans-serif; color:#062f8a; font-size:34px; }.room-modal-facts { display:flex; flex-wrap:wrap; gap:24px; color:#0b3ea8; font-size:12px; }.room-modal-price { min-width:200px; text-align:right; }.room-modal-price strong { display:block; color:#063491; font-family:'Be Vietnam Pro',Arial,sans-serif; font-size:28px; }.room-modal-price span { font-size:12px; }.room-modal-description { margin:22px 0; font-size:13px; line-height:1.75; }.room-modal-columns { display:grid; grid-template-columns:1.2fr 1fr; gap:50px; padding:22px 0; border-block:1px solid #e1e7f0; }.room-modal-columns h3 { margin:0 0 16px; color:#092f82; font-family:'Be Vietnam Pro',Arial,sans-serif; font-size:20px; }.room-modal-columns ul { display:grid; grid-template-columns:1fr 1fr; gap:13px 30px; margin:0; padding:0; list-style:none; font-size:12px; }.room-modal-columns li::before { content:'✓'; margin-right:9px; color:#0b4ae6; font-weight:800; }.room-modal-columns p { margin:0 0 11px; font-size:12px; }.room-modal-booking { display:flex; align-items:end; justify-content:space-between; gap:25px; padding-top:22px; }.room-modal-booking>div { display:flex; gap:12px; }.room-modal-booking label { color:#536480; font-size:11px; font-weight:600; }.room-modal-booking input { display:block; width:190px; height:42px; margin-top:7px; border:1px solid #dce3ed; background:#fff; }.room-modal-booking>button { min-width:220px; height:50px; border:0; border-radius:7px; color:#072968; background:#ffbd00; font-weight:800; cursor:pointer; }.room-modal-booking>button:disabled { color:#fff; background:#aeb6c3; }
-@media(max-width:1050px){.stay-hero-quote{display:none}.detail-search{grid-template-columns:1fr 1fr}.detail-search label:nth-child(2){border-right:0}.detail-room-list{grid-template-columns:repeat(2,minmax(0,1fr))}.policy-grid{grid-template-columns:1fr 1fr}.policy-grid article:nth-child(2){border-right:0}.review-layout{grid-template-columns:200px 1fr}.review-layout blockquote{grid-column:1/-1}}
-@media(max-width:700px){.stay-hero{height:460px;padding:130px 24px 80px}.stay-hero-copy h1{font-size:37px}.stay-hero-copy>div{flex-wrap:wrap}.photo-button{right:24px;bottom:28px}.detail-search{grid-template-columns:1fr;margin-top:0;border-radius:0;width:100%;padding:18px 24px}.detail-search label{border-right:0;border-bottom:1px solid #e3e8ef}.detail-content{width:calc(100% - 28px);padding-top:28px}.detail-content h2{font-size:26px}.featured-amenities>div{grid-template-columns:repeat(2,1fr);gap:22px}.featured-amenities article:last-child{grid-column:1/-1}.rooms-heading{display:block}.rooms-heading>p{margin-top:8px}.detail-room-list{grid-template-columns:1fr}.detail-room-card{height:410px}.policy-grid,.location-section,.review-layout{grid-template-columns:1fr}.policy-grid article{border-right:0;border-bottom:1px solid #dce3ef;padding:16px 0}.map-visual{min-height:210px}.review-layout blockquote{grid-column:auto}.rooms-section{padding:0}.detail-box{padding:20px}}
+@media(max-width:1050px){.stay-hero-quote{display:none}.detail-room-list{grid-template-columns:repeat(2,minmax(0,1fr))}.policy-grid{grid-template-columns:1fr 1fr}.policy-grid article:nth-child(2){border-right:0}.review-layout{grid-template-columns:200px 1fr}.review-layout blockquote{grid-column:1/-1}}
+@media(max-width:700px){.detail-content{width:calc(100% - 28px);padding-top:28px}.detail-content h2{font-size:26px}.featured-amenities>div{grid-template-columns:repeat(2,1fr);gap:22px}.featured-amenities article:last-child{grid-column:1/-1}.rooms-heading{display:block}.rooms-heading>p{margin-top:8px}.detail-room-list{grid-template-columns:1fr}.detail-room-card{height:410px}.policy-grid,.location-section,.review-layout{grid-template-columns:1fr}.policy-grid article{border-right:0;border-bottom:1px solid #dce3ef;padding:16px 0}.map-visual{min-height:210px}.review-layout blockquote{grid-column:auto}.rooms-section{padding:0}.detail-box{padding:20px}}
 @media(max-width:700px){.room-modal-backdrop{padding:0}.room-detail-modal{width:100%;height:100vh;max-height:none;border-radius:0}.room-modal-gallery{padding:0}.room-modal-main-image{height:300px;border-radius:0}.room-modal-thumbs{padding:8px 14px}.room-modal-thumbs button{flex-basis:74px;height:52px}.room-modal-content{padding:20px}.room-modal-heading{display:grid}.room-modal-heading h2{font-size:28px}.room-modal-price{text-align:left}.room-modal-columns{grid-template-columns:1fr;gap:22px}.room-modal-columns ul{grid-template-columns:1fr}.room-modal-booking{display:grid}.room-modal-booking>div{display:grid;grid-template-columns:1fr 1fr}.room-modal-booking input{width:100%}.room-modal-booking>button{width:100%}}
 .inline-room-detail { scroll-margin-top:110px; margin:34px 0 42px; padding:28px; border-radius:18px; background:#f5f8fd; box-shadow:inset 0 0 0 1px #dce4ef; }.inline-room-detail>header { display:flex; align-items:start; justify-content:space-between; gap:20px; margin-bottom:20px; }.inline-room-detail>header small { color:#d69e00; font-size:10px; font-weight:800; letter-spacing:.12em; }.inline-room-detail>header h2 { margin:6px 0 0; font-family:'Be Vietnam Pro',Arial,sans-serif; font-size:32px; }.inline-room-detail>header button { padding:9px 14px; border:1px solid #cbd5e3; border-radius:22px; color:#173b82; background:#fff; cursor:pointer; }.inline-room-detail .room-page-layout { margin-bottom:0; }
 .room-page { min-height:100vh; color:#0a2e75; background:#f7f9fc; }.room-page .customer-nav { position:relative; }
@@ -1135,49 +1200,6 @@
 @media(max-width:900px){.reviews-modal{height:100%;border-radius:0;overflow-y:auto}.reviews-modal-summary{grid-template-columns:1fr 1fr;padding:24px}.reviews-modal-heading{grid-column:1/-1}.reviews-amenity-overview{grid-column:1/-1;padding:18px 0 0;border-left:0;border-top:1px solid #dfe3e8}.reviews-modal-main{display:block;overflow:visible;padding:0 20px 20px}.reviews-filters{grid-template-columns:1fr 1fr}.reviews-modal-list{overflow:visible}.reviews-modal-main>header{padding-right:45px}}
 @media(max-width:560px){.reviews-modal-summary{grid-template-columns:1fr;gap:20px}.reviews-modal-heading,.reviews-amenity-overview{grid-column:auto}.reviews-amenity-overview,.reviews-filters{grid-template-columns:1fr}.reviews-modal-main>header{align-items:flex-start;flex-direction:column;gap:12px}.reviews-modal-list>article>p{margin:14px 0}.reviews-score{max-width:210px}}
 
-/* Đồng bộ Guest Picker trong detail-search */
-.detail-search .search-guest-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.detail-search .search-guest-field .search-field-label {
-  font-size: 11px !important;
-  font-weight: 700 !important;
-  color: #09275f !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.05em !important;
-  margin: 0 !important;
-}
-.detail-search .search-guest-trigger {
-  width: 100% !important;
-  height: 48px !important;
-  padding: 0 40px 0 14px !important;
-  border: 1px solid #dce4ef !important;
-  border-radius: 8px !important;
-  background: #f8fafc !important;
-  color: #09275f !important;
-  font-family: inherit !important;
-  font-size: 13px !important;
-  font-weight: 500 !important;
-  cursor: pointer !important;
-  box-shadow: none !important;
-  transition: border-color .2s, background .2s, box-shadow .2s !important;
-}
-.detail-search .search-guest-trigger:hover,
-.detail-search .search-guest-trigger.is-active {
-  border-color: #0b4ae6 !important;
-  background: #fff !important;
-  box-shadow: 0 0 0 3px rgba(11, 74, 230, 0.12) !important;
-}
-.detail-search .search-guest-icon {
-  right: 14px !important;
-  color: #8c9bb0 !important;
-}
-.detail-search .search-guest-icon svg {
-  width: 16px !important;
-  height: 16px !important;
-}
 @media(max-width:1100px) and (min-width:701px){.detail-room-card .room-actions{grid-template-columns:1fr}.detail-room-card .room-actions>.room-book-pill{width:100%}.detail-room-card{height:470px}}
 .guest-room-fields { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:13px!important; }.guest-room-fields label { margin:0; }.capacity-note { display:block; margin-top:9px; color:#748198; font-size:9px; line-height:1.45; }
 .booking-price-breakdown { display:grid; gap:9px; margin-top:17px!important; padding-top:14px; border-top:1px solid #dfe5ee; }.booking-price-breakdown>div { display:flex; justify-content:space-between; gap:10px; margin:0; color:#64728a; font-size:10px; }.booking-price-breakdown>div>strong { color:#173a7c; font-size:11px; }.booking-price-breakdown>.booking-total { margin:4px 0 0!important; padding-top:12px; }.booking-price-breakdown>.booking-total strong { font-size:15px!important; }
