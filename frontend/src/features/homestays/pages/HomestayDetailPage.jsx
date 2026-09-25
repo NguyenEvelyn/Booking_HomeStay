@@ -274,6 +274,20 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
     return () => { document.body.style.overflow = ''; window.removeEventListener('keydown', close); };
   }, [showAllReviews]);
 
+  useEffect(() => {
+    if (!galleryModalOpen) return undefined;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') setGalleryModalOpen(false);
+      else if (e.key === 'ArrowRight') {
+        setActivePhotoIndex((prev) => prev + 1);
+      } else if (e.key === 'ArrowLeft') {
+        setActivePhotoIndex((prev) => Math.max(0, prev - 1));
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [galleryModalOpen]);
+
   if (error) return <main className="detail-state"><p>{error}</p><button onClick={onBack}>Quay lại danh sách</button></main>;
   if (!data) return <main className="detail-state"><div className="detail-loader" />Đang tải chi tiết homestay...</main>;
 
@@ -365,19 +379,9 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
     }
   });
 
-  useEffect(() => {
-    if (!galleryModalOpen) return undefined;
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') setGalleryModalOpen(false);
-      else if (e.key === 'ArrowRight') {
-        setActivePhotoIndex((prev) => (prev < galleryImages.length - 1 ? prev + 1 : 0));
-      } else if (e.key === 'ArrowLeft') {
-        setActivePhotoIndex((prev) => (prev > 0 ? prev - 1 : galleryImages.length - 1));
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [galleryModalOpen, galleryImages.length]);
+  const safePhotoIndex = galleryImages.length
+    ? Math.min(Math.max(0, activePhotoIndex), galleryImages.length - 1)
+    : 0;
 
   const amenities = data.amenities.length ? data.amenities.slice(0, 5) : [
     { id: 1, name: 'WiFi miễn phí', category: 'Internet' }, { id: 2, name: 'Bể bơi ngoài trời', category: 'Giải trí' },
@@ -624,7 +628,7 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
           <div className="gallery-mosaic-grid">
             {galleryImages.slice(1, 7).map((img, index) => {
               const photoIdx = index + 1;
-              const isLast = index === 5;
+              const isLast = index === 5 || index === galleryImages.slice(1, 7).length - 1;
               return (
                 <div
                   key={img.id || photoIdx}
@@ -1120,10 +1124,10 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
           <div className="gallery-lightbox-top">
             <div className="gallery-lightbox-info">
               <span className="gallery-lightbox-counter">
-                {activePhotoIndex + 1} / {galleryImages.length}
+                {safePhotoIndex + 1} / {galleryImages.length}
               </span>
               <span className="gallery-lightbox-title">
-                {galleryImages[activePhotoIndex]?.caption || data.name}
+                {galleryImages[safePhotoIndex]?.caption || data.name}
               </span>
             </div>
             <button
@@ -1149,8 +1153,8 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
             </button>
 
             <img
-              src={galleryImages[activePhotoIndex]?.url}
-              alt={galleryImages[activePhotoIndex]?.caption || data.name}
+              src={galleryImages[safePhotoIndex]?.url || galleryImages[0]?.url}
+              alt={galleryImages[safePhotoIndex]?.caption || data.name}
               className="gallery-lightbox-img"
             />
 
@@ -1171,7 +1175,7 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
               <button
                 type="button"
                 key={img.id || idx}
-                className={`gallery-lightbox-thumb ${idx === activePhotoIndex ? 'active' : ''}`}
+                className={`gallery-lightbox-thumb ${idx === safePhotoIndex ? 'active' : ''}`}
                 onClick={() => setActivePhotoIndex(idx)}
                 aria-label={`Xem ảnh ${idx + 1}`}
               >
