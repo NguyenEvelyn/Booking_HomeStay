@@ -31,7 +31,8 @@ public sealed record HostHomestayListItemResponse(
     int AvailableRoomCount,
     decimal? FromPrice,
     int ImageCount,
-    DateTime UpdatedAt);
+    DateTime UpdatedAt,
+    string? RejectionReason);
 
 public sealed record RoomTypeListItemResponse(
     long Id,
@@ -40,6 +41,10 @@ public sealed record RoomTypeListItemResponse(
     decimal BasePrice,
     int MaxAdults,
     int MaxChildren,
+    int BaseCapacity,
+    int MaxCapacity,
+    bool ExtraGuestAllowed,
+    decimal ExtraGuestFee,
     string BedType,
     decimal? RoomSize,
     string? ThumbnailUrl,
@@ -70,6 +75,10 @@ public sealed record RoomTypeDetailResponse(
     decimal BasePrice,
     int MaxAdults,
     int MaxChildren,
+    int BaseCapacity,
+    int MaxCapacity,
+    bool ExtraGuestAllowed,
+    decimal ExtraGuestFee,
     string BedType,
     decimal? RoomSize,
     int AvailableRoomCount,
@@ -80,7 +89,9 @@ public sealed record RoomTypeDetailResponse(
 public sealed record PagedResponse<T>(IReadOnlyList<T> Items, int Total, int Page, int PageSize);
 
 public sealed record SaveHomestayRequest(string Name, string Description, string AddressLine, string Ward, string District, string Province, TimeOnly? CheckInTime, TimeOnly? CheckOutTime);
-public sealed record SaveRoomTypeRequest(string Name, string Description, decimal BasePrice, int MaxAdults, int MaxChildren, string BedType, decimal? RoomSize);
+public sealed record SaveRoomTypeRequest(string Name, string Description, decimal BasePrice, int MaxAdults, int MaxChildren, string BedType, decimal? RoomSize, int? BaseCapacity, int? MaxCapacity, bool? ExtraGuestAllowed, decimal? ExtraGuestFee, decimal? DepositPercent);
+public sealed record SaveCapacityRequest(int BaseCapacity, int MaxCapacity, bool ExtraGuestAllowed, decimal ExtraGuestFee);
+public sealed record BulkExtraGuestPolicyRequest(bool ExtraGuestAllowed, decimal ExtraGuestFee);
 public sealed record SaveRoomRequest(string RoomNumber, int? FloorNumber, string Status, string? Note);
 public sealed record SaveImageRequest(string ImageUrl, string? Caption, bool IsThumbnail);
 public sealed record SaveAmenitiesRequest(IReadOnlyList<int> AmenityIds);

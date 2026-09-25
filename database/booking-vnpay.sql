@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS bookings (
   check_in_date DATE NOT NULL, check_out_date DATE NOT NULL, adult_count INT NOT NULL, child_count INT NOT NULL DEFAULT 0,
   subtotal NUMERIC(18,2) NOT NULL, discount_amount NUMERIC(18,2) NOT NULL DEFAULT 0, service_fee NUMERIC(18,2) NOT NULL DEFAULT 0,
   tax_amount NUMERIC(18,2) NOT NULL DEFAULT 0, total_amount NUMERIC(18,2) NOT NULL,
-  status VARCHAR(30) NOT NULL DEFAULT 'PendingPayment', customer_note VARCHAR(500),
+  status VARCHAR(30) NOT NULL DEFAULT 'Hold', customer_note VARCHAR(500),
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CHECK(check_out_date > check_in_date)
 );

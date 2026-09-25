@@ -1,3 +1,4 @@
+using HomestayAuth.Api.Features.Bookings;
 using System.Security.Claims;
 using HomestayAuth.Api.Features.Homestays.Services;
 using HomestayAuth.Api.Infrastructure.Persistence;
@@ -11,6 +12,8 @@ namespace HomestayAuth.Api.Features.Homestays.Controllers;
 
 public sealed record HostBookingStatusRequest(string Status);
 public sealed record HostCancellationDecisionRequest(bool Approve);
+public sealed record HostBookingNoteRequest(string? Note);
+public sealed record HostOfflinePaymentRequest(string Method);
 
 [ApiController]
 [Route("api/host/homestays")]
@@ -49,7 +52,7 @@ public sealed class HostHomestaysController(IHomestayQueryService service, AppDb
             .Select(h => new { h.Id, h.Name, h.Description, h.AddressLine, h.Ward, h.District, h.Province, h.CheckInTime, h.CheckOutTime, h.Status, h.RejectionReason,
                 Amenities = h.HomestayAmenities.Select(x => new { x.AmenityId, x.Amenity.Name, x.Amenity.Category }).ToList(),
                 Images = h.Images.OrderBy(x => x.SortOrder).Select(x => new { x.Id, Url = x.ImageUrl, x.Caption, x.IsThumbnail }).ToList(),
-                RoomTypes = h.RoomTypes.OrderBy(x => x.BasePrice).Select(r => new { r.Id, r.Name, r.Description, r.BasePrice, r.MaxAdults, r.MaxChildren, r.BedType, r.RoomSize, r.Status,
+                RoomTypes = h.RoomTypes.OrderBy(x => x.BasePrice).Select(r => new { r.Id, r.Name, r.Description, r.BasePrice, r.MaxAdults, r.MaxChildren, r.BaseCapacity, r.MaxCapacity, r.ExtraGuestAllowed, r.ExtraGuestFee, r.BedType, r.RoomSize, r.Status,
                     Rooms = r.Rooms.OrderBy(x => x.RoomNumber).Select(x => new { x.Id, x.RoomNumber, x.FloorNumber, x.Status, x.Note }).ToList(),
                     PricePeriods = r.PricePeriods.OrderBy(x => x.StartDate).Select(x => new { x.Id, x.Name, x.StartDate, x.EndDate, x.PricePerNight }).ToList() }).ToList()
             }).SingleOrDefaultAsync();
@@ -119,7 +122,10 @@ public sealed class HostHomestaysController(IHomestayQueryService service, AppDb
             return BadRequest(new { message = "Thông tin loại phòng hoặc mức giá không hợp lệ." });
         if (await db.RoomTypes.AnyAsync(x => x.HomestayId == id && x.Name.ToLower() == request.Name.Trim().ToLower()))
             return Conflict(new { message = "Tên loại phòng đã tồn tại trong Homestay." });
-        var now = DateTime.UtcNow; var roomType = new RoomType { HomestayId = id, Name = request.Name.Trim(), Description = request.Description.Trim(), BasePrice = request.BasePrice, MaxAdults = request.MaxAdults, MaxChildren = request.MaxChildren, BedType = request.BedType.Trim(), RoomSize = request.RoomSize, Status = "Active", CreatedAt = now, UpdatedAt = now };
+        var baseCapacity = request.BaseCapacity ?? Math.Min(2, request.MaxAdults + request.MaxChildren);
+        var maxCapacity = request.MaxCapacity ?? request.MaxAdults + request.MaxChildren;
+        if (baseCapacity < 1 || maxCapacity < baseCapacity || (request.ExtraGuestFee ?? 0) < 0 || request.DepositPercent is < 0 or > 1) return BadRequest(new { message = "Cấu hình sức chứa, phụ phí hoặc tỷ lệ cọc không hợp lệ." });
+        var now = DateTime.UtcNow; var roomType = new RoomType { HomestayId = id, Name = request.Name.Trim(), Description = request.Description.Trim(), BasePrice = request.BasePrice, MaxAdults = maxCapacity, MaxChildren = 0, BaseCapacity = baseCapacity, MaxCapacity = maxCapacity, ExtraGuestAllowed = request.ExtraGuestAllowed ?? false, ExtraGuestFee = request.ExtraGuestFee ?? 0, DepositPercent = request.DepositPercent ?? .3m, BedType = request.BedType.Trim(), RoomSize = request.RoomSize, Status = "Active", CreatedAt = now, UpdatedAt = now };
         db.RoomTypes.Add(roomType); await db.SaveChangesAsync(); return Ok(new { roomType.Id, message = "Đã thêm loại phòng." });
     }
 
@@ -132,8 +138,39 @@ public sealed class HostHomestaysController(IHomestayQueryService service, AppDb
             return BadRequest(new { message = "Thông tin loại phòng hoặc mức giá không hợp lệ." });
         if (await db.RoomTypes.AnyAsync(x => x.Id != roomTypeId && x.HomestayId == id && x.Name.ToLower() == request.Name.Trim().ToLower()))
             return Conflict(new { message = "Tên loại phòng đã tồn tại trong Homestay." });
-        item.Name = request.Name.Trim(); item.Description = request.Description.Trim(); item.BasePrice = request.BasePrice; item.MaxAdults = request.MaxAdults; item.MaxChildren = request.MaxChildren; item.BedType = request.BedType.Trim(); item.RoomSize = request.RoomSize; item.UpdatedAt = DateTime.UtcNow;
+        var baseCapacity = request.BaseCapacity ?? item.BaseCapacity;
+        var maxCapacity = request.MaxCapacity ?? item.MaxCapacity;
+        var extraGuestFee = request.ExtraGuestFee ?? item.ExtraGuestFee;
+        if (baseCapacity < 1 || maxCapacity < baseCapacity || extraGuestFee < 0 || request.DepositPercent is < 0 or > 1) return BadRequest(new { message = "Cấu hình sức chứa, phụ phí hoặc tỷ lệ cọc không hợp lệ." });
+        item.Name = request.Name.Trim(); item.Description = request.Description.Trim(); item.BasePrice = request.BasePrice; item.MaxAdults = maxCapacity; item.MaxChildren = 0; item.BaseCapacity = baseCapacity; item.MaxCapacity = maxCapacity; item.ExtraGuestAllowed = request.ExtraGuestAllowed ?? item.ExtraGuestAllowed; item.ExtraGuestFee = extraGuestFee; item.DepositPercent = request.DepositPercent ?? item.DepositPercent; item.BedType = request.BedType.Trim(); item.RoomSize = request.RoomSize; item.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(); return Ok(new { message = "Đã cập nhật loại phòng." });
+    }
+
+    [HttpPatch("{id:long}/room-types/{roomTypeId:long}/capacity")]
+    public async Task<IActionResult> UpdateCapacity(long id, long roomTypeId, SaveCapacityRequest request)
+    {
+        var item = await db.RoomTypes.SingleOrDefaultAsync(r => r.Id == roomTypeId && r.HomestayId == id && r.Homestay.HostId == HostId);
+        if (item is null) return NotFound(new { message = "Không tìm thấy loại phòng." });
+        if (request.BaseCapacity < 1 || request.MaxCapacity < request.BaseCapacity || request.ExtraGuestFee < 0)
+            return BadRequest(new { message = "Sức chứa hoặc phụ phí khách thêm không hợp lệ." });
+        item.BaseCapacity = request.BaseCapacity; item.MaxCapacity = request.MaxCapacity;
+        item.MaxAdults = request.MaxCapacity; item.MaxChildren = 0;
+        item.ExtraGuestAllowed = request.ExtraGuestAllowed; item.ExtraGuestFee = request.ExtraGuestAllowed ? request.ExtraGuestFee : 0;
+        item.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+        return Ok(new { message = "Đã cập nhật sức chứa và phụ phí khách thêm." });
+    }
+
+    [HttpPatch("{id:long}/room-types/extra-guest-policy")]
+    public async Task<IActionResult> BulkExtraGuestPolicy(long id, BulkExtraGuestPolicyRequest request)
+    {
+        if (request.ExtraGuestFee < 0) return BadRequest(new { message = "Phụ phí khách thêm không hợp lệ." });
+        if (!await db.Homestays.AnyAsync(h => h.Id == id && h.HostId == HostId)) return NotFound(new { message = "Không tìm thấy homestay." });
+        await db.RoomTypes.Where(r => r.HomestayId == id).ExecuteUpdateAsync(setters => setters
+            .SetProperty(r => r.ExtraGuestAllowed, request.ExtraGuestAllowed)
+            .SetProperty(r => r.ExtraGuestFee, request.ExtraGuestAllowed ? request.ExtraGuestFee : 0)
+            .SetProperty(r => r.UpdatedAt, DateTime.UtcNow));
+        return Ok(new { message = "Đã áp dụng chính sách khách thêm cho tất cả loại phòng." });
     }
 
     [HttpDelete("{id:long}/room-types/{roomTypeId:long}")]
@@ -166,7 +203,7 @@ public sealed class HostHomestaysController(IHomestayQueryService service, AppDb
         var allowedStatuses = new[] { "Available", "Occupied", "Cleaning", "Maintenance", "Inactive" };
         if (!allowedStatuses.Contains(request.Status)) return BadRequest(new { message = "Trạng thái phòng không hợp lệ." });
         if (await db.Rooms.AnyAsync(r => r.Id != roomId && r.RoomTypeId == room.RoomTypeId && r.RoomNumber.ToLower() == request.RoomNumber.Trim().ToLower())) return Conflict(new { message = "Mã phòng đã tồn tại trong loại phòng này." });
-        if (request.Status is "Maintenance" or "Inactive" && await db.BookingDetails.AnyAsync(x => x.RoomId == roomId && x.Booking.CheckOutDate > DateOnly.FromDateTime(DateTime.UtcNow) && (x.Booking.Status == "PendingPayment" || x.Booking.Status == "Confirmed" || x.Booking.Status == "CheckedIn")))
+        if (request.Status is "Maintenance" or "Inactive" && await db.BookingDetails.AnyAsync(x => x.RoomId == roomId && x.Booking.CheckOutDate > BookingRules.Today && ((x.Booking.Status == BookingStatus.Hold && x.Booking.HoldExpiresAt > DateTime.UtcNow) || BookingRules.ReservedStatuses.Contains(x.Booking.Status))))
             return Conflict(new { message = "Phòng có booking hiệu lực; hãy xử lý booking trước khi bảo trì hoặc ngưng phòng." });
         room.RoomNumber = request.RoomNumber.Trim(); room.FloorNumber = request.FloorNumber; room.Status = request.Status; room.Note = request.Note?.Trim(); room.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(); return Ok(new { message = "Đã cập nhật trạng thái phòng." });
@@ -358,7 +395,7 @@ public sealed class HostHomestaysController(IHomestayQueryService service, AppDb
             pendingHomestays = await db.Homestays.CountAsync(h => h.HostId == hostId && h.Status == "Pending"),
             bookings = await db.Bookings.CountAsync(b => homestayIds.Contains(b.HomestayId)),
             confirmedBookings = await db.Bookings.CountAsync(b => homestayIds.Contains(b.HomestayId) && b.Status == "Confirmed"),
-            revenue = await db.Payments.Where(p => homestayIds.Contains(p.Booking.HomestayId) && p.Status == "Success" && p.TransactionType == "Payment").SumAsync(p => (decimal?)p.Amount) ?? 0,
+            revenue = await db.Payments.Where(p => homestayIds.Contains(p.Booking.HomestayId) && p.Status == "Success" && p.TransactionType != "Refund").SumAsync(p => (decimal?)p.Amount) ?? 0,
             averageRating = await db.Reviews.Where(r => homestayIds.Contains(r.HomestayId) && r.Status == "Visible").AverageAsync(r => (double?)r.Rating) ?? 0
         });
     }
@@ -368,13 +405,92 @@ public sealed class HostHomestaysController(IHomestayQueryService service, AppDb
     {
         var hostId = long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var items = await db.Bookings.AsNoTracking().Where(b => db.Homestays.Any(h => h.Id == b.HomestayId && h.HostId == hostId))
-            .OrderByDescending(b => b.CreatedAt).Select(b => new { b.Id, b.BookingCode, HomestayName = db.Homestays.Where(h => h.Id == b.HomestayId).Select(h => h.Name).First(), CustomerName = db.Users.Where(u => u.Id == b.CustomerId).Select(u => u.FullName).First(), b.CheckInDate, b.CheckOutDate, b.AdultCount, b.ChildCount, b.TotalAmount, b.Status, Rooms = b.Details.Where(d => d.RoomId != null).Select(d => db.Rooms.Where(r => r.Id == d.RoomId).Select(r => r.RoomNumber).First()).ToList(), Cancellation = db.Cancellations.Where(c => c.BookingId == b.Id).Select(c => new { c.Id, c.Reason, c.CancellationFee, c.RefundAmount, c.Status }).FirstOrDefault() }).ToListAsync();
+            .OrderByDescending(b => b.CreatedAt).Select(b => new {
+                b.Id, b.BookingCode, b.HomestayId,
+                HomestayName = db.Homestays.Where(h => h.Id == b.HomestayId).Select(h => h.Name).First(),
+                CustomerName = db.Users.Where(u => u.Id == b.CustomerId).Select(u => u.FullName).First(),
+                CustomerEmail = db.Users.Where(u => u.Id == b.CustomerId).Select(u => u.Email).First(),
+                CustomerPhone = db.Users.Where(u => u.Id == b.CustomerId).Select(u => u.PhoneNumber).FirstOrDefault(),
+                b.CheckInDate, b.CheckOutDate, Nights = b.Details.Select(d => (int?)d.NumberOfNights).FirstOrDefault() ?? 0,
+                b.AdultCount, b.ChildCount, b.Subtotal, b.DiscountAmount, b.ServiceFee, b.TaxAmount, b.TotalAmount,
+                b.Status, b.CustomerNote, b.HostNote, b.HostViewedAt, b.CreatedAt, b.UpdatedAt,
+                IsNew = b.HostViewedAt == null,
+                Details = b.Details.Select(d => new { d.Id, d.RoomTypeId, RoomTypeName = db.RoomTypes.Where(r => r.Id == d.RoomTypeId).Select(r => r.Name).First(),
+                    d.RoomId, RoomNumber = d.RoomId == null ? null : db.Rooms.Where(r => r.Id == d.RoomId).Select(r => r.RoomNumber).FirstOrDefault(),
+                    d.Quantity, d.PricePerNight, d.NumberOfNights, d.ExtraFee, d.LineTotal }).ToList(),
+                Rooms = b.Details.Where(d => d.RoomId != null).Select(d => db.Rooms.Where(r => r.Id == d.RoomId).Select(r => r.RoomNumber).First()).ToList(),
+                PaidAmount = b.Payments.Where(p => p.TransactionType != "Refund" && p.Status == "Success").Sum(p => (decimal?)p.Amount) ?? 0,
+                Payments = b.Payments.OrderByDescending(p => p.CreatedAt).Select(p => new { p.Id, p.TransactionCode, p.PaymentMethod,
+                    p.TransactionType, p.Amount, p.Status, p.PaidAt, p.CreatedAt }).ToList(),
+                Cancellation = db.Cancellations.Where(c => c.BookingId == b.Id).Select(c => new { c.Id, c.Reason, c.CancellationFee, c.RefundAmount,
+                    Status = c.Status == "Approved" && db.Payments.Any(p => p.BookingId == b.Id && p.TransactionType == "Refund" && p.Status == "Pending") ? "RefundPending" : c.Status,
+                    c.CancelledAt, c.ProcessedAt }).FirstOrDefault()
+            }).ToListAsync();
         return Ok(new { items });
+    }
+
+    [HttpPatch("bookings/{bookingId:long}/viewed")]
+    public async Task<IActionResult> MarkBookingViewed(long bookingId)
+    {
+        var booking = await db.Bookings.SingleOrDefaultAsync(b => b.Id == bookingId
+            && db.Homestays.Any(h => h.Id == b.HomestayId && h.HostId == HostId));
+        if (booking is null) return NotFound(new { message = "Không tìm thấy booking." });
+        booking.HostViewedAt ??= DateTime.UtcNow;
+        await db.SaveChangesAsync();
+        return Ok(new { message = "Đã đánh dấu đơn đã xem." });
+    }
+
+    [HttpPatch("bookings/{bookingId:long}/note")]
+    public async Task<IActionResult> UpdateBookingNote(long bookingId, HostBookingNoteRequest request)
+    {
+        var note = request.Note?.Trim();
+        if (note?.Length > 1000) return BadRequest(new { message = "Ghi chú nội bộ tối đa 1000 ký tự." });
+        var booking = await db.Bookings.SingleOrDefaultAsync(b => b.Id == bookingId
+            && db.Homestays.Any(h => h.Id == b.HomestayId && h.HostId == HostId));
+        if (booking is null) return NotFound(new { message = "Không tìm thấy booking." });
+        booking.HostNote = string.IsNullOrWhiteSpace(note) ? null : note;
+        booking.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+        return Ok(new { message = "Đã lưu ghi chú nội bộ." });
+    }
+
+    [HttpPost("bookings/{bookingId:long}/offline-payment")]
+    public async Task<IActionResult> ConfirmOfflinePayment(long bookingId, HostOfflinePaymentRequest request)
+    {
+        var method = request.Method?.Trim();
+        if (method is not ("Cash" or "BankTransfer")) return BadRequest(new { message = "Phương thức thanh toán không hợp lệ." });
+        await using var transaction = await db.Database.BeginTransactionAsync();
+        await BookingAvailability.LockBooking(db, bookingId);
+        var booking = await db.Bookings.SingleOrDefaultAsync(b => b.Id == bookingId
+            && db.Homestays.Any(h => h.Id == b.HomestayId && h.HostId == HostId));
+        if (booking is null) return NotFound(new { message = "Không tìm thấy booking." });
+        var now = DateTime.UtcNow;
+        var paymentCreatedAt = await db.Payments
+            .Where(p => p.BookingId == bookingId && p.Status == "Pending")
+            .OrderByDescending(p => p.CreatedAt)
+            .Select(p => (DateTime?)p.CreatedAt)
+            .FirstOrDefaultAsync() ?? booking.UpdatedAt;
+        if (!BookingRules.CanConfirm(booking.Status, booking.HoldExpiresAt ?? booking.UpdatedAt, paymentCreatedAt, now))
+            return BadRequest(new { message = "Đơn đã hết thời gian giữ phòng hoặc không thể xác nhận thanh toán." });
+        if (await db.Payments.AnyAsync(p => p.BookingId == bookingId && p.TransactionType == "Deposit" && p.Status == "Success"))
+            return Conflict(new { message = "Đơn đã có giao dịch thanh toán thành công." });
+        await db.Payments.Where(p => p.BookingId == bookingId && p.TransactionType == "Deposit" && p.Status == "Pending")
+            .ExecuteUpdateAsync(update => update.SetProperty(p => p.Status, "Failed").SetProperty(p => p.UpdatedAt, now));
+        db.Payments.Add(new Payment { BookingId = booking.Id, TransactionCode = $"OFF{now:yyyyMMddHHmmss}{Guid.NewGuid():N}"[..30].ToUpperInvariant(),
+            PaymentMethod = method, TransactionType = "Deposit", Amount = booking.DepositAmount, Status = "Success",
+            PaidAt = now, GatewayResponse = "Host confirmed offline payment", CreatedAt = now, UpdatedAt = now });
+        booking.Status = BookingStatus.Confirmed; booking.PaymentStatus = PaymentStatus.Deposited;
+        booking.UpdatedAt = now;
+        await db.SaveChangesAsync();
+        await transaction.CommitAsync();
+        return Ok(new { message = "Đã xác nhận tiền cọc và giữ phòng cho khách.", amount = booking.DepositAmount });
     }
 
     [HttpPatch("bookings/{bookingId:long}/status")]
     public async Task<IActionResult> UpdateBookingStatus(long bookingId, HostBookingStatusRequest request)
     {
+        await using var transaction = await db.Database.BeginTransactionAsync();
+        await BookingAvailability.LockBooking(db, bookingId);
         var hostId = long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var booking = await db.Bookings.Include(x => x.Details)
             .SingleOrDefaultAsync(x => x.Id == bookingId && db.Homestays.Any(h => h.Id == x.HomestayId && h.HostId == hostId));
@@ -382,29 +498,31 @@ public sealed class HostHomestaysController(IHomestayQueryService service, AppDb
         var target = request.Status?.Trim();
         var valid = (booking.Status, target) switch
         {
-            ("Confirmed", "CheckedIn") => true,
-            ("CheckedIn", "Completed") => true,
+            (BookingStatus.Confirmed, BookingStatus.CheckedIn) => true,
             _ => false
         };
         if (!valid) return BadRequest(new { message = $"Không thể chuyển booking từ {booking.Status} sang {target}." });
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        if (target == "CheckedIn" && today < booking.CheckInDate)
-            return BadRequest(new { message = "Chưa đến ngày nhận phòng." });
+        var today = BookingRules.Today;
+        if (target == "CheckedIn" && (today < booking.CheckInDate || today >= booking.CheckOutDate))
+            return BadRequest(new { message = "Chỉ nhận phòng trong khoảng ngày lưu trú của đơn." });
 
         var roomIds = booking.Details.Where(x => x.RoomId.HasValue).Select(x => x.RoomId!.Value).ToList();
+        if (target == "CheckedIn" && await db.Rooms.AnyAsync(r => roomIds.Contains(r.Id) && r.Status != "Available"))
+            return Conflict(new { message = "Phòng chưa sẵn sàng. Vui lòng kiểm tra vệ sinh và khách đang lưu trú." });
         if (target == "CheckedIn")
             await db.Rooms.Where(x => roomIds.Contains(x.Id)).ExecuteUpdateAsync(s => s.SetProperty(x => x.Status, "Occupied").SetProperty(x => x.UpdatedAt, DateTime.UtcNow));
-        else
-            await db.Rooms.Where(x => roomIds.Contains(x.Id)).ExecuteUpdateAsync(s => s.SetProperty(x => x.Status, "Cleaning").SetProperty(x => x.UpdatedAt, DateTime.UtcNow));
         booking.Status = target!;
         booking.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
-        return Ok(new { message = target == "CheckedIn" ? "Đã nhận phòng cho khách." : "Đã hoàn tất kỳ lưu trú; phòng chuyển sang chờ vệ sinh." });
+        await transaction.CommitAsync();
+        return Ok(new { message = "Đã nhận phòng cho khách." });
     }
 
     [HttpPatch("bookings/{bookingId:long}/cancellation")]
     public async Task<IActionResult> DecideCancellation(long bookingId, HostCancellationDecisionRequest request)
     {
+        await using var transaction = await db.Database.BeginTransactionAsync();
+        await BookingAvailability.LockBooking(db, bookingId);
         var hostId = long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var booking = await db.Bookings.SingleOrDefaultAsync(x => x.Id == bookingId && x.Status == "CancellationRequested"
             && db.Homestays.Any(h => h.Id == x.HomestayId && h.HostId == hostId));
@@ -419,16 +537,18 @@ public sealed class HostHomestaysController(IHomestayQueryService service, AppDb
             booking.Status = "Confirmed";
             booking.UpdatedAt = now;
             await db.SaveChangesAsync();
+            await transaction.CommitAsync();
             return Ok(new { message = "Đã từ chối yêu cầu hủy; booking vẫn được xác nhận." });
         }
 
-        cancellation.Status = cancellation.RefundAmount > 0 ? "Refunded" : "Approved";
+        cancellation.Status = "Approved";
         booking.Status = "Cancelled";
         booking.UpdatedAt = now;
         if (cancellation.RefundAmount > 0)
-            db.Payments.Add(new Payment { BookingId = booking.Id, TransactionCode = $"RF{now:yyyyMMddHHmmss}{Guid.NewGuid():N}"[..30].ToUpperInvariant(), PaymentMethod = "VNPay", TransactionType = "Refund", Amount = cancellation.RefundAmount, Status = "Success", PaidAt = now, GatewayResponse = "Host approved cancellation refund", CreatedAt = now, UpdatedAt = now });
+            db.Payments.Add(new Payment { BookingId = booking.Id, TransactionCode = $"RF{now:yyyyMMddHHmmss}{Guid.NewGuid():N}"[..30].ToUpperInvariant(), PaymentMethod = "VNPay", TransactionType = "Refund", Amount = cancellation.RefundAmount, Status = "Pending", GatewayResponse = "Host approved; awaiting VNPay refund processing", CreatedAt = now, UpdatedAt = now });
         await db.SaveChangesAsync();
-        return Ok(new { message = "Đã duyệt hủy và ghi nhận khoản hoàn tiền.", cancellation.RefundAmount, cancellation.CancellationFee });
+        await transaction.CommitAsync();
+        return Ok(new { message = cancellation.RefundAmount > 0 ? "Đã duyệt hủy. Khoản hoàn tiền đang chờ xử lý qua VNPay." : "Đã duyệt hủy booking.", cancellation.RefundAmount, cancellation.CancellationFee, status = cancellation.RefundAmount > 0 ? "RefundPending" : cancellation.Status });
     }
 
     [HttpPost("{id:long}/submit")]

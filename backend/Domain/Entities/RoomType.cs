@@ -9,6 +9,11 @@ public class RoomType
     public decimal BasePrice { get; set; }
     public int MaxAdults { get; set; }
     public int MaxChildren { get; set; }
+    public int BaseCapacity { get; set; }
+    public int MaxCapacity { get; set; }
+    public bool ExtraGuestAllowed { get; set; }
+    public decimal ExtraGuestFee { get; set; }
+    public decimal DepositPercent { get; set; } = .3m;
     public required string BedType { get; set; }
     public decimal? RoomSize { get; set; }
     public required string Status { get; set; }

@@ -10,7 +10,10 @@ coverage/
 .data-protection-keys/
 backend/.data-protection-keys/
 backend/wwwroot/uploads/
+wwwroot/uploads/
 **/.build*/
 **/.tmp*/
 **/.*build*/
 .verify-build/
+ai/topk/data/real-events*.json
+ai/topk/data/evaluation-report.json

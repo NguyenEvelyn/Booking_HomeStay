@@ -1,0 +1,1383 @@
+{
+  "source": "public Neon catalog",
+  "exportedAt": "2026-09-20T16:01:16.180Z",
+  "items": [
+    {
+      "id": 1,
+      "name": "Sunset Phú Quốc",
+      "province": "Kiên Giang",
+      "district": "Phú Quốc",
+      "averageRating": null,
+      "reviewCount": 0,
+      "amenities": [
+        "Bãi đỗ xe",
+        "Hồ bơi",
+        "Wi-Fi miễn phí",
+        "Máy lạnh"
+      ],
+      "roomTypes": [
+        {
+          "id": 2,
+          "name": "Deluxe hướng biển",
+          "basePrice": 1456000,
+          "baseCapacity": 2,
+          "maxCapacity": 3,
+          "maxAdults": 2,
+          "maxChildren": 1,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 2
+        },
+        {
+          "id": 1,
+          "name": "Family Suite",
+          "basePrice": 2290000,
+          "baseCapacity": 2,
+          "maxCapacity": 6,
+          "maxAdults": 4,
+          "maxChildren": 2,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 2
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Azure Đà Nẵng",
+      "province": "Đà Nẵng",
+      "district": "Sơn Trà",
+      "averageRating": null,
+      "reviewCount": 0,
+      "amenities": [
+        "Bãi đỗ xe",
+        "Wi-Fi miễn phí",
+        "Máy lạnh"
+      ],
+      "roomTypes": [
+        {
+          "id": 4,
+          "name": "Superior Double",
+          "basePrice": 1156000,
+          "baseCapacity": 2,
+          "maxCapacity": 3,
+          "maxAdults": 2,
+          "maxChildren": 1,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 3,
+          "name": "Azure Family",
+          "basePrice": 1980000,
+          "baseCapacity": 2,
+          "maxCapacity": 6,
+          "maxAdults": 4,
+          "maxChildren": 2,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 2
+        }
+      ]
+    },
+    {
+      "id": 24,
+      "name": "Bãi Dừa Retreat Phú Quốc",
+      "province": "Kiên Giang",
+      "district": "Phú Quốc",
+      "averageRating": 4,
+      "reviewCount": 1,
+      "amenities": [
+        "Cho phép mang theo vật nuôi",
+        "Chỗ đỗ xe miễn phí",
+        "WiFi miễn phí",
+        "Ban công",
+        "Máy điều hòa",
+        "Nhìn ra thành phố",
+        "Nhà bếp",
+        "Sân vườn"
+      ],
+      "roomTypes": [
+        {
+          "id": 85,
+          "name": "Phòng đơn",
+          "basePrice": 460000,
+          "baseCapacity": 1,
+          "maxCapacity": 1,
+          "maxAdults": 1,
+          "maxChildren": 0,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 86,
+          "name": "Phòng đôi",
+          "basePrice": 710000,
+          "baseCapacity": 2,
+          "maxCapacity": 3,
+          "maxAdults": 2,
+          "maxChildren": 1,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 87,
+          "name": "Phòng có ban công",
+          "basePrice": 960000,
+          "baseCapacity": 2,
+          "maxCapacity": 4,
+          "maxAdults": 3,
+          "maxChildren": 1,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 88,
+          "name": "Phòng gia đình",
+          "basePrice": 1360000,
+          "baseCapacity": 2,
+          "maxCapacity": 6,
+          "maxAdults": 4,
+          "maxChildren": 2,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        }
+      ]
+    },
+    {
+      "id": 25,
+      "name": "Gió Nam Villa Sơn Trà",
+      "province": "Đà Nẵng",
+      "district": "Sơn Trà",
+      "averageRating": 5,
+      "reviewCount": 1,
+      "amenities": [
+        "Cho phép mang theo vật nuôi",
+        "Chỗ đỗ xe miễn phí",
+        "WiFi miễn phí",
+        "Ban công",
+        "Máy điều hòa",
+        "Nhìn ra thành phố",
+        "Nhà bếp",
+        "Sân vườn"
+      ],
+      "roomTypes": [
+        {
+          "id": 89,
+          "name": "Phòng đơn",
+          "basePrice": 470000,
+          "baseCapacity": 1,
+          "maxCapacity": 1,
+          "maxAdults": 1,
+          "maxChildren": 0,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 90,
+          "name": "Phòng đôi",
+          "basePrice": 720000,
+          "baseCapacity": 2,
+          "maxCapacity": 3,
+          "maxAdults": 2,
+          "maxChildren": 1,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 91,
+          "name": "Phòng có ban công",
+          "basePrice": 970000,
+          "baseCapacity": 2,
+          "maxCapacity": 4,
+          "maxAdults": 3,
+          "maxChildren": 1,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 92,
+          "name": "Phòng gia đình",
+          "basePrice": 1370000,
+          "baseCapacity": 2,
+          "maxCapacity": 6,
+          "maxAdults": 4,
+          "maxChildren": 2,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        }
+      ]
+    },
+    {
+      "id": 26,
+      "name": "Mây Thông House Đà Lạt",
+      "province": "Lâm Đồng",
+      "district": "Đà Lạt",
+      "averageRating": 3,
+      "reviewCount": 1,
+      "amenities": [
+        "Cho phép mang theo vật nuôi",
+        "Chỗ đỗ xe miễn phí",
+        "WiFi miễn phí",
+        "Ban công",
+        "Máy điều hòa",
+        "Nhìn ra thành phố",
+        "Nhà bếp",
+        "Sân vườn"
+      ],
+      "roomTypes": [
+        {
+          "id": 93,
+          "name": "Phòng đơn",
+          "basePrice": 480000,
+          "baseCapacity": 1,
+          "maxCapacity": 1,
+          "maxAdults": 1,
+          "maxChildren": 0,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 94,
+          "name": "Phòng đôi",
+          "basePrice": 730000,
+          "baseCapacity": 2,
+          "maxCapacity": 3,
+          "maxAdults": 2,
+          "maxChildren": 1,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 95,
+          "name": "Phòng có ban công",
+          "basePrice": 980000,
+          "baseCapacity": 2,
+          "maxCapacity": 4,
+          "maxAdults": 3,
+          "maxChildren": 1,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 96,
+          "name": "Phòng gia đình",
+          "basePrice": 1380000,
+          "baseCapacity": 2,
+          "maxCapacity": 6,
+          "maxAdults": 4,
+          "maxChildren": 2,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        }
+      ]
+    },
+    {
+      "id": 28,
+      "name": "Sóng Ngọc Stay Phú Quốc",
+      "province": "Kiên Giang",
+      "district": "Phú Quốc",
+      "averageRating": 5,
+      "reviewCount": 1,
+      "amenities": [
+        "Cho phép mang theo vật nuôi",
+        "Chỗ đỗ xe miễn phí",
+        "WiFi miễn phí",
+        "Ban công",
+        "Máy điều hòa",
+        "Nhìn ra thành phố",
+        "Nhà bếp",
+        "Sân vườn"
+      ],
+      "roomTypes": [
+        {
+          "id": 101,
+          "name": "Phòng đơn",
+          "basePrice": 500000,
+          "baseCapacity": 1,
+          "maxCapacity": 1,
+          "maxAdults": 1,
+          "maxChildren": 0,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 102,
+          "name": "Phòng đôi",
+          "basePrice": 750000,
+          "baseCapacity": 2,
+          "maxCapacity": 3,
+          "maxAdults": 2,
+          "maxChildren": 1,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 103,
+          "name": "Phòng có ban công",
+          "basePrice": 1000000,
+          "baseCapacity": 2,
+          "maxCapacity": 4,
+          "maxAdults": 3,
+          "maxChildren": 1,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 104,
+          "name": "Phòng gia đình",
+          "basePrice": 1400000,
+          "baseCapacity": 2,
+          "maxCapacity": 6,
+          "maxAdults": 4,
+          "maxChildren": 2,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        }
+      ]
+    },
+    {
+      "id": 29,
+      "name": "Nắng Biển House Đà Nẵng",
+      "province": "Đà Nẵng",
+      "district": "Sơn Trà",
+      "averageRating": 3,
+      "reviewCount": 1,
+      "amenities": [
+        "Cho phép mang theo vật nuôi",
+        "Chỗ đỗ xe miễn phí",
+        "WiFi miễn phí",
+        "Ban công",
+        "Máy điều hòa",
+        "Nhìn ra thành phố",
+        "Nhà bếp",
+        "Sân vườn"
+      ],
+      "roomTypes": [
+        {
+          "id": 105,
+          "name": "Phòng đơn",
+          "basePrice": 510000,
+          "baseCapacity": 1,
+          "maxCapacity": 1,
+          "maxAdults": 1,
+          "maxChildren": 0,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 106,
+          "name": "Phòng đôi",
+          "basePrice": 760000,
+          "baseCapacity": 2,
+          "maxCapacity": 3,
+          "maxAdults": 2,
+          "maxChildren": 1,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 107,
+          "name": "Phòng có ban công",
+          "basePrice": 1010000,
+          "baseCapacity": 2,
+          "maxCapacity": 4,
+          "maxAdults": 3,
+          "maxChildren": 1,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 108,
+          "name": "Phòng gia đình",
+          "basePrice": 1410000,
+          "baseCapacity": 2,
+          "maxCapacity": 6,
+          "maxAdults": 4,
+          "maxChildren": 2,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        }
+      ]
+    },
+    {
+      "id": 30,
+      "name": "Đồi Sương Homestay Đà Lạt",
+      "province": "Lâm Đồng",
+      "district": "Đà Lạt",
+      "averageRating": 4,
+      "reviewCount": 1,
+      "amenities": [
+        "Cho phép mang theo vật nuôi",
+        "Chỗ đỗ xe miễn phí",
+        "WiFi miễn phí",
+        "Ban công",
+        "Máy điều hòa",
+        "Nhìn ra thành phố",
+        "Nhà bếp",
+        "Sân vườn"
+      ],
+      "roomTypes": [
+        {
+          "id": 109,
+          "name": "Phòng đơn",
+          "basePrice": 520000,
+          "baseCapacity": 1,
+          "maxCapacity": 1,
+          "maxAdults": 1,
+          "maxChildren": 0,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 110,
+          "name": "Phòng đôi",
+          "basePrice": 770000,
+          "baseCapacity": 2,
+          "maxCapacity": 3,
+          "maxAdults": 2,
+          "maxChildren": 1,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 111,
+          "name": "Phòng có ban công",
+          "basePrice": 1020000,
+          "baseCapacity": 2,
+          "maxCapacity": 4,
+          "maxAdults": 3,
+          "maxChildren": 1,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 112,
+          "name": "Phòng gia đình",
+          "basePrice": 1420000,
+          "baseCapacity": 2,
+          "maxCapacity": 6,
+          "maxAdults": 4,
+          "maxChildren": 2,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        }
+      ]
+    },
+    {
+      "id": 31,
+      "name": "Mountain Pool Home",
+      "province": "Khánh Hòa",
+      "district": "Nha Trang",
+      "averageRating": 5,
+      "reviewCount": 1,
+      "amenities": [
+        "Cho phép mang theo vật nuôi",
+        "Chỗ đỗ xe miễn phí",
+        "WiFi miễn phí",
+        "Ban công",
+        "Máy điều hòa",
+        "Nhìn ra thành phố",
+        "Nhà bếp",
+        "Sân vườn"
+      ],
+      "roomTypes": [
+        {
+          "id": 113,
+          "name": "Phòng đơn",
+          "basePrice": 530000,
+          "baseCapacity": 1,
+          "maxCapacity": 1,
+          "maxAdults": 1,
+          "maxChildren": 0,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 114,
+          "name": "Phòng đôi",
+          "basePrice": 780000,
+          "baseCapacity": 2,
+          "maxCapacity": 3,
+          "maxAdults": 2,
+          "maxChildren": 1,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 115,
+          "name": "Phòng có ban công",
+          "basePrice": 1030000,
+          "baseCapacity": 2,
+          "maxCapacity": 4,
+          "maxAdults": 3,
+          "maxChildren": 1,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 116,
+          "name": "Phòng gia đình",
+          "basePrice": 1430000,
+          "baseCapacity": 2,
+          "maxCapacity": 6,
+          "maxAdults": 4,
+          "maxChildren": 2,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        }
+      ]
+    },
+    {
+      "id": 32,
+      "name": "Cát Trắng Retreat Phú Quốc",
+      "province": "Kiên Giang",
+      "district": "Phú Quốc",
+      "averageRating": 3,
+      "reviewCount": 1,
+      "amenities": [
+        "Cho phép mang theo vật nuôi",
+        "Chỗ đỗ xe miễn phí",
+        "WiFi miễn phí",
+        "Ban công",
+        "Máy điều hòa",
+        "Nhìn ra thành phố",
+        "Nhà bếp",
+        "Sân vườn"
+      ],
+      "roomTypes": [
+        {
+          "id": 117,
+          "name": "Phòng đơn",
+          "basePrice": 540000,
+          "baseCapacity": 1,
+          "maxCapacity": 1,
+          "maxAdults": 1,
+          "maxChildren": 0,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 118,
+          "name": "Phòng đôi",
+          "basePrice": 790000,
+          "baseCapacity": 2,
+          "maxCapacity": 3,
+          "maxAdults": 2,
+          "maxChildren": 1,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 119,
+          "name": "Phòng có ban công",
+          "basePrice": 1040000,
+          "baseCapacity": 2,
+          "maxCapacity": 4,
+          "maxAdults": 3,
+          "maxChildren": 1,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 120,
+          "name": "Phòng gia đình",
+          "basePrice": 1440000,
+          "baseCapacity": 2,
+          "maxCapacity": 6,
+          "maxAdults": 4,
+          "maxChildren": 2,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        }
+      ]
+    },
+    {
+      "id": 33,
+      "name": "Hải Vân Breeze Stay",
+      "province": "Đà Nẵng",
+      "district": "Sơn Trà",
+      "averageRating": 4,
+      "reviewCount": 1,
+      "amenities": [
+        "Cho phép mang theo vật nuôi",
+        "Chỗ đỗ xe miễn phí",
+        "WiFi miễn phí",
+        "Ban công",
+        "Máy điều hòa",
+        "Nhìn ra thành phố",
+        "Nhà bếp",
+        "Sân vườn"
+      ],
+      "roomTypes": [
+        {
+          "id": 121,
+          "name": "Phòng đơn",
+          "basePrice": 550000,
+          "baseCapacity": 1,
+          "maxCapacity": 1,
+          "maxAdults": 1,
+          "maxChildren": 0,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 122,
+          "name": "Phòng đôi",
+          "basePrice": 800000,
+          "baseCapacity": 2,
+          "maxCapacity": 3,
+          "maxAdults": 2,
+          "maxChildren": 1,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 123,
+          "name": "Phòng có ban công",
+          "basePrice": 1050000,
+          "baseCapacity": 2,
+          "maxCapacity": 4,
+          "maxAdults": 3,
+          "maxChildren": 1,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 124,
+          "name": "Phòng gia đình",
+          "basePrice": 1450000,
+          "baseCapacity": 2,
+          "maxCapacity": 6,
+          "maxAdults": 4,
+          "maxChildren": 2,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        }
+      ]
+    },
+    {
+      "id": 34,
+      "name": "Thông Xanh Villa Đà Lạt",
+      "province": "Lâm Đồng",
+      "district": "Đà Lạt",
+      "averageRating": 5,
+      "reviewCount": 1,
+      "amenities": [
+        "Cho phép mang theo vật nuôi",
+        "Chỗ đỗ xe miễn phí",
+        "WiFi miễn phí",
+        "Ban công",
+        "Máy điều hòa",
+        "Nhìn ra thành phố",
+        "Nhà bếp",
+        "Sân vườn"
+      ],
+      "roomTypes": [
+        {
+          "id": 125,
+          "name": "Phòng đơn",
+          "basePrice": 560000,
+          "baseCapacity": 1,
+          "maxCapacity": 1,
+          "maxAdults": 1,
+          "maxChildren": 0,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 126,
+          "name": "Phòng đôi",
+          "basePrice": 810000,
+          "baseCapacity": 2,
+          "maxCapacity": 3,
+          "maxAdults": 2,
+          "maxChildren": 1,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 127,
+          "name": "Phòng có ban công",
+          "basePrice": 1060000,
+          "baseCapacity": 2,
+          "maxCapacity": 4,
+          "maxAdults": 3,
+          "maxChildren": 1,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 128,
+          "name": "Phòng gia đình",
+          "basePrice": 1460000,
+          "baseCapacity": 2,
+          "maxCapacity": 6,
+          "maxAdults": 4,
+          "maxChildren": 2,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        }
+      ]
+    },
+    {
+      "id": 35,
+      "name": "Sala Grand HomeStay",
+      "province": "Phú Yên",
+      "district": "Tuy Hòa",
+      "averageRating": 3,
+      "reviewCount": 1,
+      "amenities": [
+        "Cho phép mang theo vật nuôi",
+        "Chỗ đỗ xe miễn phí",
+        "Dịch vụ đưa đón",
+        "Lễ tân 24 giờ",
+        "Hồ bơi",
+        "Khu vui chơi trẻ em",
+        "WiFi miễn phí",
+        "Ban công",
+        "Máy điều hòa",
+        "Nhìn ra thành phố",
+        "Nhà bếp",
+        "Sân vườn"
+      ],
+      "roomTypes": [
+        {
+          "id": 129,
+          "name": "Phòng đơn",
+          "basePrice": 570000,
+          "baseCapacity": 1,
+          "maxCapacity": 1,
+          "maxAdults": 1,
+          "maxChildren": 0,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 130,
+          "name": "Phòng đôi",
+          "basePrice": 820000,
+          "baseCapacity": 2,
+          "maxCapacity": 3,
+          "maxAdults": 2,
+          "maxChildren": 1,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 131,
+          "name": "Phòng có ban công",
+          "basePrice": 1070000,
+          "baseCapacity": 2,
+          "maxCapacity": 4,
+          "maxAdults": 3,
+          "maxChildren": 1,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 132,
+          "name": "Phòng gia đình",
+          "basePrice": 1470000,
+          "baseCapacity": 2,
+          "maxCapacity": 6,
+          "maxAdults": 4,
+          "maxChildren": 2,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        }
+      ]
+    },
+    {
+      "id": 36,
+      "name": "An Nhiên Bay Homestay",
+      "province": "Kiên Giang",
+      "district": "Phú Quốc",
+      "averageRating": 4,
+      "reviewCount": 1,
+      "amenities": [
+        "Cho phép mang theo vật nuôi",
+        "Chỗ đỗ xe miễn phí",
+        "WiFi miễn phí",
+        "Ban công",
+        "Máy điều hòa",
+        "Nhìn ra thành phố",
+        "Nhà bếp",
+        "Sân vườn"
+      ],
+      "roomTypes": [
+        {
+          "id": 133,
+          "name": "Phòng đơn",
+          "basePrice": 580000,
+          "baseCapacity": 1,
+          "maxCapacity": 1,
+          "maxAdults": 1,
+          "maxChildren": 0,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 134,
+          "name": "Phòng đôi",
+          "basePrice": 830000,
+          "baseCapacity": 2,
+          "maxCapacity": 3,
+          "maxAdults": 2,
+          "maxChildren": 1,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 135,
+          "name": "Phòng có ban công",
+          "basePrice": 1080000,
+          "baseCapacity": 2,
+          "maxCapacity": 4,
+          "maxAdults": 3,
+          "maxChildren": 1,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 136,
+          "name": "Phòng gia đình",
+          "basePrice": 1480000,
+          "baseCapacity": 2,
+          "maxCapacity": 6,
+          "maxAdults": 4,
+          "maxChildren": 2,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        }
+      ]
+    },
+    {
+      "id": 37,
+      "name": "Biển Lam House Sơn Trà",
+      "province": "Đà Nẵng",
+      "district": "Sơn Trà",
+      "averageRating": 5,
+      "reviewCount": 1,
+      "amenities": [
+        "Cho phép mang theo vật nuôi",
+        "Chỗ đỗ xe miễn phí",
+        "WiFi miễn phí",
+        "Ban công",
+        "Máy điều hòa",
+        "Nhìn ra thành phố",
+        "Nhà bếp",
+        "Sân vườn"
+      ],
+      "roomTypes": [
+        {
+          "id": 137,
+          "name": "Phòng đơn",
+          "basePrice": 590000,
+          "baseCapacity": 1,
+          "maxCapacity": 1,
+          "maxAdults": 1,
+          "maxChildren": 0,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 138,
+          "name": "Phòng đôi",
+          "basePrice": 840000,
+          "baseCapacity": 2,
+          "maxCapacity": 3,
+          "maxAdults": 2,
+          "maxChildren": 1,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 139,
+          "name": "Phòng có ban công",
+          "basePrice": 1090000,
+          "baseCapacity": 2,
+          "maxCapacity": 4,
+          "maxAdults": 3,
+          "maxChildren": 1,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 140,
+          "name": "Phòng gia đình",
+          "basePrice": 1490000,
+          "baseCapacity": 2,
+          "maxCapacity": 6,
+          "maxAdults": 4,
+          "maxChildren": 2,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        }
+      ]
+    },
+    {
+      "id": 38,
+      "name": "Mộc Sương Homestay Đà Lạt",
+      "province": "Lâm Đồng",
+      "district": "Đà Lạt",
+      "averageRating": 3,
+      "reviewCount": 1,
+      "amenities": [
+        "Cho phép mang theo vật nuôi",
+        "Chỗ đỗ xe miễn phí",
+        "WiFi miễn phí",
+        "Ban công",
+        "Máy điều hòa",
+        "Nhìn ra thành phố",
+        "Nhà bếp",
+        "Sân vườn"
+      ],
+      "roomTypes": [
+        {
+          "id": 141,
+          "name": "Phòng đơn",
+          "basePrice": 600000,
+          "baseCapacity": 1,
+          "maxCapacity": 1,
+          "maxAdults": 1,
+          "maxChildren": 0,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 142,
+          "name": "Phòng đôi",
+          "basePrice": 850000,
+          "baseCapacity": 2,
+          "maxCapacity": 3,
+          "maxAdults": 2,
+          "maxChildren": 1,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 143,
+          "name": "Phòng có ban công",
+          "basePrice": 1100000,
+          "baseCapacity": 2,
+          "maxCapacity": 4,
+          "maxAdults": 3,
+          "maxChildren": 1,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 144,
+          "name": "Phòng gia đình",
+          "basePrice": 1500000,
+          "baseCapacity": 2,
+          "maxCapacity": 6,
+          "maxAdults": 4,
+          "maxChildren": 2,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        }
+      ]
+    },
+    {
+      "id": 39,
+      "name": "The Historic Homestay",
+      "province": "Kon Tum",
+      "district": "Kon Plông",
+      "averageRating": null,
+      "reviewCount": 0,
+      "amenities": [
+        "Cho phép mang theo vật nuôi",
+        "Chỗ đỗ xe miễn phí",
+        "WiFi miễn phí",
+        "Ban công",
+        "Máy điều hòa",
+        "Nhìn ra thành phố",
+        "Nhà bếp",
+        "Sân vườn"
+      ],
+      "roomTypes": [
+        {
+          "id": 145,
+          "name": "Phòng đơn",
+          "basePrice": 610000,
+          "baseCapacity": 1,
+          "maxCapacity": 3,
+          "maxAdults": 3,
+          "maxChildren": 0,
+          "extraGuestAllowed": true,
+          "extraGuestFee": 100000,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 146,
+          "name": "Phòng đôi",
+          "basePrice": 860000,
+          "baseCapacity": 2,
+          "maxCapacity": 4,
+          "maxAdults": 4,
+          "maxChildren": 0,
+          "extraGuestAllowed": true,
+          "extraGuestFee": 120000,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 147,
+          "name": "Phòng có ban công",
+          "basePrice": 1110000,
+          "baseCapacity": 2,
+          "maxCapacity": 4,
+          "maxAdults": 4,
+          "maxChildren": 0,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 148,
+          "name": "Phòng gia đình",
+          "basePrice": 1510000,
+          "baseCapacity": 2,
+          "maxCapacity": 6,
+          "maxAdults": 6,
+          "maxChildren": 0,
+          "extraGuestAllowed": true,
+          "extraGuestFee": 100000,
+          "availableRoomCount": 1
+        }
+      ]
+    },
+    {
+      "id": 40,
+      "name": "Vườn Dừa Stay Phú Quốc",
+      "province": "Kiên Giang",
+      "district": "Phú Quốc",
+      "averageRating": null,
+      "reviewCount": 0,
+      "amenities": [
+        "Cho phép mang theo vật nuôi",
+        "Chỗ đỗ xe miễn phí",
+        "WiFi miễn phí",
+        "Ban công",
+        "Máy điều hòa",
+        "Nhìn ra thành phố",
+        "Nhà bếp",
+        "Sân vườn"
+      ],
+      "roomTypes": [
+        {
+          "id": 149,
+          "name": "Phòng đơn",
+          "basePrice": 620000,
+          "baseCapacity": 1,
+          "maxCapacity": 1,
+          "maxAdults": 1,
+          "maxChildren": 0,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 150,
+          "name": "Phòng đôi",
+          "basePrice": 870000,
+          "baseCapacity": 2,
+          "maxCapacity": 3,
+          "maxAdults": 2,
+          "maxChildren": 1,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 151,
+          "name": "Phòng có ban công",
+          "basePrice": 1120000,
+          "baseCapacity": 2,
+          "maxCapacity": 4,
+          "maxAdults": 3,
+          "maxChildren": 1,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 152,
+          "name": "Phòng gia đình",
+          "basePrice": 1520000,
+          "baseCapacity": 2,
+          "maxCapacity": 6,
+          "maxAdults": 4,
+          "maxChildren": 2,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        }
+      ]
+    },
+    {
+      "id": 41,
+      "name": "Ánh Dương Coastal House",
+      "province": "Đà Nẵng",
+      "district": "Sơn Trà",
+      "averageRating": null,
+      "reviewCount": 0,
+      "amenities": [
+        "Cho phép mang theo vật nuôi",
+        "Chỗ đỗ xe miễn phí",
+        "WiFi miễn phí",
+        "Ban công",
+        "Máy điều hòa",
+        "Nhìn ra thành phố",
+        "Nhà bếp",
+        "Sân vườn"
+      ],
+      "roomTypes": [
+        {
+          "id": 153,
+          "name": "Phòng đơn",
+          "basePrice": 630000,
+          "baseCapacity": 1,
+          "maxCapacity": 1,
+          "maxAdults": 1,
+          "maxChildren": 0,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 154,
+          "name": "Phòng đôi",
+          "basePrice": 880000,
+          "baseCapacity": 2,
+          "maxCapacity": 3,
+          "maxAdults": 2,
+          "maxChildren": 1,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 155,
+          "name": "Phòng có ban công",
+          "basePrice": 1130000,
+          "baseCapacity": 2,
+          "maxCapacity": 4,
+          "maxAdults": 3,
+          "maxChildren": 1,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 156,
+          "name": "Phòng gia đình",
+          "basePrice": 1530000,
+          "baseCapacity": 2,
+          "maxCapacity": 6,
+          "maxAdults": 4,
+          "maxChildren": 2,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        }
+      ]
+    },
+    {
+      "id": 42,
+      "name": "Hoa Thông Homestay Đà Lạt",
+      "province": "Lâm Đồng",
+      "district": "Đà Lạt",
+      "averageRating": null,
+      "reviewCount": 0,
+      "amenities": [
+        "Cho phép mang theo vật nuôi",
+        "Chỗ đỗ xe miễn phí",
+        "WiFi miễn phí",
+        "Ban công",
+        "Máy điều hòa",
+        "Nhìn ra thành phố",
+        "Nhà bếp",
+        "Sân vườn"
+      ],
+      "roomTypes": [
+        {
+          "id": 157,
+          "name": "Phòng đơn",
+          "basePrice": 640000,
+          "baseCapacity": 1,
+          "maxCapacity": 1,
+          "maxAdults": 1,
+          "maxChildren": 0,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 158,
+          "name": "Phòng đôi",
+          "basePrice": 890000,
+          "baseCapacity": 2,
+          "maxCapacity": 3,
+          "maxAdults": 2,
+          "maxChildren": 1,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 159,
+          "name": "Phòng có ban công",
+          "basePrice": 1140000,
+          "baseCapacity": 2,
+          "maxCapacity": 4,
+          "maxAdults": 3,
+          "maxChildren": 1,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 160,
+          "name": "Phòng gia đình",
+          "basePrice": 1540000,
+          "baseCapacity": 2,
+          "maxCapacity": 6,
+          "maxAdults": 4,
+          "maxChildren": 2,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        }
+      ]
+    },
+    {
+      "id": 43,
+      "name": "Puri Warung Guest HomeStay",
+      "province": "Hồ Chí Minh",
+      "district": "Thủ Đức",
+      "averageRating": null,
+      "reviewCount": 0,
+      "amenities": [
+        "Bãi đỗ xe",
+        "Chỗ đỗ xe miễn phí",
+        "Dọn phòng hằng ngày",
+        "WiFi miễn phí",
+        "Ban công",
+        "Máy lạnh",
+        "Máy sấy tóc",
+        "Máy điều hòa",
+        "Nhìn ra thành phố",
+        "Phòng tắm riêng"
+      ],
+      "roomTypes": [
+        {
+          "id": 161,
+          "name": "Phòng đơn",
+          "basePrice": 650000,
+          "baseCapacity": 1,
+          "maxCapacity": 1,
+          "maxAdults": 1,
+          "maxChildren": 0,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 0
+        },
+        {
+          "id": 162,
+          "name": "Phòng đôi",
+          "basePrice": 900000,
+          "baseCapacity": 2,
+          "maxCapacity": 3,
+          "maxAdults": 2,
+          "maxChildren": 1,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 163,
+          "name": "Phòng có ban công",
+          "basePrice": 1150000,
+          "baseCapacity": 2,
+          "maxCapacity": 4,
+          "maxAdults": 3,
+          "maxChildren": 1,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        },
+        {
+          "id": 164,
+          "name": "Phòng gia đình",
+          "basePrice": 1550000,
+          "baseCapacity": 2,
+          "maxCapacity": 6,
+          "maxAdults": 4,
+          "maxChildren": 2,
+          "extraGuestAllowed": false,
+          "extraGuestFee": 0,
+          "availableRoomCount": 1
+        }
+      ]
+    }
+  ]
+}

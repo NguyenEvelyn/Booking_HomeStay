@@ -1,19 +1,24 @@
+using HomestayAuth.Api.Features.Bookings;
 using HomestayAuth.Api.Features.Homestays.Services;
+using HomestayAuth.Api.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HomestayAuth.Api.Features.Homestays.Controllers;
 
 [ApiController]
 [Route("api/homestays")]
-public sealed class HomestaysController(IHomestayQueryService service) : ControllerBase
+[ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+public sealed class HomestaysController(IHomestayQueryService service, AppDbContext db) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> GetAll(
         [FromQuery] string? search,
+        [FromQuery] string? location,
         [FromQuery] string? province,
         [FromQuery] DateOnly? checkIn,
         [FromQuery] DateOnly? checkOut,
         [FromQuery] int guests = 1,
+        [FromQuery] int rooms = 1,
         [FromQuery] decimal? maxPrice = null,
         [FromQuery] string? roomType = null,
         [FromQuery] int minRating = 0,
@@ -25,13 +30,14 @@ public sealed class HomestaysController(IHomestayQueryService service) : Control
             return BadRequest(new { message = "Vui lòng chọn đầy đủ ngày nhận và ngày trả phòng." });
         if (checkIn.HasValue && checkOut <= checkIn)
             return BadRequest(new { message = "Ngày trả phòng phải sau ngày nhận phòng." });
-        if (checkIn.HasValue && checkIn < DateOnly.FromDateTime(DateTime.Today))
+        if (checkIn.HasValue && checkIn < BookingRules.Today)
             return BadRequest(new { message = "Ngày nhận phòng không được ở trong quá khứ." });
         guests = Math.Clamp(guests, 1, 30);
+        rooms = Math.Clamp(rooms, 1, 10);
         minRating = Math.Clamp(minRating, 0, 5);
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 1, 50);
-        return Ok(await service.GetApprovedAsync(search, province, checkIn, checkOut, guests, maxPrice, roomType, minRating, sort, page, pageSize));
+        return Ok(await service.GetApprovedAsync(search, location, province, checkIn, checkOut, guests, rooms, maxPrice, roomType, minRating, sort, page, pageSize));
     }
 
     [HttpGet("{homestayId:long}")]
@@ -46,5 +52,26 @@ public sealed class HomestaysController(IHomestayQueryService service) : Control
     {
         var result = await service.GetActiveRoomTypesAsync(homestayId);
         return result is null ? NotFound(new { message = "Không tìm thấy homestay." }) : Ok(new { items = result });
+    }
+
+    [HttpGet("{homestayId:long}/availability")]
+    public async Task<IActionResult> GetAvailability(long homestayId, [FromQuery] DateOnly checkIn,
+        [FromQuery] DateOnly checkOut, [FromQuery] int guests = 1, [FromQuery] int rooms = 1)
+    {
+        var dateError = BookingRules.ValidateDates(checkIn, checkOut, BookingRules.Today);
+        if (dateError is not null) return BadRequest(new { message = dateError });
+        if (guests < 1 || guests > 30 || rooms < 1 || rooms > 10)
+            return BadRequest(new { message = "Số khách hoặc số phòng không hợp lệ." });
+        var roomTypes = await service.GetActiveRoomTypesAsync(homestayId);
+        if (roomTypes is null) return NotFound(new { message = "Không tìm thấy homestay." });
+        var items = new List<object>();
+        foreach (var roomType in roomTypes)
+        {
+            var capacity = roomType.ExtraGuestAllowed ? roomType.MaxCapacity : roomType.BaseCapacity;
+            if (capacity * rooms < guests) continue;
+            var available = (await BookingAvailability.AvailableRoomIds(db, roomType.Id, checkIn, checkOut, DateTime.UtcNow)).Count;
+            if (available >= rooms) items.Add(new { roomTypeId = roomType.Id, availableRooms = available });
+        }
+        return Ok(new { items });
     }
 }

@@ -1,0 +1,10 @@
+.admin-tabs{display:flex;gap:8px;margin-bottom:18px;border-bottom:1px solid var(--admin-border)}
+.admin-tabs button{padding:10px 14px;border:0;border-bottom:3px solid transparent;color:var(--admin-muted);background:#fff;font-weight:800;cursor:pointer}
+.admin-tabs button.active{color:var(--admin-blue);border-bottom-color:var(--admin-blue)}
+.operations-filters{grid-template-columns:repeat(3,minmax(150px,1fr))}
+.inline-search{display:flex}.inline-search input{flex:1}.inline-search button{padding:0 14px;border:0;border-radius:8px;color:#fff;background:var(--admin-blue);font-weight:800;cursor:pointer}
+.operations-checkbox{display:flex!important;align-items:center;justify-content:flex-start;flex-direction:row}.operations-checkbox input{width:17px;height:17px}
+.operations-note{margin:0 0 18px;padding:12px 15px;border:1px solid #e9cf83;border-radius:10px;color:#765100;background:#fff9e9;font-size:13px;line-height:1.5}
+.operations-actions{display:flex;flex-wrap:wrap;gap:9px;margin:16px 0}.operations-actions button{padding:10px 14px;border:1px solid #bed0ed;border-radius:9px;color:var(--admin-blue);background:#fff;font-weight:800;cursor:pointer}.operations-actions button.danger{border-color:#f0c2bd;color:var(--admin-red);background:#fff5f3}
+.operations-drawer{width:min(680px,100%)}.operations-drawer h3{margin:24px 0 8px}.operations-drawer p{line-height:1.5}.operations-mismatch{color:var(--admin-red);font-weight:800}
+@media(max-width:700px){.operations-filters{grid-template-columns:1fr}.admin-tabs{overflow-x:auto}.admin-tabs button{white-space:nowrap}}

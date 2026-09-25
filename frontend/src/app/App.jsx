@@ -45,7 +45,7 @@ export default function App() {
   const [selectedHomestayId, setSelectedHomestayId] = useState(null);
   const [homestaySearch, setHomestaySearch] = useState(null);
   const [paymentResult, setPaymentResult] = useState(null);
-  const [previousView, setPreviousView] = useState('home');
+  const [catalogVersion, setCatalogVersion] = useState(0);
 
   /* =========================================================
      ERROR PAGE CHECK
@@ -94,6 +94,25 @@ export default function App() {
         }
       });
   }, []);
+
+  useEffect(() => {
+    const refreshCatalog = (event) => {
+      if (!event || event.key === 'tripio-catalog-version') {
+        setCatalogVersion((current) => current + 1);
+      }
+    };
+    window.addEventListener('storage', refreshCatalog);
+    window.addEventListener('focus', refreshCatalog);
+    return () => {
+      window.removeEventListener('storage', refreshCatalog);
+      window.removeEventListener('focus', refreshCatalog);
+    };
+  }, []);
+
+  const markCatalogChanged = () => {
+    localStorage.setItem('tripio-catalog-version', String(Date.now()));
+    setCatalogVersion((current) => current + 1);
+  };
 
   /* =========================================================
      SWITCH LOGIN / REGISTER
@@ -205,7 +224,8 @@ export default function App() {
       if (mode === 'login') {
         const result = await authApi.login(form);
         setUser(result.user);
-        setView(result.user.role === 'Host' ? 'host' : result.user.role === 'Admin' ? 'admin' : 'home');
+        setView(result.user.role === 'Host' ? 'host' : ['Admin', 'Support'].includes(result.user.role) ? 'admin'
+          : ['catalog', 'detail'].includes(view) ? view : 'home');
         setShowHome(true);
         setNotice({
           type: 'success',
@@ -305,16 +325,12 @@ export default function App() {
 
   const openCatalog = (searchCriteria = null) => {
     setHomestaySearch(searchCriteria);
-    setPreviousView('home');
     setView('catalog');
   };
 
   const openHomestay = (id, searchCriteria = null) => {
     setSelectedHomestayId(id);
-    if (searchCriteria) {
-      setHomestaySearch(searchCriteria);
-    }
-    setPreviousView(view); // remember where we came from (home or catalog)
+    setHomestaySearch(searchCriteria);
     setView('detail');
   };
 
@@ -338,14 +354,15 @@ export default function App() {
         >
           <button onClick={() => setPaymentResult(null)}>×</button>
           <strong>
-            {paymentResult.success
-              ? 'Thanh toán VNPay thành công!'
+            {paymentResult.success ? 'Thanh toán VNPay thành công!'
+              : paymentResult.status === 'refund-pending' ? 'Đã nhận tiền, đơn không còn giữ phòng'
               : 'Thanh toán chưa thành công'}
           </strong>
           <span>
-            {paymentResult.success
-              ? `Đơn đặt phòng ${paymentResult.code || ''} đã được xác nhận.`
-              : 'Giao dịch đã bị hủy, thất bại hoặc không hợp lệ.'}
+            {paymentResult.success ? `Đơn đặt phòng ${paymentResult.code || ''} đã được xác nhận.`
+              : paymentResult.status === 'refund-pending'
+                ? `Đơn ${paymentResult.code || ''} đã hết thời gian giữ phòng. Khoản tiền đang chờ xử lý hoàn lại; vui lòng liên hệ hỗ trợ.`
+                : 'Giao dịch đã bị hủy, thất bại hoặc không hợp lệ.'}
           </span>
         </div>
       )}
@@ -395,7 +412,7 @@ export default function App() {
      USER ĐÃ ĐĂNG NHẬP
      ========================================================= */
   if (user) {
-    if (user.role === 'Admin' && view === 'admin') {
+    if (['Admin', 'Support'].includes(user.role) && view === 'admin') {
       return (
         <>
           <AdminDashboardPage
@@ -418,6 +435,7 @@ export default function App() {
             user={user}
             onLogout={logout}
             onCustomerMode={() => setView('home')}
+            onCatalogChanged={markCatalogChanged}
             onChangePassword={() => {
               setMode('change-password');
               setNotice(null);
@@ -450,6 +468,8 @@ export default function App() {
       return (
         <>
           <CustomerHomestaysPage
+            refreshKey={catalogVersion}
+            initialSearch={homestaySearch}
             user={user}
             onBack={() => setView('home')}
             onOpen={openHomestay}
@@ -468,11 +488,12 @@ export default function App() {
       return (
         <>
           <HomestayDetailPage
+            refreshKey={catalogVersion}
             id={selectedHomestayId}
             initialSearch={homestaySearch}
             user={user}
             onHome={() => setView('home')}
-            onBack={() => setView(previousView === 'catalog' ? 'catalog' : 'home')}
+            onBack={() => setView('catalog')}
             onBookings={() => setView('bookings')}
             onAccount={() => {
               setMode('change-password');
@@ -489,6 +510,7 @@ export default function App() {
     return (
       <>
         <HomePage
+          refreshKey={catalogVersion}
           user={user}
           onLogout={logout}
           onChangePassword={() => {
@@ -525,6 +547,8 @@ export default function App() {
       return (
         <>
           <CustomerHomestaysPage
+            refreshKey={catalogVersion}
+            initialSearch={homestaySearch}
             user={null}
             onBack={() => setView('home')}
             onOpen={openHomestay}
@@ -542,11 +566,12 @@ export default function App() {
       return (
         <>
           <HomestayDetailPage
+            refreshKey={catalogVersion}
             id={selectedHomestayId}
             initialSearch={homestaySearch}
             user={null}
             onHome={() => setView('home')}
-            onBack={() => setView(previousView === 'catalog' ? 'catalog' : 'home')}
+            onBack={() => setView('catalog')}
             onAccount={() => {
               setShowHome(false);
               setMode('login');
@@ -561,6 +586,7 @@ export default function App() {
     return (
       <>
         <HomePage
+          refreshKey={catalogVersion}
           user={{ fullName: 'Khách' }}
           onLogout={() => {
             setShowHome(false);

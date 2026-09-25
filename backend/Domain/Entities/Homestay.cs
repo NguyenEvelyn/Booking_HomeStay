@@ -14,7 +14,13 @@ public class Homestay
     public decimal? Longitude { get; set; }
     public TimeOnly CheckInTime { get; set; }
     public TimeOnly CheckOutTime { get; set; }
+    public string TimeZoneId { get; set; } = "Asia/Ho_Chi_Minh";
+    public int CleaningBufferMinutes { get; set; } = 120;
+    public decimal LateCheckout1To3HoursFee { get; set; } = 200000;
+    public decimal LateCheckout4To6HoursFee { get; set; } = 400000;
+    public decimal LateCheckoutHalfDayFee { get; set; } = 500000;
     public required string Status { get; set; }
+    public bool IsFeatured { get; set; }
     public string? RejectionReason { get; set; }
     public long? ReviewedBy { get; set; }
     public DateTime? ReviewedAt { get; set; }

@@ -8,6 +8,10 @@ public class Review
     public long HomestayId { get; set; }
     public int Rating { get; set; }
     public string? Comment { get; set; }
+    public int? CleanlinessRating { get; set; }
+    public int? LocationRating { get; set; }
+    public int? HostRating { get; set; }
+    public int? ValueRating { get; set; }
     public string? HostReply { get; set; }
     public DateTime? HostRepliedAt { get; set; }
     public required string Status { get; set; }
