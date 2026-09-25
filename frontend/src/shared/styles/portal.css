@@ -1,15 +1,15 @@
-﻿/* Toast th├┤ng b├ío thanh to├ín VNPay */
+/* Toast thông báo thanh toán VNPay */
 .payment-result-toast { position:fixed; z-index:900; top:24px; left:50%; width:min(440px,calc(100% - 32px)); display:grid; gap:5px; padding:18px 46px 18px 20px; border-radius:10px; color:#155b35; background:#ecfdf3; box-shadow:0 12px 40px rgba(0,0,0,.2); transform:translateX(-50%); }
 .payment-result-toast.error { color:#a5271c; background:#fff1f0; }
 .payment-result-toast strong { font-size:14px; }
 .payment-result-toast span { font-size:11px; }
 .payment-result-toast button { position:absolute; top:10px; right:12px; border:0; color:inherit; background:transparent; font-size:22px; cursor:pointer; }
 
-/* N├║t chuyß╗ân vß╗ü trang Host */
+/* Nút chuyển về trang Host */
 .return-host-portal { position:fixed; z-index:999; bottom:24px; right:24px; padding:12px 22px; border:0; border-radius:30px; color:#fff; background:#0b4ae6; font-weight:700; font-size:14px; box-shadow:0 4px 18px rgba(11,74,230,.35); cursor:pointer; transition:transform .2s,box-shadow .2s; }
 .return-host-portal:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(11,74,230,.45); }
 
-/* Danh s├ích v├á chi tiß║┐t homestay ΓÇö Header & Nav */
+/* Danh sách và chi tiết homestay — Header & Nav */
 .customer-nav-header {
   position: sticky;
   z-index: 100;
@@ -69,7 +69,7 @@
 @media(max-width:620px){.customer-nav{height:72px;padding:0 20px}.customer-logo{font-size:28px}.customer-nav-actions button{width:38px;height:38px}.portal-header nav{display:none}.portal-user span{display:none}.catalog-grid{grid-template-columns:1fr}.catalog-hero form{flex-direction:column}.catalog-hero form button{width:100%;height:46px}.detail-gallery{height:300px;grid-template-columns:1fr}.detail-gallery img{display:none}.detail-main h1{font-size:30px}.room-type-list article{grid-template-columns:1fr}.room-type-list img{width:100%}.amenity-grid{grid-template-columns:1fr}.host-content{padding:25px 15px}.host-content h1{font-size:22px}.host-stats{grid-template-columns:1fr 1fr}.host-panel{padding:18px}.host-table article{grid-template-columns:55px 1fr}.host-table .status,.host-table article>button{display:none}}
 
 /* =========================================================
-   CHI TIß║╛T HOMESTAY (STAY DETAIL PAGE) - ─Éß╗ÆNG Bß╗ÿ TRANG CHß╗ª
+   CHI TIẾT HOMESTAY (STAY DETAIL PAGE) - ĐỒNG BỘ TRANG CHỦ
    ========================================================= */
 .stay-detail-page {
   min-height: 100vh;
@@ -124,7 +124,7 @@
 .stay-hero-title-row h1 {
   margin: 0;
   color: #ffffff;
-  font-family: 'Plus Jakarta Sans', 'Be Vietnam Pro', system-ui, sans-serif;
+  font-family: 'Be Vietnam Pro', Arial, sans-serif;
   font-size: clamp(32px, 3.8vw, 50px);
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -228,7 +228,7 @@
 
 .stay-hero-price-val {
   color: #ffffff;
-  font-family: 'Plus Jakarta Sans', 'Be Vietnam Pro', system-ui, sans-serif;
+  font-family: 'Be Vietnam Pro', Arial, sans-serif;
   font-size: clamp(24px, 2.5vw, 32px);
   font-weight: 800;
   letter-spacing: -0.02em;
@@ -324,7 +324,7 @@
   }
 }
 
-/* Search Bar tr├¬n trang chi tiß║┐t */
+/* Search Bar trên trang chi tiết */
 .detail-search {
   position: relative;
   z-index: 10;
@@ -415,7 +415,7 @@
   box-shadow: 0 6px 18px rgba(255, 183, 0, 0.45);
 }
 
-/* Nß╗Öi dung trang chi tiß║┐t */
+/* Nội dung trang chi tiết */
 .detail-content {
   width: min(1280px, calc(100% - 160px));
   margin: 0 auto;
@@ -467,7 +467,7 @@
   line-height: 1.65;
 }
 
-/* 1. Giß╗¢i thiß╗çu homestay */
+/* 1. Giới thiệu homestay */
 .redesigned-intro {
   display: grid;
   grid-template-columns: 1.4fr 1fr;
@@ -513,7 +513,7 @@
   font-weight: 500;
 }
 
-/* 2. Tiß╗çn ├¡ch nß╗òi bß║¡t */
+/* 2. Tiện ích nổi bật */
 .featured-amenities > div {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
@@ -567,7 +567,7 @@
   font-weight: 400;
 }
 
-/* 3. Danh s├ích ph├▓ng */
+/* 3. Danh sách phòng */
 .rooms-section {
   margin: 36px 0;
 }
@@ -754,7 +754,7 @@
   cursor: not-allowed;
 }
 
-/* 4. Ch├¡nh s├ích homestay */
+/* 4. Chính sách homestay */
 .policy-section {
   padding: 36px 40px;
 }
@@ -825,7 +825,7 @@
   line-height: 1.6;
 }
 
-/* 5. Vß╗ï tr├¡ thuß║¡n tiß╗çn */
+/* 5. Vị trí thuận tiện */
 .location-section {
   display: grid;
   grid-template-columns: 1.15fr 1fr;
@@ -883,7 +883,7 @@
   overflow: hidden;
 }
 
-/* 6. ─É├ính gi├í thß╗▒c tß║┐ */
+/* 6. Đánh giá thực tế */
 .review-section {
   padding: 36px 40px;
 }
@@ -1069,7 +1069,7 @@
 .room-detail-modal { position:relative; width:min(1180px,100%); max-height:calc(100vh - 56px); overflow:auto; border-radius:18px; background:#fff; box-shadow:0 24px 80px rgba(0,0,0,.35); }
 .room-modal-close { position:absolute; z-index:5; top:15px; right:15px; width:42px; height:42px; border:0; border-radius:50%; color:#082d78; background:rgba(255,255,255,.92); box-shadow:0 4px 18px rgba(0,0,0,.16); font-size:28px; line-height:1; cursor:pointer; }
 .room-modal-gallery { padding:18px 18px 0; }.room-modal-main-image { display:block; width:100%; height:430px; border-radius:12px; object-fit:cover; }.room-modal-thumbs { display:flex; gap:9px; padding:11px 0 4px; overflow-x:auto; scrollbar-width:thin; }.room-modal-thumbs button { flex:0 0 92px; height:64px; overflow:hidden; padding:0; border:2px solid transparent; border-radius:7px; background:#fff; cursor:pointer; }.room-modal-thumbs button.active { border-color:#0b4ae6; }.room-modal-thumbs img { width:100%; height:100%; object-fit:cover; }
-.room-modal-content { padding:24px 34px 32px; color:#5e6d88; }.room-modal-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:30px; padding-bottom:22px; border-bottom:1px solid #e1e7f0; }.room-modal-heading small { color:#e4a900; font-size:10px; font-weight:800; letter-spacing:.12em; }.room-modal-heading h2 { margin:6px 0 14px; font-family:'Be Vietnam Pro',Arial,sans-serif; color:#062f8a; font-size:34px; }.room-modal-facts { display:flex; flex-wrap:wrap; gap:24px; color:#0b3ea8; font-size:12px; }.room-modal-price { min-width:200px; text-align:right; }.room-modal-price strong { display:block; color:#063491; font-family:'Be Vietnam Pro',Arial,sans-serif; font-size:28px; }.room-modal-price span { font-size:12px; }.room-modal-description { margin:22px 0; font-size:13px; line-height:1.75; }.room-modal-columns { display:grid; grid-template-columns:1.2fr 1fr; gap:50px; padding:22px 0; border-block:1px solid #e1e7f0; }.room-modal-columns h3 { margin:0 0 16px; color:#092f82; font-family:'Be Vietnam Pro',Arial,sans-serif; font-size:20px; }.room-modal-columns ul { display:grid; grid-template-columns:1fr 1fr; gap:13px 30px; margin:0; padding:0; list-style:none; font-size:12px; }.room-modal-columns li::before { content:'Γ£ô'; margin-right:9px; color:#0b4ae6; font-weight:800; }.room-modal-columns p { margin:0 0 11px; font-size:12px; }.room-modal-booking { display:flex; align-items:end; justify-content:space-between; gap:25px; padding-top:22px; }.room-modal-booking>div { display:flex; gap:12px; }.room-modal-booking label { color:#536480; font-size:11px; font-weight:600; }.room-modal-booking input { display:block; width:190px; height:42px; margin-top:7px; border:1px solid #dce3ed; background:#fff; }.room-modal-booking>button { min-width:220px; height:50px; border:0; border-radius:7px; color:#072968; background:#ffbd00; font-weight:800; cursor:pointer; }.room-modal-booking>button:disabled { color:#fff; background:#aeb6c3; }
+.room-modal-content { padding:24px 34px 32px; color:#5e6d88; }.room-modal-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:30px; padding-bottom:22px; border-bottom:1px solid #e1e7f0; }.room-modal-heading small { color:#e4a900; font-size:10px; font-weight:800; letter-spacing:.12em; }.room-modal-heading h2 { margin:6px 0 14px; font-family:'Be Vietnam Pro',Arial,sans-serif; color:#062f8a; font-size:34px; }.room-modal-facts { display:flex; flex-wrap:wrap; gap:24px; color:#0b3ea8; font-size:12px; }.room-modal-price { min-width:200px; text-align:right; }.room-modal-price strong { display:block; color:#063491; font-family:'Be Vietnam Pro',Arial,sans-serif; font-size:28px; }.room-modal-price span { font-size:12px; }.room-modal-description { margin:22px 0; font-size:13px; line-height:1.75; }.room-modal-columns { display:grid; grid-template-columns:1.2fr 1fr; gap:50px; padding:22px 0; border-block:1px solid #e1e7f0; }.room-modal-columns h3 { margin:0 0 16px; color:#092f82; font-family:'Be Vietnam Pro',Arial,sans-serif; font-size:20px; }.room-modal-columns ul { display:grid; grid-template-columns:1fr 1fr; gap:13px 30px; margin:0; padding:0; list-style:none; font-size:12px; }.room-modal-columns li::before { content:'✓'; margin-right:9px; color:#0b4ae6; font-weight:800; }.room-modal-columns p { margin:0 0 11px; font-size:12px; }.room-modal-booking { display:flex; align-items:end; justify-content:space-between; gap:25px; padding-top:22px; }.room-modal-booking>div { display:flex; gap:12px; }.room-modal-booking label { color:#536480; font-size:11px; font-weight:600; }.room-modal-booking input { display:block; width:190px; height:42px; margin-top:7px; border:1px solid #dce3ed; background:#fff; }.room-modal-booking>button { min-width:220px; height:50px; border:0; border-radius:7px; color:#072968; background:#ffbd00; font-weight:800; cursor:pointer; }.room-modal-booking>button:disabled { color:#fff; background:#aeb6c3; }
 @media(max-width:1050px){.stay-hero-quote{display:none}.detail-search{grid-template-columns:1fr 1fr}.detail-search label:nth-child(2){border-right:0}.detail-room-list{grid-template-columns:repeat(2,minmax(0,1fr))}.policy-grid{grid-template-columns:1fr 1fr}.policy-grid article:nth-child(2){border-right:0}.review-layout{grid-template-columns:200px 1fr}.review-layout blockquote{grid-column:1/-1}}
 @media(max-width:700px){.stay-hero{height:460px;padding:130px 24px 80px}.stay-hero-copy h1{font-size:37px}.stay-hero-copy>div{flex-wrap:wrap}.photo-button{right:24px;bottom:28px}.detail-search{grid-template-columns:1fr;margin-top:0;border-radius:0;width:100%;padding:18px 24px}.detail-search label{border-right:0;border-bottom:1px solid #e3e8ef}.detail-content{width:calc(100% - 28px);padding-top:28px}.detail-content h2{font-size:26px}.featured-amenities>div{grid-template-columns:repeat(2,1fr);gap:22px}.featured-amenities article:last-child{grid-column:1/-1}.rooms-heading{display:block}.rooms-heading>p{margin-top:8px}.detail-room-list{grid-template-columns:1fr}.detail-room-card{height:410px}.policy-grid,.location-section,.review-layout{grid-template-columns:1fr}.policy-grid article{border-right:0;border-bottom:1px solid #dce3ef;padding:16px 0}.map-visual{min-height:210px}.review-layout blockquote{grid-column:auto}.rooms-section{padding:0}.detail-box{padding:20px}}
 @media(max-width:700px){.room-modal-backdrop{padding:0}.room-detail-modal{width:100%;height:100vh;max-height:none;border-radius:0}.room-modal-gallery{padding:0}.room-modal-main-image{height:300px;border-radius:0}.room-modal-thumbs{padding:8px 14px}.room-modal-thumbs button{flex-basis:74px;height:52px}.room-modal-content{padding:20px}.room-modal-heading{display:grid}.room-modal-heading h2{font-size:28px}.room-modal-price{text-align:left}.room-modal-columns{grid-template-columns:1fr;gap:22px}.room-modal-columns ul{grid-template-columns:1fr}.room-modal-booking{display:grid}.room-modal-booking>div{display:grid;grid-template-columns:1fr 1fr}.room-modal-booking input{width:100%}.room-modal-booking>button{width:100%}}
@@ -1079,7 +1079,7 @@
 .room-page-shell { width:min(1180px,calc(100% - 48px)); margin:0 auto; padding:28px 0 80px; }.room-back-button { margin-bottom:18px; padding:0; border:0; color:#183f93; background:transparent; font-size:12px; font-weight:600; cursor:pointer; }
 .room-page-gallery { padding:14px; border-radius:16px; background:#fff; box-shadow:0 7px 28px rgba(5,31,78,.07); }.room-page-main-image { display:block; width:100%; height:510px; border-radius:11px; object-fit:cover; }.room-page-thumbs { display:flex; gap:10px; padding-top:11px; overflow-x:auto; }.room-page-thumbs button { flex:0 0 100px; height:68px; overflow:hidden; padding:0; border:2px solid transparent; border-radius:7px; background:#fff; cursor:pointer; }.room-page-thumbs button.active { border-color:#0b4ae6; }.room-page-thumbs img { width:100%; height:100%; object-fit:cover; }
 .room-page-layout { display:grid; grid-template-columns:1fr 350px; gap:34px; margin-top:28px; align-items:start; }.room-page-info,.room-page-booking { padding:30px; border-radius:14px; background:#fff; box-shadow:0 7px 28px rgba(5,31,78,.07); }.room-page-info>small,.room-page-booking>small { color:#e1a600; font-size:10px; font-weight:800; letter-spacing:.13em; }.room-page-info h1 { margin:8px 0 18px; font-family:'Be Vietnam Pro',Arial,sans-serif; font-size:38px; }.room-page-facts { display:flex; flex-wrap:wrap; gap:30px; margin-bottom:24px; color:#0b42ae; font-size:13px; }.room-page-info>p { color:#65748f; font-size:13px; line-height:1.8; }.room-page-info hr { height:1px; margin:27px 0; border:0; background:#e1e7ef; }.room-page-info h2 { margin:0 0 20px; font-family:'Be Vietnam Pro',Arial,sans-serif; font-size:24px; }
-.room-page-amenities { display:grid; grid-template-columns:1fr 1fr; gap:15px 30px; padding:0; color:#5e6f8b; font-size:12px; list-style:none; }.room-page-amenities li::before { content:'Γ£ô'; margin-right:10px; color:#0b4ae6; font-weight:800; }.room-page-policy { display:grid; grid-template-columns:repeat(3,1fr); }.room-page-policy p { display:grid; gap:7px; margin:0; padding:0 18px; border-right:1px solid #e0e6ef; font-size:12px; }.room-page-policy p:first-child { padding-left:0; }.room-page-policy p:last-child { border:0; }.room-page-policy span { color:#75839c; }
+.room-page-amenities { display:grid; grid-template-columns:1fr 1fr; gap:15px 30px; padding:0; color:#5e6f8b; font-size:12px; list-style:none; }.room-page-amenities li::before { content:'✓'; margin-right:10px; color:#0b4ae6; font-weight:800; }.room-page-policy { display:grid; grid-template-columns:repeat(3,1fr); }.room-page-policy p { display:grid; gap:7px; margin:0; padding:0 18px; border-right:1px solid #e0e6ef; font-size:12px; }.room-page-policy p:first-child { padding-left:0; }.room-page-policy p:last-child { border:0; }.room-page-policy span { color:#75839c; }
 .room-page-booking { position:sticky; top:20px; }.room-page-booking>div { margin:8px 0 15px; }.room-page-booking>div strong { font-family:'Be Vietnam Pro',Arial,sans-serif; font-size:29px; }.room-page-booking>div span { margin-left:6px; font-size:12px; }.room-page-booking>p { padding:10px 12px; border-radius:6px; color:#16733b; background:#ebf8ef; font-size:11px; }.room-page-booking label { display:block; margin-top:13px; color:#586984; font-size:11px; font-weight:600; }.room-page-booking input,.room-page-booking select { height:44px; margin-top:7px; border:1px solid #dbe2ed; background:#fff; }.room-page-booking>button { width:100%; height:50px; margin-top:20px; border:0; border-radius:7px; color:#09295f; background:#ffbd00; font-weight:800; cursor:pointer; }.room-page-booking>button:disabled { color:#fff; background:#abb4c1; }.room-page-booking em { display:block; margin-top:14px; color:#75839a; font-size:9px; font-style:normal; text-align:center; }
 @media(max-width:800px){.room-breadcrumb{padding:0 10px}.room-breadcrumb button,.room-breadcrumb strong{padding:0 12px}.room-page-main-image{height:360px}.room-page-layout{grid-template-columns:1fr}.room-page-booking{position:static}.room-page-policy{grid-template-columns:1fr;gap:15px}.room-page-policy p{padding:0;border:0}}
 @media(max-width:520px){.room-page-shell{width:calc(100% - 24px);padding-top:16px}.room-page-main-image{height:260px}.room-page-thumbs button{flex-basis:75px;height:52px}.room-page-info,.room-page-booking{padding:20px}.room-page-info h1{font-size:30px}.room-page-amenities{grid-template-columns:1fr}}
@@ -1108,7 +1108,7 @@
 
 
 
-/* Popup ngang: tß║Ñt cß║ú ─æ├ính gi├í, bß╗Ö lß╗ìc v├á ph├ón trang */
+/* Popup ngang: tất cả đánh giá, bộ lọc và phân trang */
 .review-title { display:flex; align-items:end; justify-content:space-between; gap:20px; }.review-title>div h2 { margin-bottom:0; }.review-title>button { padding:11px 17px; border:1px solid #15489f; border-radius:24px; color:#15489f; background:#fff; font-weight:800; cursor:pointer; }.review-title>button:hover { color:#fff; background:#15489f; }
 .reviews-modal-backdrop { position:fixed; z-index:1200; inset:0; display:grid; place-items:center; padding:28px; background:rgba(3,17,43,.68); backdrop-filter:blur(7px); }
 .reviews-modal { position:relative; width:min(1280px,96vw); height:min(760px,90vh); display:grid; grid-template-columns:330px minmax(0,1fr); overflow:hidden; border-radius:24px; background:#fff; box-shadow:0 30px 90px rgba(0,0,0,.35); animation:dialog-rise .2s ease-out; }
@@ -1121,7 +1121,7 @@
 .reviews-pagination { display:flex; align-items:center; justify-content:center; gap:18px; padding-top:18px; }.reviews-pagination button { padding:9px 15px; border:1px solid #ced7e4; border-radius:8px; color:#17428e; background:#fff; cursor:pointer; }.reviews-pagination button:disabled { opacity:.4; cursor:not-allowed; }.reviews-pagination span { color:#6e7d94; font-size:11px; }
 @media(max-width:850px){.reviews-modal-backdrop{padding:0}.reviews-modal{width:100%;height:100%;max-height:none;grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr);border-radius:0}.reviews-modal-summary{padding:24px}.reviews-modal-summary>h2{margin-bottom:15px}.reviews-score{display:flex; justify-content:flex-start; gap:9px; padding:12px}.reviews-score strong{font-size:36px}.reviews-score>span{margin:10px 0 0}.reviews-score em{margin-left:auto}.reviews-score p{display:none}.reviews-modal-bars{display:none}.reviews-modal-main{padding:22px 18px 18px}.reviews-filters{grid-template-columns:1fr 1fr}.reviews-filters input{grid-column:1/-1}.reviews-modal-main>header{padding-right:40px}.review-title{align-items:start;flex-direction:column}.review-title>button{align-self:stretch}}
 
-/* Biß║┐n thß╗â popup ─æ├ính gi├í dß║íng bß║úng lß╗¢n theo mß║½u tham khß║úo */
+/* Biến thể popup đánh giá dạng bảng lớn theo mẫu tham khảo */
 .reviews-modal { height:min(900px,94vh); display:grid; grid-template-columns:1fr; grid-template-rows:auto minmax(0,1fr); overflow:hidden; border-radius:20px; }
 .reviews-modal-summary { display:grid; grid-template-columns:250px 290px minmax(430px,1fr); gap:34px; align-items:center; padding:34px 36px 28px; color:#20242b; background:#fff; border-bottom:1px solid #dfe3e8; }
 .reviews-modal-heading { align-self:start; grid-column:1/-1; }.reviews-modal-heading small { color:#606b7b; }.reviews-modal-heading h2 { margin:5px 45px 0 0; font-size:27px; }
@@ -1135,7 +1135,7 @@
 @media(max-width:900px){.reviews-modal{height:100%;border-radius:0;overflow-y:auto}.reviews-modal-summary{grid-template-columns:1fr 1fr;padding:24px}.reviews-modal-heading{grid-column:1/-1}.reviews-amenity-overview{grid-column:1/-1;padding:18px 0 0;border-left:0;border-top:1px solid #dfe3e8}.reviews-modal-main{display:block;overflow:visible;padding:0 20px 20px}.reviews-filters{grid-template-columns:1fr 1fr}.reviews-modal-list{overflow:visible}.reviews-modal-main>header{padding-right:45px}}
 @media(max-width:560px){.reviews-modal-summary{grid-template-columns:1fr;gap:20px}.reviews-modal-heading,.reviews-amenity-overview{grid-column:auto}.reviews-amenity-overview,.reviews-filters{grid-template-columns:1fr}.reviews-modal-main>header{align-items:flex-start;flex-direction:column;gap:12px}.reviews-modal-list>article>p{margin:14px 0}.reviews-score{max-width:210px}}
 
-/* ─Éß╗ông bß╗Ö Guest Picker trong detail-search */
+/* Đồng bộ Guest Picker trong detail-search */
 .detail-search .search-guest-field {
   display: flex;
   flex-direction: column;
@@ -1188,7 +1188,7 @@
 @media(max-width:850px){.review-highlights-track{grid-auto-columns:calc((100% - 16px)/2)}.review-highlights>header{align-items:start;flex-direction:column}.review-highlights>header>button{align-self:stretch}}
 @media(max-width:560px){.review-highlights{width:calc(100% - 28px);margin-bottom:55px}.review-highlights-track{grid-auto-columns:88%}.review-highlights>header h2{font-size:25px}.review-arrow{display:none}}
 
-/* C├íc khß╗æi nß╗Öi dung lß╗¢n tr├án ngang nh╞░ banner */
+/* Các khối nội dung lớn tràn ngang như banner */
 .detail-content>.inline-room-detail,.detail-content>.policy-section,.detail-content>.location-section { width:100vw; box-sizing:border-box; margin-left:calc(50% - 50vw); margin-right:calc(50% - 50vw); border-left:0; border-right:0; border-radius:0; box-shadow:none; }
 .detail-content>.inline-room-detail { padding:48px max(80px,calc((100vw - 1280px)/2)); background:#fff; border-block:1px solid #e0e6ee; }
 .detail-content>.inline-room-detail .room-page-main-image { height:min(620px,62vw); border-radius:0; }
@@ -1200,7 +1200,7 @@
 @media(max-width:800px){.detail-content>.inline-room-detail{padding:30px 14px}.detail-content>.inline-room-detail .room-page-gallery{border-radius:12px}.detail-content>.policy-section{padding:38px 20px}.detail-content>.location-section{grid-template-columns:1fr}.detail-content>.location-section>div:first-child{padding:38px 20px}.detail-content>.location-section .map-visual{min-height:320px}}
 
 /* =========================================================
-   TRANG KH├üM PH├ü HOMESTAY (─Éß╗ÆNG Bß╗ÿ 100% Vß╗ÜI DESIGN TRANG CHß╗ª)
+   TRANG KHÁM PHÁ HOMESTAY (ĐỒNG BỘ 100% VỚI DESIGN TRANG CHỦ)
    ========================================================= */
 
 .catalog-redesign {
@@ -1210,7 +1210,7 @@
   font-family: 'Be Vietnam Pro', Arial, sans-serif;
 }
 
-/* Banner Hero ΓÇö Hiß╗ân thß╗ï listhome_banner nguy├¬n bß║ún, kh├┤ng chß╗», kh├┤ng phß╗º m├áu */
+/* Banner Hero — Hiển thị listhome_banner nguyên bản, không chữ, không phủ màu */
 .catalog-redesign .catalog-hero {
   position: relative;
   width: 100%;
@@ -1237,7 +1237,7 @@
   object-position: center;
 }
 
-/* Search Bar tr├¬n trang catalog ΓÇö kß║┐ thß╗½a v├á chuß║⌐n h├│a tß╗½ search-bar trang chß╗º */
+/* Search Bar trên trang catalog — kế thừa và chuẩn hóa từ search-bar trang chủ */
 .catalog-redesign .catalog-search {
   position: relative;
   z-index: 10;
@@ -1337,7 +1337,7 @@
   transform: translateY(-1px);
 }
 
-/* Workspace: Bß╗Ö lß╗ìc 280px + Grid danh s├ích */
+/* Workspace: Bộ lọc 280px + Grid danh sách */
 .catalog-workspace {
   width: min(1280px, calc(100% - 80px));
   margin: 40px auto 0;
@@ -1348,7 +1348,7 @@
   align-items: start;
 }
 
-/* Sidebar Bß╗Ö lß╗ìc */
+/* Sidebar Bộ lọc */
 .catalog-filters {
   background: #fff;
   border-radius: 18px;
@@ -1511,7 +1511,301 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
-/* Grid thß║╗ Homestay ΓÇö d├╣ng card ─æß╗ông bß╗Ö vß╗¢i homepage */
+/* =========================================================
+   TOP-K RECOMMENDATION STRIP (GỢI Ý HOMESTAY PHÙ HỢP)
+   ========================================================= */
+
+.recommendation-strip {
+  margin: 0 0 32px;
+  padding: 24px;
+  border: 1px solid #d5e3ff;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #f5f9ff, #fffdf5);
+  box-shadow: 0 16px 42px rgba(8, 42, 99, 0.08);
+  font-family: 'Be Vietnam Pro', Arial, sans-serif;
+}
+
+.recommendation-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.recommendation-heading small {
+  color: #0b4ae6;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.recommendation-heading h3 {
+  margin: 5px 0 3px;
+  color: #09275f;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.recommendation-heading p {
+  margin: 0;
+  color: #718099;
+  font-size: 12px;
+}
+
+.recommendation-heading > span {
+  padding: 7px 12px;
+  border-radius: 20px;
+  color: #31527d;
+  background: #e8f0ff;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.recommendation-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.recommendation-card {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #dce5f2;
+  border-radius: 15px;
+  background: #fff;
+  color: #243a5c;
+  box-shadow: 0 7px 20px rgba(8, 35, 80, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.recommendation-card:hover {
+  border-color: #ffbd18;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(8, 35, 80, 0.11);
+}
+
+.recommendation-card.rank-1 {
+  grid-column: 1 / -1;
+  border-color: #f3c24b;
+  background: linear-gradient(100deg, #fff, #fffdf4);
+}
+
+.recommendation-card-main {
+  display: grid;
+  grid-template-columns: 142px 1fr;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.recommendation-cover {
+  position: relative;
+  min-height: 118px;
+  background: linear-gradient(145deg, #0b4ae6, #0a2d67) center / cover no-repeat;
+}
+
+.recommendation-cover:after {
+  position: absolute;
+  inset: 0;
+  content: '';
+  background: linear-gradient(180deg, rgba(4, 24, 56, 0.05), rgba(4, 24, 56, 0.62));
+}
+
+.recommendation-cover b,
+.recommendation-cover i {
+  position: absolute;
+  z-index: 1;
+  color: #fff;
+}
+
+.recommendation-cover b {
+  left: 10px;
+  top: 10px;
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 50%;
+  background: #ffbd18;
+  color: #09275f;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.recommendation-cover i {
+  left: 10px;
+  bottom: 9px;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.recommendation-content {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 15px;
+}
+
+.recommendation-content > strong {
+  color: #09275f;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.recommendation-content > small {
+  color: #718099;
+  font-size: 11px;
+}
+
+.recommendation-room {
+  padding: 4px 8px;
+  border-radius: 5px;
+  color: #0b4ae6;
+  background: #edf3ff;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.recommendation-score {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.recommendation-score > i {
+  height: 6px;
+  flex: 1;
+  overflow: hidden;
+  border-radius: 5px;
+  background: #e8edf5;
+}
+
+.recommendation-score > i > b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #0b4ae6, #2fb778);
+}
+
+.recommendation-score > small {
+  color: #48617f;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.recommendation-card ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 12px;
+  margin: 0;
+  padding: 12px 15px;
+  border-top: 1px solid #edf0f5;
+  list-style: none;
+}
+
+.recommendation-card li {
+  color: #60718a;
+  font-size: 11px;
+}
+
+.recommendation-card li::first-letter {
+  color: #19945a;
+  font-weight: 700;
+}
+
+.recommendation-card footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 15px;
+  background: #f9fbfe;
+}
+
+.recommendation-card footer span {
+  display: grid;
+  gap: 2px;
+}
+
+.recommendation-card footer small {
+  color: #7e8c9f;
+  font-size: 10px;
+}
+
+.recommendation-card footer strong {
+  color: #0b4ae6;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.recommendation-card footer button {
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: #09275f;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.recommendation-card footer button:hover {
+  background: #0b4ae6;
+}
+
+.recommendation-note {
+  margin: 0 0 20px;
+  color: #70809a;
+  font-size: 12px;
+}
+
+@media (max-width: 1100px) {
+  .recommendation-grid {
+    grid-template-columns: 1fr;
+  }
+  .recommendation-card.rank-1 {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 620px) {
+  .recommendation-strip {
+    padding: 16px;
+  }
+  .recommendation-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .recommendation-card-main {
+    grid-template-columns: 105px 1fr;
+  }
+  .recommendation-cover {
+    min-height: 126px;
+  }
+  .recommendation-card footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .recommendation-card footer button {
+    width: 100%;
+  }
+}
+
+/* Grid thẻ Homestay — dùng card đồng bộ với homepage */
 .catalog-stay-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1566,7 +1860,7 @@
   flex-shrink: 0 !important;
 }
 
-/* Ph├ón trang */
+/* Phân trang */
 .catalog-pagination {
   display: flex;
   align-items: center;
@@ -1656,7 +1950,7 @@
 .host-profile-page{margin-top:28px;border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 18px 55px rgba(5,31,75,.12)}.profile-cover{height:290px;position:relative;background-position:center;background-size:cover}.cover-upload{position:absolute;right:24px;bottom:20px;padding:11px 16px;border-radius:9px;background:rgba(255,255,255,.94);font-size:12px;font-weight:800;cursor:pointer}.cover-upload input,.profile-avatar input{display:none}.profile-identity{display:flex;align-items:center;gap:20px;padding:0 32px 25px;border-bottom:1px solid #e7ebf1}.profile-avatar{width:138px;height:138px;margin-top:-55px;position:relative;display:grid;place-items:center;border:6px solid #fff;border-radius:50%;background:#0b4ae6 center/cover;color:#fff;font-size:45px;font-weight:900;box-shadow:0 7px 25px rgba(4,26,62,.2)}.profile-avatar label{position:absolute;right:2px;bottom:5px;width:34px;height:34px;display:grid;place-items:center;border:3px solid #fff;border-radius:50%;background:#ffbd18;font-size:14px;cursor:pointer}.profile-identity h2{margin:0 0 5px;font-size:29px}.profile-identity p{margin:0;color:#748199}.profile-identity>button{margin-left:auto;padding:11px 18px;border:1px solid #174c9d;border-radius:8px;color:#174c9d;background:#fff;font-weight:800;cursor:pointer}.profile-commercial-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:20px;padding:28px 32px;background:#f7f9fc}.profile-commercial-grid article{padding:24px;border:1px solid #e1e6ee;border-radius:13px;background:#fff}.profile-commercial-grid small{color:#d49800;font-weight:900;letter-spacing:.12em}.profile-commercial-grid dl{display:grid;grid-template-columns:100px 1fr;gap:10px;margin-bottom:0}.profile-commercial-grid dt{color:#8792a3}.profile-commercial-grid dd{margin:0}.profile-promise{color:#fff!important;background:linear-gradient(135deg,#092b67,#0b54c8)!important}.profile-promise b{color:#ffd24b}.profile-promise h3{font-size:22px}.profile-edit-form{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:28px 32px}.profile-edit-form label{display:grid;gap:7px}.profile-edit-form .wide{grid-column:1/-1}.profile-edit-form input,.profile-edit-form textarea,.base-price-edit input,.seasonal-pricing input{padding:10px;border:1px solid #ccd5e2;border-radius:7px}.profile-edit-form button,.base-price-edit button,.seasonal-pricing form button{padding:10px 15px;border:0;border-radius:7px;color:#fff;background:#0b4ae6;font-weight:800;cursor:pointer}.base-price-edit span{display:flex;gap:7px}.base-price-edit input{width:135px;font-weight:800}.seasonal-pricing{margin:18px 0;padding:18px;border-radius:10px;background:#fff7df}.seasonal-pricing>div:first-child{display:grid;gap:4px}.seasonal-pricing small{color:#837658}.price-period-list{display:grid;gap:7px;margin:13px 0}.price-period-list span{display:grid;grid-template-columns:1fr 1.5fr auto auto;gap:12px;align-items:center;padding:9px 11px;border-radius:7px;background:#fff}.price-period-list button{border:0;background:transparent;color:#b42318;font-size:18px;cursor:pointer}.seasonal-pricing form{display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr auto;gap:8px}.seasonal-pricing form input{min-width:0}@media(max-width:850px){.profile-commercial-grid{grid-template-columns:1fr}.profile-cover{height:210px}.profile-identity{align-items:flex-end;flex-wrap:wrap}.profile-identity>button{margin-left:0}.seasonal-pricing form{grid-template-columns:1fr 1fr}.price-period-list span{grid-template-columns:1fr 1fr}.profile-edit-form{grid-template-columns:1fr}.profile-edit-form .wide{grid-column:auto}}
 
 /* =========================================================
-   GUEST & ROOM PICKER DROPDOWN (─Éß╗ÆNG Bß╗ÿ TRANG CHß╗ª & CATALOG)
+   GUEST & ROOM PICKER DROPDOWN (ĐỒNG BỘ TRANG CHỦ & CATALOG)
    ========================================================= */
 
 .search-guest-field {

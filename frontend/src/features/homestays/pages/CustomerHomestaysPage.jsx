@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { homestayApi } from '../api/homestayApi.js';
 import { recordRecommendationEvent } from '../api/recommendationEvents.js';
+import { freshImageUrl } from '../../../shared/utils/freshImageUrl.js';
 import CustomerNav from '../../../shared/components/CustomerNav.jsx';
 import GuestPickerDropdown from '../../../shared/components/GuestPickerDropdown.jsx';
 import pineHomestayImage from '../../../../assets/f6cd6879081dc8e8d4ff18669308ea86.jpg';
@@ -8,9 +9,10 @@ import azureHomestayImage from '../../../../assets/ecf184f6b6cd2b6e2aa898ff3195a
 import sunsetHomestayImage from '../../../../assets/2fc6b619bb0af3dc94971c099d25bbae.jpg';
 import listHomeBanner from '../../../../assets/figma/listhome_banner.jpg';
 
-const money = (value) => value == null ? 'Li├¬n hß╗ç' : `${new Intl.NumberFormat('vi-VN').format(value)} Γé½`;
+const money = (value) => value == null ? 'Liên hệ' : `${new Intl.NumberFormat('vi-VN').format(value)} ₫`;
 const covers = [pineHomestayImage, azureHomestayImage, sunsetHomestayImage];
-const roomFilters = ['Ph├▓ng ─æ╞ín', 'Ph├▓ng ─æ├┤i', 'Ph├▓ng c├│ ban c├┤ng', 'Ph├▓ng gia ─æ├¼nh'];
+const roomFilters = ['Phòng đơn', 'Phòng đôi', 'Phòng có ban công', 'Phòng gia đình'];
+const amenityOptions = ['WiFi', 'Bể bơi', 'Bếp', 'Ban công', 'Điều hòa', 'Chỗ đỗ xe', 'Máy giặt', 'Cho phép thú cưng'];
 
 function Icon({ name, filled = false, size }) {
   const icons = {
@@ -69,48 +71,147 @@ function Icon({ name, filled = false, size }) {
   );
 }
 
-export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings, onAccount }) {
-  const [search, setSearch] = useState('');
+export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings, onAccount, refreshKey = 0, initialSearch }) {
+  const [search, setSearch] = useState(initialSearch?.search || '');
+  const [location, setLocation] = useState(initialSearch?.location || '');
   const [result, setResult] = useState({ items: [], total: 0 });
   const [maxPrice, setMaxPrice] = useState(3000000);
-  const [checkIn, setCheckIn] = useState('');
-  const [checkOut, setCheckOut] = useState('');
-  const [guestsConfig, setGuestsConfig] = useState({ adults: 2, children: 0, rooms: 1 });
+  const [checkIn, setCheckIn] = useState(initialSearch?.checkIn || '');
+  const [checkOut, setCheckOut] = useState(initialSearch?.checkOut || '');
+  const [guestsConfig, setGuestsConfig] = useState({
+    adults: initialSearch?.adults || initialSearch?.guests || 2,
+    children: initialSearch?.children || 0,
+    rooms: initialSearch?.rooms || 1,
+  });
   const [roomType, setRoomType] = useState('');
   const [minRating, setMinRating] = useState(0);
   const [sort, setSort] = useState('recommended');
+  const [preferredAmenities, setPreferredAmenities] = useState([]);
+  const [recommendations, setRecommendations] = useState([]);
+  const [recommendationModelVersion, setRecommendationModelVersion] = useState('');
+  const [recommendationError, setRecommendationError] = useState('');
+  const latestRequest = useRef(0);
   const [page, setPage] = useState(1);
   const [favorites, setFavorites] = useState(() => JSON.parse(localStorage.getItem('tripio-favorites') || '[]'));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const totalGuests = guestsConfig.adults + guestsConfig.children;
-  const criteria = (targetPage = page) => ({ search, checkIn, checkOut, guests: totalGuests, maxPrice, roomType, minRating, sort, page: targetPage, pageSize: 12 });
+  const criteria = (targetPage = page) => ({
+    search,
+    location,
+    checkIn,
+    checkOut,
+    guests: totalGuests,
+    rooms: guestsConfig.rooms,
+    maxPrice,
+    roomType,
+    minRating,
+    sort,
+    page: targetPage,
+    pageSize: 12,
+  });
 
   const load = async (targetPage = 1) => {
+    const requestId = ++latestRequest.current;
     setLoading(true);
     setError('');
     try {
-      if ((checkIn && !checkOut) || (!checkIn && checkOut)) throw new Error('Vui l├▓ng chß╗ìn ─æß║ºy ─æß╗º ng├áy nhß║¡n v├á ng├áy trß║ú ph├▓ng.');
-      if (checkIn && checkOut && checkOut <= checkIn) throw new Error('Ng├áy trß║ú ph├▓ng phß║úi sau ng├áy nhß║¡n ph├▓ng.');
-      const response = await homestayApi.list(criteria(targetPage));
-      setResult(response);
+      if ((checkIn && !checkOut) || (!checkIn && checkOut)) throw new Error('Vui lòng chọn đầy đủ ngày nhận và ngày trả phòng.');
+      if (checkIn && checkOut && checkOut <= checkIn) throw new Error('Ngày trả phòng phải sau ngày nhận phòng.');
+      const nights = checkIn && checkOut ? Math.max(1, Math.round((new Date(checkOut) - new Date(checkIn)) / 86400000)) : 1;
+
+      const [catalogResult, recommendationResult] = await Promise.allSettled([
+        homestayApi.list(criteria(targetPage)),
+        location
+          ? Promise.resolve({ items: [], modelVersion: '' })
+          : homestayApi.recommendations({
+              search,
+              checkIn,
+              checkOut,
+              guests: totalGuests,
+              rooms: guestsConfig.rooms,
+              totalBudget: maxPrice * guestsConfig.rooms * nights,
+              amenities: preferredAmenities,
+              roomType,
+              minRating,
+              topK: 5,
+            }),
+      ]);
+
+      if (requestId !== latestRequest.current) return;
+      if (catalogResult.status === 'rejected') throw catalogResult.reason;
+
+      const response = catalogResult.value;
+      const imageVersion = `${Date.now()}-${refreshKey}`;
+      setResult({
+        ...response,
+        items: response.items.map((item) => ({
+          ...item,
+          thumbnailUrl: freshImageUrl(item.thumbnailUrl, imageVersion),
+        })),
+      });
       setPage(targetPage);
+
+      setRecommendations(
+        recommendationResult.status === 'fulfilled'
+          ? (recommendationResult.value.items || []).map((item) => ({
+              ...item,
+              thumbnailUrl: freshImageUrl(item.thumbnailUrl, imageVersion),
+            }))
+          : []
+      );
+      setRecommendationModelVersion(
+        recommendationResult.status === 'fulfilled'
+          ? recommendationResult.value.modelVersion || 'baseline'
+          : ''
+      );
+      setRecommendationError(
+        recommendationResult.status === 'rejected' ? 'Chưa tải được gợi ý lúc này.' : ''
+      );
+
+      if (targetPage === 1) {
+        recordRecommendationEvent({
+          eventType: 'search',
+          search: search.trim(),
+          checkIn: checkIn || null,
+          checkOut: checkOut || null,
+          guests: totalGuests,
+          rooms: guestsConfig.rooms,
+          totalBudget: maxPrice * guestsConfig.rooms * nights,
+          amenities: preferredAmenities,
+          recommendedIds:
+            recommendationResult.status === 'fulfilled'
+              ? (recommendationResult.value.items || []).map((item) => item.id)
+              : [],
+        }).catch(() => {});
+      }
     } catch (e) {
-      setError(e.message);
+      if (requestId === latestRequest.current) {
+        setError(e.message);
+        setRecommendations([]);
+        setRecommendationModelVersion('');
+      }
     } finally {
-      setLoading(false);
+      if (requestId === latestRequest.current) setLoading(false);
     }
   };
 
   useEffect(() => {
     load(1);
-  }, [maxPrice, roomType, minRating, sort]);
+  }, [maxPrice, roomType, minRating, sort, preferredAmenities, refreshKey]);
 
   const resetFilters = () => {
     setMaxPrice(3000000);
     setRoomType('');
     setMinRating(0);
+    setPreferredAmenities([]);
+  };
+
+  const toggleAmenity = (name) => {
+    setPreferredAmenities((current) =>
+      current.includes(name) ? current.filter((item) => item !== name) : [...current, name]
+    );
   };
 
   const toggleFavorite = (id) => {
@@ -137,7 +238,7 @@ export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings
         transparentAtTop={true}
       />
 
-      {/* Hero Banner ΓÇö h├¼nh ß║únh listhome_banner nguy├¬n bß║ún, kh├┤ng chß╗», kh├┤ng phß╗º m├áu */}
+      {/* Hero Banner — hình ảnh listhome_banner nguyên bản, không chữ, không phủ màu */}
       <section className="catalog-hero">
         <img
           src={listHomeBanner}
@@ -146,7 +247,7 @@ export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings
         />
       </section>
 
-      {/* Search Bar ΓÇö ─æß╗ông bß╗Ö 100% vß╗¢i search-bar trang chß╗º */}
+      {/* Search Bar — đồng bộ 100% với search-bar trang chủ */}
       <form
         className="search-bar catalog-search"
         onSubmit={(event) => {
@@ -155,23 +256,26 @@ export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings
         }}
       >
         <label>
-          ─Éß╗ïa ─æiß╗âm hoß║╖c t├¬n homestay
+          Địa điểm hoặc tên homestay
           <span className="search-control">
             <input
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Bß║ín muß╗æn ─æß║┐n ─æ├óu?"
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setLocation('');
+              }}
+              placeholder="Bạn muốn đến đâu?"
             />
             <i><Icon name="location" /></i>
           </span>
         </label>
 
         <label>
-          Ng├áy nhß║¡n
+          Ngày nhận
           <span className="search-control">
             <input
               type="text"
-              placeholder="Chß╗ìn ng├áy nhß║¡n"
+              placeholder="Chọn ngày nhận"
               value={checkIn}
               onChange={(e) => {
                 setCheckIn(e.target.value);
@@ -185,11 +289,11 @@ export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings
         </label>
 
         <label>
-          Ng├áy trß║ú
+          Ngày trả
           <span className="search-control">
             <input
               type="text"
-              placeholder="Chß╗ìn ng├áy trß║ú"
+              placeholder="Chọn ngày trả"
               value={checkOut}
               onChange={(e) => setCheckOut(e.target.value)}
               onFocus={(e) => { e.currentTarget.type = 'date'; }}
@@ -204,24 +308,24 @@ export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings
           onChange={setGuestsConfig}
         />
 
-        <button type="submit">T├¼m ph├▓ng</button>
+        <button type="submit">Tìm phòng</button>
       </form>
 
-      {/* Workspace: Bß╗Ö lß╗ìc b├¬n tr├íi + Danh s├ích homestay b├¬n phß║úi */}
+      {/* Workspace: Bộ lọc bên trái + Danh sách homestay bên phải */}
       <section className="catalog-workspace">
-        {/* Bß╗Ö lß╗ìc b├¬n tr├íi */}
+        {/* Bộ lọc bên trái */}
         <aside className="catalog-filters">
           <header>
             <div>
-              <small>Bß╗ÿ Lß╗îC</small>
-              <h2>T├¼m n╞íi ph├╣ hß╗úp</h2>
+              <small>BỘ LỌC</small>
+              <h2>Tìm nơi phù hợp</h2>
             </div>
-            <button type="button" onClick={resetFilters}>─Éß║╖t lß║íi</button>
+            <button type="button" onClick={resetFilters}>Đặt lại</button>
           </header>
 
           <div className="filter-group">
-            <h3>Khoß║úng gi├í</h3>
-            <p>1 ph├▓ng, 1 ─æ├¬m</p>
+            <h3>Khoảng giá</h3>
+            <p>1 phòng, 1 đêm</p>
             <input
               type="range"
               min="500000"
@@ -231,13 +335,13 @@ export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings
               onChange={(e) => setMaxPrice(Number(e.target.value))}
             />
             <div className="price-range">
-              <span>500.000 Γé½</span>
+              <span>500.000 ₫</span>
               <span>{money(maxPrice)}</span>
             </div>
           </div>
 
           <div className="filter-group">
-            <h3>Loß║íi ph├▓ng</h3>
+            <h3>Loại phòng</h3>
             <label>
               <input
                 type="radio"
@@ -245,7 +349,7 @@ export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings
                 checked={!roomType}
                 onChange={() => setRoomType('')}
               />
-              <span>Tß║Ñt cß║ú</span>
+              <span>Tất cả</span>
             </label>
             {roomFilters.map((name) => (
               <label key={name}>
@@ -261,7 +365,22 @@ export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings
           </div>
 
           <div className="filter-group">
-            <h3>─É├ính gi├í sao</h3>
+            <h3>Tiện nghi yêu thích</h3>
+            <p>Gợi ý sẽ ưu tiên nơi có các tiện nghi này.</p>
+            {amenityOptions.map((name) => (
+              <label key={name}>
+                <input
+                  type="checkbox"
+                  checked={preferredAmenities.includes(name)}
+                  onChange={() => toggleAmenity(name)}
+                />
+                <span>{name}</span>
+              </label>
+            ))}
+          </div>
+
+          <div className="filter-group">
+            <h3>Đánh giá sao</h3>
             {[5, 4, 3, 0].map((rating) => (
               <label key={rating}>
                 <input
@@ -270,45 +389,91 @@ export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings
                   checked={minRating === rating}
                   onChange={() => setMinRating(rating)}
                 />
-                <span>{rating ? `${rating} sao trß╗ƒ l├¬n` : 'Tß║Ñt cß║ú ─æ├ính gi├í'}</span>
-                {rating > 0 && <b>Γÿà</b>}
+                <span>{rating ? `${rating} sao trở lên` : 'Tất cả đánh giá'}</span>
+                {rating > 0 && <b>★</b>}
               </label>
             ))}
           </div>
         </aside>
 
-        {/* Danh s├ích kß║┐t quß║ú b├¬n phß║úi */}
+        {/* Danh sách kết quả bên phải */}
         <div className="catalog-results">
           <header>
             <div>
-              <small>DANH S├üCH L╞»U TR├Ü</small>
-              <h2>{result.total} homestay ph├╣ hß╗úp</h2>
+              <small>DANH SÁCH LƯU TRÚ</small>
+              <h2>{result.total} homestay phù hợp</h2>
             </div>
             <select value={sort} onChange={(e) => setSort(e.target.value)}>
-              <option value="recommended">─Éß╗ü xuß║Ñt</option>
-              <option value="price-low">Gi├í thß║Ñp tr╞░ß╗¢c</option>
-              <option value="rating">─É├ính gi├í cao</option>
+              <option value="recommended">Đề xuất</option>
+              <option value="price-low">Giá thấp trước</option>
+              <option value="rating">Đánh giá cao</option>
             </select>
           </header>
 
-          {loading && <p className="state-message">─Éang tß║úi danh s├ích homestay...</p>}
+          {/* Top-K homestay cá nhân hóa phù hợp */}
+          {!loading && recommendations.length > 0 && (
+            <section className="recommendation-strip" aria-label="Top 5 homestay phù hợp">
+              <div className="recommendation-heading">
+                <div>
+                  <small>TOP-K CÁ NHÂN HÓA</small>
+                  <h3>Top {recommendations.length} homestay phù hợp với bạn</h3>
+                  <p>Xếp hạng theo ngân sách, tiện nghi, đánh giá và hành vi trước đó.</p>
+                </div>
+                <span title={recommendationModelVersion}>
+                  Thuật toán: {recommendationModelVersion.startsWith('learned-') ? 'Trọng số đã học' : 'Top-K baseline'}
+                </span>
+              </div>
+              <div className="recommendation-grid">
+                {recommendations.map((item, index) => (
+                  <article className={`recommendation-card rank-${index + 1}`} key={item.id}>
+                    <button className="recommendation-card-main" type="button" onClick={() => openItem(item.id)}>
+                      <span className="recommendation-cover" style={item.thumbnailUrl ? { backgroundImage: `url('${item.thumbnailUrl}')` } : undefined}>
+                        <b>#{index + 1}</b>
+                        <i>{Math.round(Number(item.score) || 0)}/100 phù hợp</i>
+                      </span>
+                      <span className="recommendation-content">
+                        <strong>{item.name}</strong>
+                        <small>⌖ {item.district}, {item.province}</small>
+                        <span className="recommendation-room">{item.roomTypeName}</span>
+                        <span className="recommendation-score">
+                          <i><b style={{ width: `${Math.max(0, Math.min(100, Number(item.score) || 0))}%` }} /></i>
+                          <small>{Math.round(Number(item.score) || 0)} điểm</small>
+                        </span>
+                      </span>
+                    </button>
+                    <ul>{item.reasons?.map((reason) => <li key={reason}>✓ {reason}</li>)}</ul>
+                    <footer>
+                      <span>
+                        <small>Ước tính cả kỳ nghỉ</small>
+                        <strong>{money(item.estimatedTotal)}</strong>
+                      </span>
+                      <button type="button" onClick={() => openItem(item.id)}>Xem phòng →</button>
+                    </footer>
+                  </article>
+                ))}
+              </div>
+            </section>
+          )}
+          {!loading && recommendationError && <p className="recommendation-note">{recommendationError}</p>}
+
+          {loading && <p className="state-message">Đang tải danh sách homestay...</p>}
           {error && <p className="state-message error">{error}</p>}
           {!loading && !error && result.items.length === 0 && (
-            <p className="state-message">Kh├┤ng t├¼m thß║Ñy homestay ph├╣ hß╗úp vß╗¢i bß╗Ö lß╗ìc.</p>
+            <p className="state-message">Không tìm thấy homestay phù hợp với bộ lọc.</p>
           )}
 
-          {/* Grid thß║╗ homestay ΓÇö ─æß╗ông bß╗Ö 100% vß╗¢i stay-card trang chß╗º */}
+          {/* Grid thẻ homestay — đồng bộ 100% với stay-card trang chủ */}
           <div className="catalog-stay-grid">
             {result.items.map((item, index) => {
               const isFav = favorites.includes(item.id);
               const bgImage = item.thumbnailUrl || covers[index % covers.length];
-              const locationText = `${item.district ? item.district + ', ' : ''}${item.province || 'Viß╗çt Nam'}`;
+              const locationText = `${item.district ? item.district + ', ' : ''}${item.province || 'Việt Nam'}`;
               const priceFormatted = typeof item.fromPrice === 'number'
-                ? `Tß╗½ ${new Intl.NumberFormat('vi-VN').format(item.fromPrice)} ─æ`
+                ? `Từ ${new Intl.NumberFormat('vi-VN').format(item.fromPrice)} đ`
                 : money(item.fromPrice);
               const ratingFormatted = item.reviewCount && item.averageRating
                 ? Number(item.averageRating).toFixed(1).replace('.', ',')
-                : 'Mß╗¢i';
+                : 'Mới';
 
               return (
                 <article
@@ -335,7 +500,7 @@ export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings
                     <button
                       type="button"
                       className={`stay-heart-btn ${isFav ? 'active' : ''}`}
-                      aria-label="Y├¬u th├¡ch"
+                      aria-label="Yêu thích"
                       onClick={(e) => {
                         e.stopPropagation();
                         toggleFavorite(item.id);
@@ -345,7 +510,7 @@ export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings
                     </button>
                   </div>
 
-                  {/* Rectangle blur overlay W 350 H 185 tß╗½ Figma */}
+                  {/* Rectangle blur overlay W 350 H 185 từ Figma */}
                   <div className="stay-blur-overlay" aria-hidden="true" />
 
                   {/* Card info */}
@@ -353,12 +518,12 @@ export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings
                     <div className="stay-title-row">
                       <h3>{item.name}</h3>
                       <span className="stay-rating-badge">
-                        {ratingFormatted} {item.reviewCount > 0 && <span className="star-icon">Γÿà</span>}
+                        {ratingFormatted} {item.reviewCount > 0 && <span className="star-icon">★</span>}
                       </span>
                     </div>
 
                     <p>
-                      {item.description || (item.availableRoomCount ? `C├▓n ${item.availableRoomCount} ph├▓ng ph├╣ hß╗úp. ─Éiß╗âm dß╗½ng ch├ón ho├án hß║úo vß╗¢i ─æß║ºy ─æß╗º tiß╗çn nghi.` : 'Kh├ím ph├í ─æiß╗âm dß╗½ng ch├ón ho├án hß║úo vß╗¢i trß║úi nghiß╗çm nghß╗ë d╞░ß╗íng tiß╗çn nghi v├á ─æß║ºy cß║úm hß╗⌐ng.')}
+                      {item.description || (item.availableRoomCount ? `Còn ${item.availableRoomCount} phòng phù hợp. Điểm dừng chân hoàn hảo với đầy đủ tiện nghi.` : 'Khám phá điểm dừng chân hoàn hảo với trải nghiệm nghỉ dưỡng tiện nghi và đầy cảm hứng.')}
                     </p>
 
                     <footer>
@@ -370,7 +535,7 @@ export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings
                           openItem(item.id);
                         }}
                       >
-                        ─Éß║╖t ph├▓ng
+                        Đặt phòng
                       </button>
                     </footer>
                   </div>
@@ -379,17 +544,17 @@ export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings
             })}
           </div>
 
-          {/* Ph├ón trang */}
+          {/* Phân trang */}
           {!loading && !error && result.total > 0 && (
             <nav className="catalog-pagination">
               <button disabled={page <= 1} onClick={() => load(page - 1)}>
-                ΓåÉ Tr╞░ß╗¢c
+                ← Trước
               </button>
               <span>
                 Trang {page} / {pageCount}
               </span>
               <button disabled={page >= pageCount} onClick={() => load(page + 1)}>
-                Sau ΓåÆ
+                Sau →
               </button>
             </nav>
           )}

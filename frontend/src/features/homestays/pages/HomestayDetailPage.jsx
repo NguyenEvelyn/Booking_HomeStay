@@ -12,7 +12,7 @@ import deluxeRoomImage from '../../../../assets/be402600cc69b6c03f813e85453be7ff
 import familySuiteImage from '../../../../assets/9831323b9ec25a6c954800c1a66de2ff.jpg';
 import gardenViewRoomImage from '../../../../assets/351637f1124ce334062731a57eec77ac.jpg';
 
-const money = (value) => `${new Intl.NumberFormat('vi-VN').format(value)} ─æ`;
+const money = (value) => `${new Intl.NumberFormat('vi-VN').format(value)} đ`;
 const roomFallbacks = [
   deluxeRoomImage,
   familySuiteImage,
@@ -146,24 +146,24 @@ function Icon({ name, size = 16, className = '', color = 'currentColor', fill = 
 
 function getAmenitySvg(name = '', category = '') {
   const lower = (name + ' ' + category).toLowerCase();
-  if (lower.includes('wifi') || lower.includes('mß║íng') || lower.includes('internet')) return <Icon name="wifi" size={24} />;
-  if (lower.includes('xe') || lower.includes('─æß╗ù') || lower.includes('parking')) return <Icon name="car" size={24} />;
-  if (lower.includes('─æiß╗üu h├▓a') || lower.includes('lß║ính') || lower.includes('ac')) return <Icon name="snowflake" size={24} />;
-  if (lower.includes('ban c├┤ng') || lower.includes('view') || lower.includes('s├ón')) return <Icon name="balcony" size={24} />;
-  if (lower.includes('vß║¡t nu├┤i') || lower.includes('pet') || lower.includes('ch├│') || lower.includes('m├¿o')) return <Icon name="paw" size={24} />;
-  if (lower.includes('b╞íi') || lower.includes('hß╗ô')) return <Icon name="pool" size={24} />;
-  if (lower.includes('bß║┐p') || lower.includes('─ân')) return <Icon name="kitchen" size={24} />;
+  if (lower.includes('wifi') || lower.includes('mạng') || lower.includes('internet')) return <Icon name="wifi" size={24} />;
+  if (lower.includes('xe') || lower.includes('đỗ') || lower.includes('parking')) return <Icon name="car" size={24} />;
+  if (lower.includes('điều hòa') || lower.includes('lạnh') || lower.includes('ac')) return <Icon name="snowflake" size={24} />;
+  if (lower.includes('ban công') || lower.includes('view') || lower.includes('sân')) return <Icon name="balcony" size={24} />;
+  if (lower.includes('vật nuôi') || lower.includes('pet') || lower.includes('chó') || lower.includes('mèo')) return <Icon name="paw" size={24} />;
+  if (lower.includes('bơi') || lower.includes('hồ')) return <Icon name="pool" size={24} />;
+  if (lower.includes('bếp') || lower.includes('ăn')) return <Icon name="kitchen" size={24} />;
   return <Icon name="sparkles" size={24} />;
 }
 
-export default function HomestayDetailPage({ id, initialSearch, user, onHome, onBack, onBookings, onAccount, onDeveloping }) {
+export default function HomestayDetailPage({ id, initialSearch, user, onHome, onBack, onBookings, onAccount, onDeveloping, refreshKey = 0 }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [arrival, setArrival] = useState(initialSearch?.checkIn || '');
   const [departure, setDeparture] = useState(initialSearch?.checkOut || '');
-  const [adultCount, setAdultCount] = useState(initialSearch?.guests || 2);
-  const [childCount, setChildCount] = useState(0);
-  const [roomQuantity, setRoomQuantity] = useState(1);
+  const [adultCount, setAdultCount] = useState(initialSearch?.adults || initialSearch?.guests || 2);
+  const [childCount, setChildCount] = useState(initialSearch?.children || 0);
+  const [roomQuantity, setRoomQuantity] = useState(initialSearch?.rooms || 1);
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [activeRoomImage, setActiveRoomImage] = useState(0);
   const [showPaymentPage, setShowPaymentPage] = useState(false);
@@ -187,7 +187,7 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
   const nameParts = (user?.fullName || '').trim().split(/\s+/).filter(Boolean);
   const [guestInfo, setGuestInfo] = useState({
     firstName: nameParts.slice(0, -1).join(' '), lastName: nameParts.at(-1) || '',
-    email: user?.email || '', country: 'Viß╗çt Nam', countryCode: '+84', phone: '', arrivalTime: ''
+    email: user?.email || '', country: 'Việt Nam', countryCode: '+84', phone: '', arrivalTime: ''
   });
   const [isSaved, setIsSaved] = useState(() => {
     try {
@@ -211,9 +211,9 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
   useEffect(() => {
     window.scrollTo(0, 0);
     homestayApi.detail(id).then(setData).catch((e) => setError(e.message));
-  }, [id]);
+  }, [id, refreshKey]);
 
-  // Track recommendation view event (from team's feature)
+  // Track recommendation view event
   const viewedId = useRef(null);
   useEffect(() => {
     if (data && viewedId.current !== data.id) {
@@ -255,8 +255,8 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
     return () => { document.body.style.overflow = ''; window.removeEventListener('keydown', close); };
   }, [showAllReviews]);
 
-  if (error) return <main className="detail-state"><p>{error}</p><button onClick={onBack}>Quay lß║íi danh s├ích</button></main>;
-  if (!data) return <main className="detail-state"><div className="detail-loader" />─Éang tß║úi chi tiß║┐t homestay...</main>;
+  if (error) return <main className="detail-state"><p>{error}</p><button onClick={onBack}>Quay lại danh sách</button></main>;
+  if (!data) return <main className="detail-state"><div className="detail-loader" />Đang tải chi tiết homestay...</main>;
 
   const address = [data.addressLine, data.ward, data.district, data.province].filter(Boolean).join(', ');
   const coverUrl = (data.images && data.images.length > 0)
@@ -267,16 +267,16 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
     : 0;
   const formattedLowestPrice = lowestPrice > 0
     ? `${new Intl.NumberFormat('vi-VN').format(lowestPrice)} VND`
-    : '─Éang cß║¡p nhß║¡t';
+    : 'Đang cập nhật';
   const ratingNumber = reviews.total
     ? Number(reviews.average).toFixed(1).replace('.', ',')
     : (data.averageRating ? Number(data.averageRating).toFixed(1).replace('.', ',') : '4,8');
   const amenities = data.amenities.length ? data.amenities.slice(0, 5) : [
-    { id: 1, name: 'WiFi miß╗àn ph├¡', category: 'Internet' }, { id: 2, name: 'Bß╗â b╞íi ngo├ái trß╗¥i', category: 'Giß║úi tr├¡' },
-    { id: 3, name: 'Nh├á h├áng', category: 'Tiß╗çn ├¡ch' }, { id: 4, name: 'Spa & th╞░ gi├ún', category: 'Dß╗ïch vß╗Ñ' },
-    { id: 5, name: '─É╞░a ─æ├│n s├ón bay', category: 'Dß╗ïch vß╗Ñ' }
+    { id: 1, name: 'WiFi miễn phí', category: 'Internet' }, { id: 2, name: 'Bể bơi ngoài trời', category: 'Giải trí' },
+    { id: 3, name: 'Nhà hàng', category: 'Tiện ích' }, { id: 4, name: 'Spa & thư giãn', category: 'Dịch vụ' },
+    { id: 5, name: 'Đưa đón sân bay', category: 'Dịch vụ' }
   ];
-  const reviewAmenityOptions = ['WiFi', 'Ban c├┤ng', '─Éiß╗üu h├▓a', 'Nh├á bß║┐p', 'S├ón v╞░ß╗¥n', 'Chß╗ù ─æß╗ù xe', 'Vß║¡t nu├┤i', 'Th├ánh phß╗æ'];
+  const reviewAmenityOptions = ['WiFi', 'Ban công', 'Điều hòa', 'Nhà bếp', 'Sân vườn', 'Chỗ đỗ xe', 'Vật nuôi', 'Thành phố'];
   const normalizedSearch = reviewSearch.trim().toLocaleLowerCase('vi');
   const filteredReviews = reviews.items.filter((review) => {
     const content = `${review.comment || ''} ${review.hostReply || ''}`.toLocaleLowerCase('vi');
@@ -300,7 +300,7 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
     setAdultCount((value) => Math.max(1, Math.min(value, room.maxAdults * availableQuantity)));
     setChildCount((value) => Math.min(value, room.maxChildren * availableQuantity));
     window.setTimeout(() => document.getElementById('room-detail-inline')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
-    try { const detail = await homestayApi.roomTypeDetail(room.id); setSelectedRoom((current) => current?.id === room.id ? { ...current, ...detail } : current); } catch { /* giß╗» dß╗» liß╗çu danh s├ích nß║┐u tß║úi gallery thß║Ñt bß║íi */ }
+    try { const detail = await homestayApi.roomTypeDetail(room.id); setSelectedRoom((current) => current?.id === room.id ? { ...current, ...detail } : current); } catch { /* giữ dữ liệu danh sách nếu tải gallery thất bại */ }
   };
   const closeRoomDetail = () => { setSelectedRoom(null); setShowPaymentPage(false); window.setTimeout(() => document.querySelector('.rooms-section')?.scrollIntoView({ behavior: 'smooth' }), 0); };
   const bookingNights = arrival && departure ? Math.max(0, Math.round((new Date(departure) - new Date(arrival)) / 86400000)) : 0;
@@ -315,13 +315,13 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
   const quotedExtraAdultTotal = priceQuote?.extraAdultFee ?? extraAdultTotal;
   const quotedChildFeeTotal = priceQuote?.childFee ?? childFeeTotal;
   const quotedGrandTotal = priceQuote?.total ?? bookingGrandTotal;
-  const selectedRoomImages = selectedRoom?.rooms?.flatMap((room) => room.images.map((image) => ({ ...image, caption: image.caption || `Ph├▓ng ${room.roomNumber}` })))?.length
-    ? selectedRoom.rooms.flatMap((room) => room.images.map((image) => ({ ...image, caption: image.caption || `Ph├▓ng ${room.roomNumber}` })))
-    : selectedRoom?.images?.length ? selectedRoom.images : eloraImages.map((url, index) => ({ id: `fallback-${index}`, url, caption: selectedRoom?.name || 'ß║ónh ph├▓ng' }));
+  const selectedRoomImages = selectedRoom?.rooms?.flatMap((room) => room.images.map((image) => ({ ...image, caption: image.caption || `Phòng ${room.roomNumber}` })))?.length
+    ? selectedRoom.rooms.flatMap((room) => room.images.map((image) => ({ ...image, caption: image.caption || `Phòng ${room.roomNumber}` })))
+    : selectedRoom?.images?.length ? selectedRoom.images : eloraImages.map((url, index) => ({ id: `fallback-${index}`, url, caption: selectedRoom?.name || 'Ảnh phòng' }));
   const openPaymentPage = async () => {
-    if (!user) { setBookingError('Vui l├▓ng ─æ─âng nhß║¡p t├ái khoß║ún kh├ích h├áng tr╞░ß╗¢c khi ─æß║╖t ph├▓ng.'); return; }
-    if (!arrival || !departure) { setBookingError('Vui l├▓ng chß╗ìn ng├áy nhß║¡n v├á trß║ú ph├▓ng.'); return; }
-    if (bookingNights < 1) { setBookingError('Ng├áy trß║ú ph├▓ng phß║úi sau ng├áy nhß║¡n ph├▓ng.'); return; }
+    if (!user) { setBookingError('Vui lòng đăng nhập tài khoản khách hàng trước khi đặt phòng.'); return; }
+    if (!arrival || !departure) { setBookingError('Vui lòng chọn ngày nhận và trả phòng.'); return; }
+    if (bookingNights < 1) { setBookingError('Ngày trả phòng phải sau ngày nhận phòng.'); return; }
     setBookingBusy(true); setBookingError('');
     try {
       const quote = await bookingApi.quote({ roomTypeId: selectedRoom.id, checkInDate: arrival, checkOutDate: departure, adultCount, childCount, quantity: roomQuantity, customerNote: null });
@@ -334,23 +334,23 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
     setBookingError('');
   };
   const payWithVnPay = async () => {
-    if (!user) { setBookingError('Vui l├▓ng ─æ─âng nhß║¡p t├ái khoß║ún kh├ích h├áng tr╞░ß╗¢c khi ─æß║╖t ph├▓ng.'); return; }
-    if (!arrival || !departure) { setBookingError('Vui l├▓ng chß╗ìn ng├áy nhß║¡n v├á trß║ú ph├▓ng.'); return; }
-    if (paymentSecondsLeft <= 0) { setBookingError('Thß╗¥i gian giß╗» gi├í ─æ├ú hß║┐t. Vui l├▓ng quay lß║íi kiß╗âm tra ph├▓ng v├á gi├í.'); return; }
+    if (!user) { setBookingError('Vui lòng đăng nhập tài khoản khách hàng trước khi đặt phòng.'); return; }
+    if (!arrival || !departure) { setBookingError('Vui lòng chọn ngày nhận và trả phòng.'); return; }
+    if (paymentSecondsLeft <= 0) { setBookingError('Thời gian giữ giá đã hết. Vui lòng quay lại kiểm tra phòng và giá.'); return; }
     if (!guestInfo.firstName.trim() || !guestInfo.lastName.trim() || !guestInfo.email.trim() || !guestInfo.country) {
-      setBookingError('Vui l├▓ng ─æiß╗ün ─æß║ºy ─æß╗º th├┤ng tin bß║»t buß╗Öc cß╗ºa kh├ích ch├¡nh.');
+      setBookingError('Vui lòng điền đầy đủ thông tin bắt buộc của khách chính.');
       document.querySelector('.payment-guest-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
     if (!/^\S+@\S+\.\S+$/.test(guestInfo.email.trim())) {
-      setBookingError('Email cß╗ºa kh├ích ch├¡nh kh├┤ng hß╗úp lß╗ç.');
+      setBookingError('Email của khách chính không hợp lệ.');
       document.querySelector('.payment-guest-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
     const guestCount = adultCount + childCount;
     setBookingBusy(true); setBookingError('');
     try {
-      const contactNote = [`Kh├ích ch├¡nh: ${guestInfo.firstName.trim()} ${guestInfo.lastName.trim()}`, `Email: ${guestInfo.email.trim()}`, guestInfo.phone.trim() ? `─Éiß╗çn thoß║íi: ${guestInfo.countryCode} ${guestInfo.phone.trim()}` : '', `Quß╗æc gia c╞░ tr├║: ${guestInfo.country}`, guestInfo.arrivalTime ? `Giß╗¥ nhß║¡n ph├▓ng dß╗▒ kiß║┐n: ${guestInfo.arrivalTime}` : 'Giß╗¥ nhß║¡n ph├▓ng dß╗▒ kiß║┐n: Ch╞░a biß║┐t'].filter(Boolean).join('\n');
+      const contactNote = [`Khách chính: ${guestInfo.firstName.trim()} ${guestInfo.lastName.trim()}`, `Email: ${guestInfo.email.trim()}`, guestInfo.phone.trim() ? `Điện thoại: ${guestInfo.countryCode} ${guestInfo.phone.trim()}` : '', `Quốc gia cư trú: ${guestInfo.country}`, guestInfo.arrivalTime ? `Giờ nhận phòng dự kiến: ${guestInfo.arrivalTime}` : 'Giờ nhận phòng dự kiến: Chưa biết'].filter(Boolean).join('\n');
       const result = await bookingApi.createVnPayPayment({ roomTypeId: selectedRoom.id, checkInDate: arrival, checkOutDate: departure, adultCount, childCount, quantity: roomQuantity, customerNote: contactNote, recommendationSessionId: recommendationSessionId() });
       window.location.assign(result.paymentUrl);
     } catch (error) { setBookingError(error.message); setBookingBusy(false); }
@@ -363,31 +363,31 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
     const formatDate = (value) => new Intl.DateTimeFormat('vi-VN', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(`${value}T00:00:00`));
     return <main className="payment-page">
       <CustomerNav active="homestays" user={user} onHome={onHome} onHomestays={onBack} onBookings={onBookings} onAccount={onAccount} />
-      <div className={`payment-countdown ${paymentSecondsLeft <= 60 ? 'urgent' : ''}`} role="timer" aria-live="polite"><span>{paymentSecondsLeft > 0 ? 'Ch├║ng t├┤i ─æang giß╗» gi├í cho qu├╜ kh├ích...' : 'Thß╗¥i gian giß╗» gi├í ─æ├ú hß║┐t'}</span><i>Γù╖</i><strong>{countdown}</strong></div>
-      <nav className="room-breadcrumb" aria-label="─É╞░ß╗¥ng dß║½n trang"><button onClick={onHome}>Trang chß╗º</button><span>ΓÇ║</span><button onClick={onBack}>Homestay</button><span>ΓÇ║</span><button onClick={() => setShowPaymentPage(false)}>{selectedRoom.name}</button><span>ΓÇ║</span><strong>Thanh to├ín</strong></nav>
+      <div className={`payment-countdown ${paymentSecondsLeft <= 60 ? 'urgent' : ''}`} role="timer" aria-live="polite"><span>{paymentSecondsLeft > 0 ? 'Chúng tôi đang giữ giá cho quý khách...' : 'Thời gian giữ giá đã hết'}</span><i>◷</i><strong>{countdown}</strong></div>
+      <nav className="room-breadcrumb" aria-label="Đường dẫn trang"><button onClick={onHome}>Trang chủ</button><span>›</span><button onClick={onBack}>Homestay</button><span>›</span><button onClick={() => setShowPaymentPage(false)}>{selectedRoom.name}</button><span>›</span><strong>Thanh toán</strong></nav>
       <section className="payment-shell">
-        <button className="room-back-button" onClick={() => { setShowPaymentPage(false); window.scrollTo(0, 0); }}>ΓåÉ Quay lß║íi th├┤ng tin ph├▓ng</button>
-        <header><small>X├üC NHß║¼N ─Éß║╢T PH├ÆNG</small><h1>Thanh to├ín ─æ╞ín ─æß║╖t ph├▓ng</h1><p>Kiß╗âm tra th├┤ng tin tr╞░ß╗¢c khi chuyß╗ân sang cß╗òng thanh to├ín VNPay.</p></header>
+        <button className="room-back-button" onClick={() => { setShowPaymentPage(false); window.scrollTo(0, 0); }}>← Quay lại thông tin phòng</button>
+        <header><small>XÁC NHẬN ĐẶT PHÒNG</small><h1>Thanh toán đơn đặt phòng</h1><p>Kiểm tra thông tin trước khi chuyển sang cổng thanh toán VNPay.</p></header>
         <div className="payment-layout">
           <div className="payment-main">
-            <section className="payment-card payment-stay-card"><img src={roomFallbacks[roomIndex % roomFallbacks.length]} alt={selectedRoom.name} /><div><small>{data.name}</small><h2>{selectedRoom.name}</h2><p>ΓÖÖ {guestCount} kh├ích &nbsp; ┬╖ &nbsp; Γû░ {selectedRoom.bedType} &nbsp; ┬╖ &nbsp; Γû│ {selectedRoom.roomSize || 'ΓÇö'} m┬▓</p></div></section>
-            <section className="payment-card"><h2>Th├┤ng tin l╞░u tr├║</h2><div className="payment-dates"><div><small>NHß║¼N PH├ÆNG</small><strong>{formatDate(arrival)}</strong><span>Tß╗½ {data.checkInTime.slice(0, 5)}</span></div><b>{bookingNights} ─æ├¬m ΓåÆ</b><div><small>TRß║ó PH├ÆNG</small><strong>{formatDate(departure)}</strong><span>Tr╞░ß╗¢c {data.checkOutTime.slice(0, 5)}</span></div></div></section>
+            <section className="payment-card payment-stay-card"><img src={roomFallbacks[roomIndex % roomFallbacks.length]} alt={selectedRoom.name} /><div><small>{data.name}</small><h2>{selectedRoom.name}</h2><p>♙ {guestCount} khách &nbsp; · &nbsp; ▰ {selectedRoom.bedType} &nbsp; · &nbsp; △ {selectedRoom.roomSize || '—'} m²</p></div></section>
+            <section className="payment-card"><h2>Thông tin lưu trú</h2><div className="payment-dates"><div><small>NHẬN PHÒNG</small><strong>{formatDate(arrival)}</strong><span>Từ {data.checkInTime.slice(0, 5)}</span></div><b>{bookingNights} đêm →</b><div><small>TRẢ PHÒNG</small><strong>{formatDate(departure)}</strong><span>Trước {data.checkOutTime.slice(0, 5)}</span></div></div></section>
             <section className="payment-card payment-guest-card">
-              <h2>Ai l├á kh├ích ch├¡nh?</h2><p className="payment-required">* Mß╗Ñc bß║»t buß╗Öc</p>
+              <h2>Ai là khách chính?</h2><p className="payment-required">* Mục bắt buộc</p>
               <div className="payment-form-grid">
-                <label><span>T├¬n *</span><input maxLength={50} autoComplete="given-name" value={guestInfo.firstName} onChange={updateGuestInfo('firstName')} placeholder="T├¬n" /></label>
-                <label><span>Hß╗ì *</span><input maxLength={50} autoComplete="family-name" value={guestInfo.lastName} onChange={updateGuestInfo('lastName')} placeholder="Hß╗ì (vd: Nguyß╗àn)" /></label>
+                <label><span>Tên *</span><input maxLength={50} autoComplete="given-name" value={guestInfo.firstName} onChange={updateGuestInfo('firstName')} placeholder="Tên" /></label>
+                <label><span>Họ *</span><input maxLength={50} autoComplete="family-name" value={guestInfo.lastName} onChange={updateGuestInfo('lastName')} placeholder="Họ (vd: Nguyễn)" /></label>
                 <label><span>Email *</span><input type="email" maxLength={120} autoComplete="email" value={guestInfo.email} onChange={updateGuestInfo('email')} placeholder="Email ID" /></label>
-                <label><span>Quß╗æc gia c╞░ tr├║ *</span><select value={guestInfo.country} onChange={updateGuestInfo('country')}><option>Viß╗çt Nam</option><option>Hoa Kß╗│</option><option>H├án Quß╗æc</option><option>Nhß║¡t Bß║ún</option><option>Kh├íc</option></select></label>
+                <label><span>Quốc gia cư trú *</span><select value={guestInfo.country} onChange={updateGuestInfo('country')}><option>Việt Nam</option><option>Hoa Kỳ</option><option>Hàn Quốc</option><option>Nhật Bản</option><option>Khác</option></select></label>
               </div>
-              <span className="payment-phone-title">Sß╗æ ─æiß╗çn thoß║íi di ─æß╗Öng</span>
-              <div className="payment-phone-row"><label><span>M├ú quß╗æc gia/v├╣ng</span><select value={guestInfo.countryCode} onChange={updateGuestInfo('countryCode')}><option>+84</option><option>+1</option><option>+81</option><option>+82</option></select></label><label><span>Sß╗æ ─æiß╗çn thoß║íi</span><input type="tel" maxLength={20} autoComplete="tel" value={guestInfo.phone} onChange={updateGuestInfo('phone')} placeholder="Sß╗æ ─æiß╗çn thoß║íi di ─æß╗Öng" /></label></div>
-              <p className="payment-form-help">Vui l├▓ng ─æß║úm bß║úo th├┤ng tin li├¬n hß╗ç cß╗ºa qu├╜ kh├ích l├á ch├¡nh x├íc. Ch├║ng t├┤i sß║╜ sß╗¡ dß╗Ñng th├┤ng tin n├áy ─æß╗â gß╗¡i x├íc nhß║¡n v├á th├┤ng b├ío vß╗ü ─æß║╖t ph├▓ng.</p>
+              <span className="payment-phone-title">Số điện thoại di động</span>
+              <div className="payment-phone-row"><label><span>Mã quốc gia/vùng</span><select value={guestInfo.countryCode} onChange={updateGuestInfo('countryCode')}><option>+84</option><option>+1</option><option>+81</option><option>+82</option></select></label><label><span>Số điện thoại</span><input type="tel" maxLength={20} autoComplete="tel" value={guestInfo.phone} onChange={updateGuestInfo('phone')} placeholder="Số điện thoại di động" /></label></div>
+              <p className="payment-form-help">Vui lòng đảm bảo thông tin liên hệ của quý khách là chính xác. Chúng tôi sẽ sử dụng thông tin này để gửi xác nhận và thông báo về đặt phòng.</p>
             </section>
-            <section className="payment-card payment-extra-card"><h2>Th├┤ng tin l╞░u tr├║ bß╗ò sung</h2><p>Vui l├▓ng cung cß║Ñp th├┤ng tin sau ─æß╗â chß╗ù nghß╗ë chuß║⌐n bß╗ï ─æ├│n tiß║┐p bß║ín tß╗æt h╞ín.</p><label><span>Bß║ín dß╗▒ kiß║┐n ─æß║┐n nhß║¡n ph├▓ng l├║c n├áo?</span><select value={guestInfo.arrivalTime} onChange={updateGuestInfo('arrivalTime')}><option value="">T├┤i ch╞░a biß║┐t</option><option>12:00 - 14:00</option><option>14:00 - 16:00</option><option>16:00 - 18:00</option><option>18:00 - 20:00</option><option>Sau 20:00</option></select><small>Chß╗º homestay sß║╜ ─æ╞░ß╗úc b├ío tr╞░ß╗¢c giß╗¥ ─æß║┐n dß╗▒ kiß║┐n.</small></label></section>
-            <section className="payment-card"><h2>Ph╞░╞íng thß╗⌐c thanh to├ín</h2><label className="payment-method"><input type="radio" checked readOnly /><span className="vnpay-mark">VN<span>PAY</span></span><div><strong>Thanh to├ín qua VNPay</strong><small>Qu├⌐t m├ú QR bß║▒ng ß╗⌐ng dß╗Ñng ng├ón h├áng hoß║╖c v├¡ VNPay</small></div><i>Γ£ô</i></label><p className="payment-note">Bß║ín sß║╜ ─æ╞░ß╗úc chuyß╗ân ─æß║┐n trang VNPay an to├án ─æß╗â qu├⌐t m├ú v├á ho├án tß║Ñt thanh to├ín.</p></section>
+            <section className="payment-card payment-extra-card"><h2>Thông tin lưu trú bổ sung</h2><p>Vui lòng cung cấp thông tin sau để chỗ nghỉ chuẩn bị đón tiếp bạn tốt hơn.</p><label><span>Bạn dự kiến đến nhận phòng lúc nào?</span><select value={guestInfo.arrivalTime} onChange={updateGuestInfo('arrivalTime')}><option value="">Tôi chưa biết</option><option>12:00 - 14:00</option><option>14:00 - 16:00</option><option>16:00 - 18:00</option><option>18:00 - 20:00</option><option>Sau 20:00</option></select><small>Chủ homestay sẽ được báo trước giờ đến dự kiến.</small></label></section>
+            <section className="payment-card"><h2>Phương thức thanh toán</h2><label className="payment-method"><input type="radio" checked readOnly /><span className="vnpay-mark">VN<span>PAY</span></span><div><strong>Thanh toán qua VNPay</strong><small>Quét mã QR bằng ứng dụng ngân hàng hoặc ví VNPay</small></div><i>✓</i></label><p className="payment-note">Bạn sẽ được chuyển đến trang VNPay an toàn để quét mã và hoàn tất thanh toán.</p></section>
           </div>
-          <aside className="payment-summary"><h2>Chi tiß║┐t thanh to├ín</h2><div><span>{roomQuantity} ph├▓ng ├ù {bookingNights} ─æ├¬m</span><strong>{money(quotedRoomTotal)}</strong></div>{extraAdultCount > 0 && <div><span>Phß╗Ñ thu {extraAdultCount} ng╞░ß╗¥i lß╗¢n</span><strong>{money(quotedExtraAdultTotal)}</strong></div>}{childCount > 0 && <div><span>Phß╗Ñ thu {childCount} trß║╗ em</span><strong>{money(quotedChildFeeTotal)}</strong></div>}<div><span>Ph├¡ dß╗ïch vß╗Ñ</span><strong>0 ─æ</strong></div><hr /><div className="payment-grand-total"><span>Tß╗òng thanh to├ín</span><strong>{money(quotedGrandTotal)}</strong></div>{bookingError && <div className="booking-error">{bookingError}</div>}<button disabled={bookingBusy || paymentSecondsLeft <= 0} onClick={payWithVnPay}>{bookingBusy ? '─Éang kß║┐t nß╗æi VNPay...' : paymentSecondsLeft <= 0 ? 'Thß╗¥i gian giß╗» gi├í ─æ├ú hß║┐t' : 'Tiß║┐p tß╗Ñc ─æß║┐n VNPay ΓåÆ'}</button><small>≡ƒöÆ Giao dß╗ïch ─æ╞░ß╗úc bß║úo mß║¡t bß╗ƒi VNPay</small></aside>
+          <aside className="payment-summary"><h2>Chi tiết thanh toán</h2><div><span>{roomQuantity} phòng × {bookingNights} đêm</span><strong>{money(quotedRoomTotal)}</strong></div>{extraAdultCount > 0 && <div><span>Phụ thu {extraAdultCount} người lớn</span><strong>{money(quotedExtraAdultTotal)}</strong></div>}{childCount > 0 && <div><span>Phụ thu {childCount} trẻ em</span><strong>{money(quotedChildFeeTotal)}</strong></div>}<div><span>Phí dịch vụ</span><strong>0 đ</strong></div><hr /><div className="payment-grand-total"><span>Tổng thanh toán</span><strong>{money(quotedGrandTotal)}</strong></div>{bookingError && <div className="booking-error">{bookingError}</div>}<button disabled={bookingBusy || paymentSecondsLeft <= 0} onClick={payWithVnPay}>{bookingBusy ? 'Đang kết nối VNPay...' : paymentSecondsLeft <= 0 ? 'Thời gian giữ giá đã hết' : 'Tiếp tục đến VNPay →'}</button><small>🔒 Giao dịch được bảo mật bởi VNPay</small></aside>
         </div>
       </section>
     </main>;
@@ -416,7 +416,7 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
             <div className="stay-hero-title-row">
               <h1>{data.name}</h1>
               <span className="stay-hero-rating-badge">
-                {ratingNumber} <span className="stay-hero-star">Γÿà</span>
+                {ratingNumber} <span className="stay-hero-star">★</span>
               </span>
             </div>
             <div className="stay-hero-meta-row">
@@ -428,7 +428,7 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
                 type="button"
                 className={`stay-hero-save-btn ${isSaved ? 'is-saved' : ''}`}
                 onClick={toggleSave}
-                title={isSaved ? 'Bß╗Å l╞░u homestay' : 'L╞░u homestay v├áo danh s├ích y├¬u th├¡ch'}
+                title={isSaved ? 'Bỏ lưu homestay' : 'Lưu homestay vào danh sách yêu thích'}
               >
                 <Icon
                   name="heart"
@@ -436,17 +436,17 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
                   fill={isSaved ? '#ff4d6d' : 'none'}
                   color={isSaved ? '#ff4d6d' : '#fff'}
                 />
-                {isSaved ? '─É├ú l╞░u' : 'L╞░u Homestay'}
+                {isSaved ? 'Đã lưu' : 'Lưu Homestay'}
               </button>
             </div>
           </div>
 
           <div className="stay-hero-right">
-            <span className="stay-hero-price-label">Gi├í ph├▓ng/─æ├¬m tß╗½</span>
+            <span className="stay-hero-price-label">Giá phòng/đêm từ</span>
             <div className="stay-hero-price-action">
               <strong className="stay-hero-price-val">{formattedLowestPrice}</strong>
               <button type="button" className="stay-hero-choose-btn" onClick={checkRooms}>
-                Chß╗ìn ph├▓ng
+                Chọn phòng
               </button>
             </div>
           </div>
@@ -454,13 +454,13 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
       </section>
 
       {/* Floating search bar matching homepage style */}
-      <section className="detail-search" aria-label="Kiß╗âm tra ph├▓ng trß╗æng">
+      <section className="detail-search" aria-label="Kiểm tra phòng trống">
         <label>
-          Ng├áy nhß║¡n
+          Ngày nhận
           <span className="search-control">
             <input
               type="text"
-              placeholder="Chß╗ìn ng├áy nhß║¡n"
+              placeholder="Chọn ngày nhận"
               value={arrival}
               onChange={(e) => {
                 setArrival(e.target.value);
@@ -474,11 +474,11 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
         </label>
 
         <label>
-          Ng├áy trß║ú
+          Ngày trả
           <span className="search-control">
             <input
               type="text"
-              placeholder="Chß╗ìn ng├áy trß║ú"
+              placeholder="Chọn ngày trả"
               min={arrival || undefined}
               value={departure}
               onChange={(e) => setDeparture(e.target.value)}
@@ -499,38 +499,38 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
         />
 
         <button type="button" onClick={checkRooms}>
-          Kiß╗âm tra ph├▓ng <span>ΓåÆ</span>
+          Kiểm tra phòng <span>→</span>
         </button>
       </section>
 
       <div className="detail-content">
         <section id="overview" className="detail-intro redesigned-intro">
           <div>
-            <small>KH├üM PH├ü KH├öNG GIAN</small>
-            <h2>Giß╗¢i thiß╗çu homestay</h2>
+            <small>KHÁM PHÁ KHÔNG GIAN</small>
+            <h2>Giới thiệu homestay</h2>
             <p>{data.description}</p>
           </div>
           <aside>
             <article>
               <b>{data.roomTypes.length}</b>
-              <span>Loß║íi ph├▓ng</span>
+              <span>Loại phòng</span>
             </article>
             <article>
               <b>{data.roomTypes.reduce((sum, room) => sum + room.availableRoomCount, 0)}</b>
-              <span>Ph├▓ng c├▓n trß╗æng</span>
+              <span>Phòng còn trống</span>
             </article>
             <article>
-              <b>{reviews.total ? Number(reviews.average).toFixed(1) : 'ΓÇö'}</b>
-              <span>─Éiß╗âm ─æ├ính gi├í</span>
+              <b>{reviews.total ? Number(reviews.average).toFixed(1) : '—'}</b>
+              <span>Điểm đánh giá</span>
             </article>
           </aside>
         </section>
 
         <section id="amenities" className="detail-box featured-amenities">
           <header className="section-title">
-            <small>TRß║óI NGHIß╗åM TIß╗åN NGHI</small>
-            <h2>Tiß╗çn ├¡ch nß╗òi bß║¡t</h2>
-            <p>Mß╗ìi tiß╗çn nghi cß║ºn thiß║┐t cho mß╗Öt kß╗│ nghß╗ë thoß║úi m├íi v├á trß╗ìn vß║╣n.</p>
+            <small>TRẢI NGHIỆM TIỆN NGHI</small>
+            <h2>Tiện ích nổi bật</h2>
+            <p>Mọi tiện nghi cần thiết cho một kỳ nghỉ thoải mái và trọn vẹn.</p>
           </header>
           <div>
             {amenities.map((item) => (
@@ -548,10 +548,10 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
         <section id="rooms" className="rooms-section">
           <div className="rooms-heading">
             <div>
-              <small>Lß╗░A CHß╗îN L╞»U TR├Ü</small>
-              <h2>Chß╗ìn c─ân ph├▓ng d├ánh cho bß║ín</h2>
+              <small>LỰA CHỌN LƯU TRÚ</small>
+              <h2>Chọn căn phòng dành cho bạn</h2>
             </div>
-            <p>Gi├í minh bß║ích ┬╖ Xem chi tiß║┐t ngay tr├¬n trang</p>
+            <p>Giá minh bạch · Xem chi tiết ngay trên trang</p>
           </div>
           <div className="detail-room-list">
             {data.roomTypes.map((room, index) => (
@@ -567,9 +567,9 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
                 <div className="room-card-top">
                   <span>
                     <Icon name="user" size={12} />
-                    Tß╗æi ─æa {room.maxAdults} ng╞░ß╗¥i lß╗¢n ┬╖ {room.maxChildren} trß║╗ em
+                    Tối đa {room.maxAdults} người lớn · {room.maxChildren} trẻ em
                   </span>
-                  <span>{room.availableRoomCount > 0 ? `${room.availableRoomCount} ph├▓ng trß╗æng` : '─É├ú hß║┐t ph├▓ng'}</span>
+                  <span>{room.availableRoomCount > 0 ? `${room.availableRoomCount} phòng trống` : 'Đã hết phòng'}</span>
                 </div>
                 <div className="room-copy">
                   <h3>{room.name}</h3>
@@ -580,14 +580,14 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
                     </span>
                     <span>
                       <Icon name="maximize" size={13} />
-                      {room.roomSize || 'ΓÇö'} m┬▓
+                      {room.roomSize || '—'} m²
                     </span>
                   </div>
                   <p>{room.description}</p>
                 </div>
                 <div className="room-actions">
                   <strong>
-                    {money(room.basePrice)} <small>/ ─æ├¬m</small>
+                    {money(room.basePrice)} <small>/ đêm</small>
                   </strong>
                   <button
                     type="button"
@@ -595,7 +595,7 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
                     disabled={room.availableRoomCount === 0}
                     onClick={() => openRoomDetail(room)}
                   >
-                    {room.availableRoomCount > 0 ? '─Éß║╖t ph├▓ng ΓåÆ' : 'Hß║┐t ph├▓ng'}
+                    {room.availableRoomCount > 0 ? 'Đặt phòng →' : 'Hết phòng'}
                   </button>
                 </div>
               </article>
@@ -607,10 +607,10 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
           <section id="room-detail-inline" className="inline-room-detail">
             <header>
               <div>
-                <small>CHI TIß║╛T PH├ÆNG Tß║áI {data.name.toUpperCase()}</small>
+                <small>CHI TIẾT PHÒNG TẠI {data.name.toUpperCase()}</small>
                 <h2>{selectedRoom.name}</h2>
               </div>
-              <button type="button" onClick={closeRoomDetail}>Thu gß╗ìn ├ù</button>
+              <button type="button" onClick={closeRoomDetail}>Thu gọn ×</button>
             </header>
             <div className="room-page-gallery">
               <img
@@ -626,7 +626,7 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
                     key={`${image.id}-${image.url}`}
                     onClick={() => setActiveRoomImage(index)}
                   >
-                    <img src={image.url} alt={image.caption || `Xem ß║únh ${index + 1}`} />
+                    <img src={image.url} alt={image.caption || `Xem ảnh ${index + 1}`} />
                   </button>
                 ))}
               </div>
@@ -636,7 +636,7 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
                 <div className="room-page-facts">
                   <span>
                     <Icon name="user" size={14} />
-                    {selectedRoom.maxAdults + selectedRoom.maxChildren} kh├ích
+                    {selectedRoom.maxAdults + selectedRoom.maxChildren} khách
                   </span>
                   <span>
                     <Icon name="bed" size={14} />
@@ -644,39 +644,39 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
                   </span>
                   <span>
                     <Icon name="maximize" size={14} />
-                    {selectedRoom.roomSize || 'ΓÇö'} m┬▓
+                    {selectedRoom.roomSize || '—'} m²
                   </span>
                 </div>
                 <p>
-                  {selectedRoom.description} Kh├┤ng gian ─æ╞░ß╗úc thiß║┐t kß║┐ ß║Ñm c├║ng, nhiß╗üu ├ính s├íng tß╗▒ nhi├¬n v├á ─æß║ºy ─æß╗º tiß╗çn nghi cho mß╗Öt kß╗│ nghß╗ë thoß║úi m├íi.
+                  {selectedRoom.description} Không gian được thiết kế ấm cúng, nhiều ánh sáng tự nhiên và đầy đủ tiện nghi cho một kỳ nghỉ thoải mái.
                 </p>
                 <hr />
-                <h2>Tiß╗çn nghi trong ph├▓ng</h2>
+                <h2>Tiện nghi trong phòng</h2>
                 <ul className="room-page-amenities">
-                  <li>WiFi tß╗æc ─æß╗Ö cao miß╗àn ph├¡</li>
-                  <li>M├íy ─æiß╗üu h├▓a</li>
-                  <li>Ph├▓ng tß║»m ri├¬ng &amp; n╞░ß╗¢c n├│ng</li>
-                  <li>TV m├án h├¼nh phß║│ng</li>
-                  <li>ß║ñm ─æun n╞░ß╗¢c v├á minibar</li>
-                  <li>{selectedRoom.name.toLowerCase().includes('ban c├┤ng') ? 'Ban c├┤ng ri├¬ng, nh├¼n ra th├ánh phß╗æ' : 'Dß╗ìn ph├▓ng hß║▒ng ng├áy'}</li>
+                  <li>WiFi tốc độ cao miễn phí</li>
+                  <li>Máy điều hòa</li>
+                  <li>Phòng tắm riêng &amp; nước nóng</li>
+                  <li>TV màn hình phẳng</li>
+                  <li>Ấm đun nước và minibar</li>
+                  <li>{selectedRoom.name.toLowerCase().includes('ban công') ? 'Ban công riêng, nhìn ra thành phố' : 'Dọn phòng hằng ngày'}</li>
                 </ul>
                 <hr />
-                <h2>Ch├¡nh s├ích ph├▓ng</h2>
+                <h2>Chính sách phòng</h2>
                 <div className="room-page-policy">
-                  <p><b>Nhß║¡n ph├▓ng</b><span>Tß╗½ {data.checkInTime.slice(0, 5)}</span></p>
-                  <p><b>Trß║ú ph├▓ng</b><span>Tr╞░ß╗¢c {data.checkOutTime.slice(0, 5)}</span></p>
-                  <p><b>Hß╗ºy ph├▓ng</b><span>Miß╗àn ph├¡ tr╞░ß╗¢c 7 ng├áy</span></p>
+                  <p><b>Nhận phòng</b><span>Từ {data.checkInTime.slice(0, 5)}</span></p>
+                  <p><b>Trả phòng</b><span>Trước {data.checkOutTime.slice(0, 5)}</span></p>
+                  <p><b>Hủy phòng</b><span>Miễn phí trước 7 ngày</span></p>
                 </div>
               </article>
               <aside className="room-page-booking">
-                <small>GI├ü PH├ÆNG</small>
+                <small>GIÁ PHÒNG</small>
                 <div>
                   <strong>{money(selectedRoom.basePrice)}</strong>
-                  <span>/ ph├▓ng / ─æ├¬m</span>
+                  <span>/ phòng / đêm</span>
                 </div>
-                <p>Γ£ô {selectedRoom.availableRoomCount} ph├▓ng ─æang c├▓n trß╗æng</p>
+                <p>✓ {selectedRoom.availableRoomCount} phòng đang còn trống</p>
                 <label>
-                  Ng├áy nhß║¡n
+                  Ngày nhận
                   <input
                     type="date"
                     min={new Date().toISOString().slice(0, 10)}
@@ -685,7 +685,7 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
                   />
                 </label>
                 <label>
-                  Ng├áy trß║ú
+                  Ngày trả
                   <input
                     type="date"
                     min={arrival || new Date().toISOString().slice(0, 10)}
@@ -695,7 +695,7 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
                 </label>
                 <div className="guest-room-fields">
                   <label>
-                    Ng╞░ß╗¥i lß╗¢n
+                    Người lớn
                     <select
                       value={adultCount}
                       onChange={(e) => { setAdultCount(Number(e.target.value)); setBookingError(''); }}
@@ -706,7 +706,7 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
                     </select>
                   </label>
                   <label>
-                    Trß║╗ em
+                    Trẻ em
                     <select
                       value={childCount}
                       onChange={(e) => { setChildCount(Number(e.target.value)); setBookingError(''); }}
@@ -717,7 +717,7 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
                     </select>
                   </label>
                   <label>
-                    Sß╗æ ph├▓ng
+                    Số phòng
                     <select
                       value={roomQuantity}
                       onChange={(e) => {
@@ -735,14 +735,14 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
                   </label>
                 </div>
                 <small className="capacity-note">
-                  Gi├í gß╗ôm tß╗æi ─æa {Math.min(2, selectedRoom.maxAdults)} ng╞░ß╗¥i lß╗¢n/ph├▓ng. Phß╗Ñ thu: ng╞░ß╗¥i lß╗¢n 150.000─æ v├á trß║╗ em 100.000─æ mß╗ùi ─æ├¬m.
+                  Giá gồm tối đa {Math.min(2, selectedRoom.maxAdults)} người lớn/phòng. Phụ thu: người lớn 150.000đ và trẻ em 100.000đ mỗi đêm.
                 </small>
                 {bookingNights > 0 && (
                   <div className="booking-price-breakdown">
-                    <div><span>Tiß╗ün ph├▓ng</span><strong>{money(roomPriceTotal)}</strong></div>
-                    {extraAdultCount > 0 && <div><span>Th├¬m {extraAdultCount} ng╞░ß╗¥i lß╗¢n</span><strong>+ {money(extraAdultTotal)}</strong></div>}
-                    {childCount > 0 && <div><span>Th├¬m {childCount} trß║╗ em</span><strong>+ {money(childFeeTotal)}</strong></div>}
-                    <div className="booking-total"><span>Tß╗òng cß╗Öng</span><strong>{money(bookingGrandTotal)}</strong></div>
+                    <div><span>Tiền phòng</span><strong>{money(roomPriceTotal)}</strong></div>
+                    {extraAdultCount > 0 && <div><span>Thêm {extraAdultCount} người lớn</span><strong>+ {money(extraAdultTotal)}</strong></div>}
+                    {childCount > 0 && <div><span>Thêm {childCount} trẻ em</span><strong>+ {money(childFeeTotal)}</strong></div>}
+                    <div className="booking-total"><span>Tổng cộng</span><strong>{money(bookingGrandTotal)}</strong></div>
                   </div>
                 )}
                 {bookingError && <div className="booking-error">{bookingError}</div>}
@@ -751,9 +751,9 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
                   disabled={selectedRoom.availableRoomCount === 0}
                   onClick={openPaymentPage}
                 >
-                  {selectedRoom.availableRoomCount > 0 ? '─Éß║┐n trang thanh to├ín ΓåÆ' : 'Ph├▓ng ─æ├ú hß║┐t'}
+                  {selectedRoom.availableRoomCount > 0 ? 'Đến trang thanh toán →' : 'Phòng đã hết'}
                 </button>
-                <em>Ch╞░a ph├ít sinh giao dß╗ïch ß╗ƒ b╞░ß╗¢c n├áy</em>
+                <em>Chưa phát sinh giao dịch ở bước này</em>
               </aside>
             </div>
           </section>
@@ -761,42 +761,42 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
 
         <section id="policy" className="detail-box policy-section">
           <header className="section-title">
-            <small>TH├öNG TIN Cß║ªN BIß║╛T</small>
-            <h2>Ch├¡nh s├ích homestay</h2>
+            <small>THÔNG TIN CẦN BIẾT</small>
+            <h2>Chính sách homestay</h2>
           </header>
           <div className="policy-grid">
             <article>
               <i><Icon name="clock" size={24} /></i>
               <div>
-                <b>Nhß║¡n ph├▓ng</b>
-                <strong>Tß╗½ {data.checkInTime.slice(0, 5)}</strong>
-                <small>Vui l├▓ng xuß║Ñt tr├¼nh giß║Ñy tß╗¥ t├╣y th├ón</small>
+                <b>Nhận phòng</b>
+                <strong>Từ {data.checkInTime.slice(0, 5)}</strong>
+                <small>Vui lòng xuất trình giấy tờ tùy thân</small>
               </div>
             </article>
             <article>
               <i><Icon name="clock" size={24} /></i>
               <div>
-                <b>Trß║ú ph├▓ng</b>
-                <strong>Tr╞░ß╗¢c {data.checkOutTime.slice(0, 5)}</strong>
-                <small>Hß╗ù trß╗ú trß║ú ph├▓ng linh hoß║ít (khi c├│ thß╗â)</small>
+                <b>Trả phòng</b>
+                <strong>Trước {data.checkOutTime.slice(0, 5)}</strong>
+                <small>Hỗ trợ trả phòng linh hoạt (khi có thể)</small>
               </div>
             </article>
             <article>
               <i><Icon name="fileText" size={24} /></i>
               <div>
-                <b>Hß╗ºy ph├▓ng</b>
-                <strong>Miß╗àn ph├¡ hß╗ºy tr╞░ß╗¢c 7 ng├áy</strong>
-                <small>C├íc tr╞░ß╗¥ng hß╗úp kh├íc t├╣y theo ─æiß╗üu kiß╗çn ─æß║╖t ph├▓ng</small>
+                <b>Hủy phòng</b>
+                <strong>Miễn phí hủy trước 7 ngày</strong>
+                <small>Các trường hợp khác tùy theo điều kiện đặt phòng</small>
               </div>
             </article>
             <article>
               <i><Icon name="shield" size={24} /></i>
               <div>
-                <b>Quy ─æß╗ïnh chung</b>
+                <b>Quy định chung</b>
                 <ul>
-                  <li>Kh├┤ng h├║t thuß╗æc trong ph├▓ng</li>
-                  <li>Kh├┤ng mang th├║ c╞░ng</li>
-                  <li>Giß╗» y├¬n t─⌐nh sau 22:00</li>
+                  <li>Không hút thuốc trong phòng</li>
+                  <li>Không mang thú cưng</li>
+                  <li>Giữ yên tĩnh sau 22:00</li>
                 </ul>
               </div>
             </article>
@@ -805,25 +805,25 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
 
         <section id="location" className="detail-box location-section">
           <div>
-            <small>KH├üM PH├ü KHU Vß╗░C</small>
-            <h2>Vß╗ï tr├¡ thuß║¡n tiß╗çn</h2>
+            <small>KHÁM PHÁ KHU VỰC</small>
+            <h2>Vị trí thuận tiện</h2>
             <strong>
               <Icon name="location" size={16} />
               {address}
             </strong>
             <p>
-              Nß║▒m ngay trung t├óm {data.ward || data.district}, dß╗à d├áng di chuyß╗ân ─æß║┐n b├úi biß╗ân, chß╗ú ─æ├¬m v├á c├íc ─æiß╗âm tham quan nß╗òi tiß║┐ng.
+              Nằm ngay trung tâm {data.ward || data.district}, dễ dàng di chuyển đến bãi biển, chợ đêm và các điểm tham quan nổi tiếng.
             </p>
             <a
               href={`https://www.google.com/maps/search/?api=1&query=${data.latitude || ''},${data.longitude || ''}`}
               target="_blank"
               rel="noreferrer"
             >
-              Mß╗ƒ Google Maps &nbsp; ΓåÆ
+              Mở Google Maps &nbsp; →
             </a>
           </div>
           <div className="map-visual">
-            <span className="map-water">B├úi biß╗ân</span>
+            <span className="map-water">Bãi biển</span>
             <div className="map-road" />
             <b>
               <Icon name="location" size={22} color="#0b4ae6" />
@@ -836,20 +836,20 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
         <section id="reviews" className="detail-box review-section">
           <header className="section-title review-title">
             <div>
-              <small>Cß║óM NHß║¼N Tß╗¬ KH├üCH</small>
-              <h2>─É├ính gi├í thß╗▒c tß║┐</h2>
+              <small>CẢM NHẬN TỪ KHÁCH</small>
+              <h2>Đánh giá thực tế</h2>
             </div>
             {reviews.total > 0 && (
               <button type="button" onClick={() => setShowAllReviews(true)}>
-                Xem tß║Ñt cß║ú {reviews.total} ─æ├ính gi├í ΓåÆ
+                Xem tất cả {reviews.total} đánh giá →
               </button>
             )}
           </header>
           <div className="review-layout">
             <div className="rating-total">
-              <strong>{reviews.total ? Number(reviews.average).toFixed(1) : 'ΓÇö'} <small>/ 5</small></strong>
-              <span>{'Γÿà'.repeat(Math.round(reviews.average || 0))}{'Γÿå'.repeat(5 - Math.round(reviews.average || 0))}</span>
-              <small>{reviews.total} ─æ├ính gi├í</small>
+              <strong>{reviews.total ? Number(reviews.average).toFixed(1) : '—'} <small>/ 5</small></strong>
+              <span>{'★'.repeat(Math.round(reviews.average || 0))}{'☆'.repeat(5 - Math.round(reviews.average || 0))}</span>
+              <small>{reviews.total} đánh giá</small>
             </div>
             <div className="rating-bars">
               {[5,4,3,2,1].map((star) => {
@@ -868,36 +868,36 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
               {reviews.items.length ? (
                 reviews.items.slice(0, 1).map((review) => (
                   <blockquote key={review.id}>
-                    <p>{review.comment || 'Kh├ích h├áng kh├┤ng ─æß╗â lß║íi nß╗Öi dung.'}</p>
+                    <p>{review.comment || 'Khách hàng không để lại nội dung.'}</p>
                     <footer>
                       <span>{review.customerName.split(/\s+/).map((part) => part[0]).slice(-2).join('').toUpperCase()}</span>
                       <div>
                         <strong>{review.customerName}</strong>
                         <small>{new Intl.DateTimeFormat('vi-VN').format(new Date(review.createdAt))}</small>
                       </div>
-                      <em>{'Γÿà'.repeat(review.rating)}{'Γÿå'.repeat(5-review.rating)}</em>
+                      <em>{'★'.repeat(review.rating)}{'☆'.repeat(5-review.rating)}</em>
                     </footer>
                     {review.hostReply && (
                       <div className="host-review-reply">
-                        <b>Phß║ún hß╗ôi tß╗½ chß╗º homestay</b>
+                        <b>Phản hồi từ chủ homestay</b>
                         <p>{review.hostReply}</p>
                       </div>
                     )}
                   </blockquote>
                 ))
               ) : (
-                <p className="empty-reviews">Homestay ch╞░a c├│ ─æ├ính gi├í.</p>
+                <p className="empty-reviews">Homestay chưa có đánh giá.</p>
               )}
             </div>
           </div>
           {['Customer', 'Host'].includes(user?.role) && reviewBookings.length > 0 && (
             <form className="review-form" onSubmit={submitReview}>
-              <h3>Chia sß║╗ trß║úi nghiß╗çm cß╗ºa bß║ín</h3>
+              <h3>Chia sẻ trải nghiệm của bạn</h3>
               <select required value={reviewForm.bookingId} onChange={(e) => setReviewForm({ ...reviewForm, bookingId: e.target.value })}>
-                <option value="">Chß╗ìn ─æ╞ín ─æ├ú ho├án th├ánh</option>
+                <option value="">Chọn đơn đã hoàn thành</option>
                 {reviewBookings.map((booking) => (
                   <option value={booking.id} key={booking.id}>
-                    {booking.bookingCode} ┬╖ trß║ú ph├▓ng {booking.checkOutDate}
+                    {booking.bookingCode} · trả phòng {booking.checkOutDate}
                   </option>
                 ))}
               </select>
@@ -906,18 +906,18 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
                   <option value={rating} key={rating}>{rating} sao</option>
                 ))}
               </select>
-              <textarea maxLength="1000" rows="4" value={reviewForm.comment} onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })} placeholder="─Éiß╗üu g├¼ khiß║┐n kß╗│ nghß╗ë cß╗ºa bß║ín ─æ├íng nhß╗¢?" />
-              <button type="submit">Gß╗¡i ─æ├ính gi├í</button>
+              <textarea maxLength="1000" rows="4" value={reviewForm.comment} onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })} placeholder="Điều gì khiến kỳ nghỉ của bạn đáng nhớ?" />
+              <button type="submit">Gửi đánh giá</button>
               {reviewMessage && <p>{reviewMessage}</p>}
             </form>
           )}
         </section>
       </div>
       {showAllReviews && <div className="reviews-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowAllReviews(false); }}>
-        <section className="reviews-modal" role="dialog" aria-modal="true" aria-label="Tß║Ñt cß║ú ─æ├ính gi├í">
-          <button className="reviews-modal-close" onClick={() => setShowAllReviews(false)} aria-label="─É├│ng">├ù</button>
-          <aside className="reviews-modal-summary"><div className="reviews-modal-heading"><small>─É├üNH GI├ü Cß╗ªA KH├üCH Vß╗Ç</small><h2>{data.name}</h2></div><div className="reviews-score"><strong>{reviews.total ? Number(reviews.average).toFixed(1) : 'ΓÇö'}</strong><span>/ 5</span><em>{'Γÿà'.repeat(Math.round(reviews.average || 0))}{'Γÿå'.repeat(5 - Math.round(reviews.average || 0))}</em><p>{reviews.total} ─æ├ính gi├í ─æ├ú x├íc thß╗▒c</p></div><div className="reviews-modal-bars">{[5,4,3,2,1].map((star) => { const count = reviews.distribution.find((x) => x.rating === star)?.count || 0; const value = reviews.total ? Math.round(count * 100 / reviews.total) : 0; return <button key={star} className={reviewRatingFilter === star ? 'active' : ''} onClick={() => changeReviewFilters(() => setReviewRatingFilter(reviewRatingFilter === star ? 0 : star))}><span>{star} sao</span><i><b style={{ width: `${value}%` }} /></i><small>{count}</small></button>; })}</div><div className="reviews-amenity-overview">{amenities.slice(0, 6).map((item) => <button key={item.id} className={reviewAmenityFilter === item.name ? 'active' : ''} onClick={() => changeReviewFilters(() => setReviewAmenityFilter(reviewAmenityFilter === item.name ? '' : item.name))}><span>{item.name}</span><b>{reviewAmenityFilter === item.name ? 'Γ£ô' : 'C├│ sß║╡n'}</b></button>)}</div></aside>
-          <div className="reviews-modal-main"><section className="reviews-filter-section"><h3>Bß╗Ö lß╗ìc</h3><div className="reviews-filters"><label><span>Phß║ún hß╗ôi</span><select value={reviewReplyFilter} onChange={(e) => changeReviewFilters(() => setReviewReplyFilter(e.target.value))}><option value="all">Tß║Ñt cß║ú ({reviews.total})</option><option value="replied">C├│ phß║ún hß╗ôi chß╗º nh├á</option><option value="not-replied">Ch╞░a c├│ phß║ún hß╗ôi</option></select></label><label><span>─Éiß╗âm ─æ├ính gi├í</span><select value={reviewRatingFilter} onChange={(e) => changeReviewFilters(() => setReviewRatingFilter(Number(e.target.value)))}><option value="0">Tß║Ñt cß║ú mß╗⌐c sao</option>{[5,4,3,2,1].map((star) => <option value={star} key={star}>{star} sao</option>)}</select></label><label><span>Tiß╗çn ├¡ch ─æ╞░ß╗úc nhß║»c</span><select value={reviewAmenityFilter} onChange={(e) => changeReviewFilters(() => setReviewAmenityFilter(e.target.value))}><option value="">Tß║Ñt cß║ú tiß╗çn ├¡ch</option>{reviewAmenityOptions.map((item) => <option key={item}>{item}</option>)}</select></label><label><span>Thß╗¥i gian</span><select value={reviewTimeFilter} onChange={(e) => changeReviewFilters(() => setReviewTimeFilter(e.target.value))}><option value="all">Tß║Ñt cß║ú thß╗¥i gian</option><option value="year">Trong 1 n─âm</option><option value="month">Trong 1 th├íng</option></select></label></div><div className="reviews-search"><input value={reviewSearch} onChange={(e) => changeReviewFilters(() => setReviewSearch(e.target.value))} placeholder="T├¼m theo t├¬n kh├ích hoß║╖c nß╗Öi dung ─æ├ính gi├í" /><button>T├¼m</button></div></section><header><div><h2>─É├ính gi├í cß╗ºa kh├ích ({filteredReviews.length})</h2></div><label>Sß║»p xß║┐p theo:<select value={reviewSort} onChange={(e) => { setReviewSort(e.target.value); setReviewPage(1); }}><option value="newest">Mß╗¢i nhß║Ñt</option><option value="oldest">C┼⌐ nhß║Ñt</option><option value="highest">─Éiß╗âm cao nhß║Ñt</option><option value="lowest">─Éiß╗âm thß║Ñp nhß║Ñt</option></select></label></header><div className="reviews-modal-list">{visibleReviews.map((review) => <article key={review.id}><header><span>{review.customerName.split(/\s+/).map((part) => part[0]).slice(-2).join('').toUpperCase()}</span><div><strong>{review.customerName}</strong><small>Ng├áy ─æ├ính gi├í: {new Intl.DateTimeFormat('vi-VN').format(new Date(review.createdAt))}</small></div><em>{review.rating},0</em></header><p>{review.comment || 'Kh├ích h├áng kh├┤ng ─æß╗â lß║íi nß╗Öi dung.'}</p>{review.hostReply && <div className="host-review-reply"><b>Phß║ún hß╗ôi tß╗½ chß╗º homestay</b><p>{review.hostReply}</p></div>}</article>)}{visibleReviews.length === 0 && <div className="reviews-empty"><b>Kh├┤ng t├¼m thß║Ñy ─æ├ính gi├í</b><span>H├úy thß╗¡ thay ─æß╗òi bß╗Ö lß╗ìc.</span></div>}</div><footer className="reviews-pagination"><button disabled={reviewPage <= 1} onClick={() => setReviewPage((page) => page - 1)}>ΓåÉ Tr╞░ß╗¢c</button><span>Trang {Math.min(reviewPage, reviewPageCount)} / {reviewPageCount}</span><button disabled={reviewPage >= reviewPageCount} onClick={() => setReviewPage((page) => page + 1)}>Sau ΓåÆ</button></footer></div>
+        <section className="reviews-modal" role="dialog" aria-modal="true" aria-label="Tất cả đánh giá">
+          <button className="reviews-modal-close" onClick={() => setShowAllReviews(false)} aria-label="Đóng">×</button>
+          <aside className="reviews-modal-summary"><div className="reviews-modal-heading"><small>ĐÁNH GIÁ CỦA KHÁCH VỀ</small><h2>{data.name}</h2></div><div className="reviews-score"><strong>{reviews.total ? Number(reviews.average).toFixed(1) : '—'}</strong><span>/ 5</span><em>{'★'.repeat(Math.round(reviews.average || 0))}{'☆'.repeat(5 - Math.round(reviews.average || 0))}</em><p>{reviews.total} đánh giá đã xác thực</p></div><div className="reviews-modal-bars">{[5,4,3,2,1].map((star) => { const count = reviews.distribution.find((x) => x.rating === star)?.count || 0; const value = reviews.total ? Math.round(count * 100 / reviews.total) : 0; return <button key={star} className={reviewRatingFilter === star ? 'active' : ''} onClick={() => changeReviewFilters(() => setReviewRatingFilter(reviewRatingFilter === star ? 0 : star))}><span>{star} sao</span><i><b style={{ width: `${value}%` }} /></i><small>{count}</small></button>; })}</div><div className="reviews-amenity-overview">{amenities.slice(0, 6).map((item) => <button key={item.id} className={reviewAmenityFilter === item.name ? 'active' : ''} onClick={() => changeReviewFilters(() => setReviewAmenityFilter(reviewAmenityFilter === item.name ? '' : item.name))}><span>{item.name}</span><b>{reviewAmenityFilter === item.name ? '✓' : 'Có sẵn'}</b></button>)}</div></aside>
+          <div className="reviews-modal-main"><section className="reviews-filter-section"><h3>Bộ lọc</h3><div className="reviews-filters"><label><span>Phản hồi</span><select value={reviewReplyFilter} onChange={(e) => changeReviewFilters(() => setReviewReplyFilter(e.target.value))}><option value="all">Tất cả ({reviews.total})</option><option value="replied">Có phản hồi chủ nhà</option><option value="not-replied">Chưa có phản hồi</option></select></label><label><span>Điểm đánh giá</span><select value={reviewRatingFilter} onChange={(e) => changeReviewFilters(() => setReviewRatingFilter(Number(e.target.value)))}><option value="0">Tất cả mức sao</option>{[5,4,3,2,1].map((star) => <option value={star} key={star}>{star} sao</option>)}</select></label><label><span>Tiện ích được nhắc</span><select value={reviewAmenityFilter} onChange={(e) => changeReviewFilters(() => setReviewAmenityFilter(e.target.value))}><option value="">Tất cả tiện ích</option>{reviewAmenityOptions.map((item) => <option key={item}>{item}</option>)}</select></label><label><span>Thời gian</span><select value={reviewTimeFilter} onChange={(e) => changeReviewFilters(() => setReviewTimeFilter(e.target.value))}><option value="all">Tất cả thời gian</option><option value="year">Trong 1 năm</option><option value="month">Trong 1 tháng</option></select></label></div><div className="reviews-search"><input value={reviewSearch} onChange={(e) => changeReviewFilters(() => setReviewSearch(e.target.value))} placeholder="Tìm theo tên khách hoặc nội dung đánh giá" /><button>Tìm</button></div></section><header><div><h2>Đánh giá của khách ({filteredReviews.length})</h2></div><label>Sắp xếp theo:<select value={reviewSort} onChange={(e) => { setReviewSort(e.target.value); setReviewPage(1); }}><option value="newest">Mới nhất</option><option value="oldest">Cũ nhất</option><option value="highest">Điểm cao nhất</option><option value="lowest">Điểm thấp nhất</option></select></label></header><div className="reviews-modal-list">{visibleReviews.map((review) => <article key={review.id}><header><span>{review.customerName.split(/\s+/).map((part) => part[0]).slice(-2).join('').toUpperCase()}</span><div><strong>{review.customerName}</strong><small>Ngày đánh giá: {new Intl.DateTimeFormat('vi-VN').format(new Date(review.createdAt))}</small></div><em>{review.rating},0</em></header><p>{review.comment || 'Khách hàng không để lại nội dung.'}</p>{review.hostReply && <div className="host-review-reply"><b>Phản hồi từ chủ homestay</b><p>{review.hostReply}</p></div>}</article>)}{visibleReviews.length === 0 && <div className="reviews-empty"><b>Không tìm thấy đánh giá</b><span>Hãy thử thay đổi bộ lọc.</span></div>}</div><footer className="reviews-pagination"><button disabled={reviewPage <= 1} onClick={() => setReviewPage((page) => page - 1)}>← Trước</button><span>Trang {Math.min(reviewPage, reviewPageCount)} / {reviewPageCount}</span><button disabled={reviewPage >= reviewPageCount} onClick={() => setReviewPage((page) => page + 1)}>Sau →</button></footer></div>
         </section>
       </div>}
     </main>

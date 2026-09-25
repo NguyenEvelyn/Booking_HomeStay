@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import './styles/home.css';
 import { homestayApi } from '../homestays/api/homestayApi.js';
 import GuestPickerDropdown from '../../shared/components/GuestPickerDropdown.jsx';
@@ -129,35 +129,35 @@ function Icon({ name }) {
 const stays = [
   {
     name: 'The Sunset Residence',
-    location: 'Ph├║ Quß╗æc, Viß╗çt Nam',
+    location: 'Phú Quốc, Việt Nam',
     price: '1,456k VND',
     rating: '4,8',
     image: sunsetImage,
   },
   {
     name: 'Azure Bay Retreat',
-    location: '─É├á Nß║╡ng, Viß╗çt Nam',
+    location: 'Đà Nẵng, Việt Nam',
     price: '1,156k VND',
     rating: '4,2',
     image: azureImage,
   },
   {
     name: 'Ocean Crest Residence',
-    location: 'Quy Nh╞ín, Viß╗çt Nam',
+    location: 'Quy Nhơn, Việt Nam',
     price: '2,559k VND',
     rating: '4,9',
     image: oceanImage,
   },
   {
     name: 'The Coastal Haven',
-    location: 'Ph├║ Qu├╜, Viß╗çt Nam',
+    location: 'Phú Quý, Việt Nam',
     price: '1,009k VND',
     rating: '4,1',
     image: coastalImage,
   },
   {
     name: 'Seaside Pearl Resort',
-    location: 'V─⌐nh Hy, Viß╗çt Nam',
+    location: 'Vĩnh Hy, Việt Nam',
     price: '1,999k VND',
     rating: '4,9',
     image: seasideImage,
@@ -165,20 +165,20 @@ const stays = [
 ];
 
 const destinations = [
-  ['01', 'Ph├║ Quß╗æc', phuQuoc],
-  ['02', 'Quy Nh╞ín', quyNhon],
-  ['03', 'V┼⌐ng T├áu', vungTau],
-  ['04', '─É├á Nß║╡ng', daNang],
-  ['05', 'Vß╗ïnh Hß║í Long', haLong],
-  ['06', 'H├▓n S╞ín', honSon],
-  ['07', 'Cß║ºn Th╞í', canTho],
-  ['08', 'Ph├║ Qu├╜', phuQuy],
+  ['01', 'Phú Quốc', phuQuoc],
+  ['02', 'Quy Nhơn', quyNhon],
+  ['03', 'Vũng Tàu', vungTau],
+  ['04', 'Đà Nẵng', daNang],
+  ['05', 'Vịnh Hạ Long', haLong],
+  ['06', 'Hòn Sơn', honSon],
+  ['07', 'Cần Thơ', canTho],
+  ['08', 'Phú Quý', phuQuy],
 ];
 
 const posts = [
-  ['5 ─æiß╗âm ─æß║┐n biß╗ân l├╜ t╞░ß╗ƒng cho chuyß║┐n ─æi cuß╗æi tuß║ºn', blogOne],
-  ['B├¡ quyß║┐t lß╗▒a chß╗ìn homestay ph├╣ hß╗úp cho mß╗ìi chuyß║┐n ─æi', blogTwo],
-  ['Nhß╗»ng trß║úi nghiß╗çm kh├┤ng thß╗â bß╗Å lß╗í trong h├ánh tr├¼nh', blogThree],
+  ['5 điểm đến biển lý tưởng cho chuyến đi cuối tuần', blogOne],
+  ['Bí quyết lựa chọn homestay phù hợp cho mọi chuyến đi', blogTwo],
+  ['Những trải nghiệm không thể bỏ lỡ trong hành trình', blogThree],
 ];
 
 const heroStays = [
@@ -244,9 +244,9 @@ export default function HomePage({
             res.items.map((item, idx) => ({
               id: item.id,
               name: item.name,
-              location: `${item.district || ''}, ${item.province || ''}`.replace(/^,\s*/, '') || 'Viß╗çt Nam',
+              location: `${item.district || ''}, ${item.province || ''}`.replace(/^,\s*/, '') || 'Việt Nam',
               price: typeof item.fromPrice === 'number'
-                ? `Tß╗½ ${new Intl.NumberFormat('vi-VN').format(item.fromPrice)} ─æ`
+                ? `Từ ${new Intl.NumberFormat('vi-VN').format(item.fromPrice)} đ`
                 : item.fromPrice || '1,456k VND',
               rating: item.averageRating ? Number(item.averageRating).toFixed(1).replace('.', ',') : '4,8',
               image: item.thumbnailUrl || stays[idx % stays.length].image,
@@ -264,12 +264,12 @@ export default function HomePage({
   const displayStays = apiStays.length > 0 ? apiStays : stays;
 
   const navItems = [
-    ['home', 'Trang chß╗º', '#home'],
-    ['about', 'Giß╗¢i thiß╗çu', '#about'],
-    ['destination', '─Éß╗ïa ─æiß╗âm', '#stays'],
+    ['home', 'Trang chủ', '#home'],
+    ['about', 'Giới thiệu', '#about'],
+    ['destination', 'Địa điểm', '#stays'],
     ['homestay', 'Homestay', '#stays'],
-    ['offers', '╞»u ─æ├úi', '#offers'],
-    ['news', 'Tin tß╗⌐c', '#news'],
+    ['offers', 'Ưu đãi', '#offers'],
+    ['news', 'Tin tức', '#news'],
   ];
 
   const moveNavPill = (key) => {
@@ -344,7 +344,7 @@ export default function HomePage({
     }
   };
 
-  /* ---- stays drag-to-scroll m╞░ß╗út m├á ---- */
+  /* ---- stays drag-to-scroll mượt mà ---- */
   const onStayMouseDown = (e) => {
     if (e.button !== 0) return;
     const el = stayGridRef.current;
@@ -578,10 +578,10 @@ export default function HomePage({
           <div className="nav-actions" style={{ position: 'relative' }}>
             <button
               type="button"
-              aria-label="T├ái khoß║ún"
-              title={user?.fullName ? `T├ái khoß║ún (${user.fullName})` : '─É─âng nhß║¡p'}
+              aria-label="Tài khoản"
+              title={user?.fullName ? `Tài khoản (${user.fullName})` : 'Đăng nhập'}
               onClick={() => {
-                if (user && user.fullName && user.fullName !== 'Kh├ích') {
+                if (user && user.fullName && user.fullName !== 'Khách') {
                   setUserMenuOpen((prev) => !prev);
                 } else {
                   onLogout();
@@ -591,7 +591,7 @@ export default function HomePage({
               <Icon name="user" />
             </button>
 
-            {userMenuOpen && user && user.fullName !== 'Kh├ích' && (
+            {userMenuOpen && user && user.fullName !== 'Khách' && (
               <div
                 className="home-user-menu"
                 style={{
@@ -623,7 +623,7 @@ export default function HomePage({
                       onHostPortal?.();
                     }}
                   >
-                    Γîé Quß║ún l├╜ Homestay (Host)
+                    ⌂ Quản lý Homestay (Host)
                   </button>
                 )}
 
@@ -636,7 +636,7 @@ export default function HomePage({
                       onAdminPortal?.();
                     }}
                   >
-                    ΓÜÖ Trang quß║ún trß╗ï Admin
+                    ⚙ Trang quản trị Admin
                   </button>
                 )}
 
@@ -648,7 +648,7 @@ export default function HomePage({
                     onBookings?.();
                   }}
                 >
-                  ≡ƒôà Ph├▓ng ─æ├ú ─æß║╖t
+                  📅 Phòng đã đặt
                 </button>
 
                 <button
@@ -659,7 +659,7 @@ export default function HomePage({
                     onChangePassword?.();
                   }}
                 >
-                  ≡ƒöÆ ─Éß╗òi mß║¡t khß║⌐u
+                  🔒 Đổi mật khẩu
                 </button>
 
                 <div style={{ borderTop: '1px solid #edf0f4', margin: '4px 0' }} />
@@ -672,16 +672,16 @@ export default function HomePage({
                     onLogout();
                   }}
                 >
-                  ≡ƒÜ¬ ─É─âng xuß║Ñt
+                  🚪 Đăng xuất
                 </button>
               </div>
             )}
 
             <button
               type="button"
-              aria-label="Y├¬u th├¡ch"
+              aria-label="Yêu thích"
               onClick={() =>
-                onDeveloping('Danh s├ích y├¬u th├¡ch')
+                onDeveloping('Danh sách yêu thích')
               }
             >
               <Icon name="heart" />
@@ -697,16 +697,16 @@ export default function HomePage({
           </h1>
 
           <p>
-            Kh├ím ph├í nhß╗»ng kh├┤ng gian l╞░u tr├║ tuyß╗çt vß╗¥i,
-            tß╗½ nhß╗»ng c─ân homestay ß║Ñm c├║ng ─æß║┐n c├íc ─æiß╗âm
-            nghß╗ë d╞░ß╗íng sang trß╗ìng, v├á bß║»t ─æß║ºu h├ánh tr├¼nh
-            cß╗ºa ri├¬ng bß║ín vß╗¢i nhß╗»ng trß║úi nghiß╗çm ─æ├íng nhß╗¢
+            Khám phá những không gian lưu trú tuyệt vời,
+            từ những căn homestay ấm cúng đến các điểm
+            nghỉ dưỡng sang trọng, và bắt đầu hành trình
+            của riêng bạn với những trải nghiệm đáng nhớ
           </p>
         </div>
 
         <div
           className={`hero-picks${heroDragStart ? ' is-dragging' : ''}`}
-          aria-label="Gß╗úi ├╜ homestay nß╗òi bß║¡t"
+          aria-label="Gợi ý homestay nổi bật"
           onPointerDown={handleHeroPointerDown}
           onPointerMove={handleHeroPointerMove}
           onPointerUp={handleHeroPointerUp}
@@ -735,7 +735,7 @@ export default function HomePage({
 
                 <button
                   type="button"
-                  aria-label={`Hiß╗ân thß╗ï ${name}`}
+                  aria-label={`Hiển thị ${name}`}
                   onPointerDown={(event) => {
                     event.stopPropagation();
                   }}
@@ -769,16 +769,16 @@ export default function HomePage({
               guests: guestsConfig.adults + guestsConfig.children,
             });
           } else {
-            onDeveloping('T├¼m ph├▓ng');
+            onDeveloping('Tìm phòng');
           }
         }}
       >
         <label>
-          ─Éß╗ïa ─æiß╗âm hoß║╖c t├¬n kh├ích sß║ín
+          Địa điểm hoặc tên khách sạn
 
           <span className="search-control">
             <input
-              placeholder="Bß║ín muß╗æn ─æß║┐n ─æ├óu?"
+              placeholder="Bạn muốn đến đâu?"
               value={searchLocation}
               onChange={(e) => setSearchLocation(e.target.value)}
             />
@@ -788,12 +788,12 @@ export default function HomePage({
         </label>
 
         <label>
-          Ng├áy nhß║¡n
+          Ngày nhận
 
           <span className="search-control">
             <input
               type="text"
-              placeholder="Chß╗ìn ng├áy nhß║¡n"
+              placeholder="Chọn ngày nhận"
               value={searchCheckIn}
               onChange={(e) => setSearchCheckIn(e.target.value)}
               onFocus={(event) => {
@@ -811,12 +811,12 @@ export default function HomePage({
         </label>
 
         <label>
-          Ng├áy trß║ú
+          Ngày trả
 
           <span className="search-control">
             <input
               type="text"
-              placeholder="Chß╗ìn ng├áy trß║ú"
+              placeholder="Chọn ngày trả"
               value={searchCheckOut}
               onChange={(e) => setSearchCheckOut(e.target.value)}
               onFocus={(event) => {
@@ -839,7 +839,7 @@ export default function HomePage({
         />
 
         <button type="submit">
-          T├¼m ph├▓ng
+          Tìm phòng
         </button>
       </form>
 
@@ -854,35 +854,35 @@ export default function HomePage({
         <div className="about-image">
           <img
             src={aboutImage}
-            alt="Biß╗çt thß╗▒ nghß╗ë d╞░ß╗íng Tripio"
+            alt="Biệt thự nghỉ dưỡng Tripio"
           />
         </div>
 
         <div className="about-copy">
           <div className="about-title-block">
             <p className="kicker">
-              Vß╗Ç CH├ÜNG T├öI
+              VỀ CHÚNG TÔI
             </p>
 
             <h2>
-              C├ÖNG TRIPIO Kß║╛T Nß╗ÉI NHß╗«NG
+              CÙNG TRIPIO KẾT NỐI NHỮNG
               <br />
-              H├ÇNH TR├îNH{' '}
-              <em>─É├üNG NHß╗Ü</em>
+              HÀNH TRÌNH{' '}
+              <em>ĐÁNG NHỚ</em>
             </h2>
           </div>
 
           <p>
-            Tripio l├á nß╗ün tß║úng ─æß║╖t ph├▓ng homestay
-            trß╗▒c tuyß║┐n, gi├║p bß║ín dß╗à d├áng t├¼m kiß║┐m,
-            kh├ím ph├í v├á lß╗▒a chß╗ìn kh├┤ng gian l╞░u tr├║
-            ph├╣ hß╗úp cho mß╗ùi chuyß║┐n ─æi. Ch├║ng t├┤i mang
-            ─æß║┐n ─æa dß║íng lß╗▒a chß╗ìn l╞░u tr├║ c├╣ng trß║úi nghiß╗çm
-            ─æß║╖t ph├▓ng nhanh ch├│ng, tiß╗çn lß╗úi v├á ─æ├íng tin cß║¡y.
+            Tripio là nền tảng đặt phòng homestay
+            trực tuyến, giúp bạn dễ dàng tìm kiếm,
+            khám phá và lựa chọn không gian lưu trú
+            phù hợp cho mỗi chuyến đi. Chúng tôi mang
+            đến đa dạng lựa chọn lưu trú cùng trải nghiệm
+            đặt phòng nhanh chóng, tiện lợi và đáng tin cậy.
           </p>
 
           <div className="trust-row">
-            <p className="review-label">─É├ính gi├í</p>
+            <p className="review-label">Đánh giá</p>
 
             <div className="trust-body">
               <div className="trust-item">
@@ -890,16 +890,16 @@ export default function HomePage({
                   <i /><i /><i />
                 </div>
                 <div className="trust-text">
-                  <b>Tin t╞░ß╗ƒng bß╗ƒi</b>
-                  <span>900+ Kh├ích h├áng</span>
+                  <b>Tin tưởng bởi</b>
+                  <span>900+ Khách hàng</span>
                 </div>
               </div>
 
               <div className="trust-divider" />
 
               <div className="rating-item">
-                <b>4.8 Γ¡ÉΓ¡ÉΓ¡ÉΓ¡ÉΓ¡É</b>
-                <span>600+ L╞░ß╗út ─æ├ính gi├í</span>
+                <b>4.8 ⭐⭐⭐⭐⭐</b>
+                <span>600+ Lượt đánh giá</span>
               </div>
             </div>
           </div>
@@ -907,22 +907,22 @@ export default function HomePage({
           <div className="stats">
             <div>
               <b>1000+</b>
-              <span>Chß╗ù ß╗ƒ chß║Ñt l╞░ß╗úng</span>
+              <span>Chỗ ở chất lượng</span>
             </div>
 
             <div>
               <b>50+</b>
-              <span>─Éiß╗âm ─æß║┐n hß║Ñp dß║½n</span>
+              <span>Điểm đến hấp dẫn</span>
             </div>
 
             <div>
               <b>98%</b>
-              <span>Kh├ích h├áng h├ái l├▓ng</span>
+              <span>Khách hàng hài lòng</span>
             </div>
 
             <div>
               <b>2000+</b>
-              <span>L╞░ß╗út ─æß║╖t th├ánh c├┤ng</span>
+              <span>Lượt đặt thành công</span>
             </div>
           </div>
         </div>
@@ -938,20 +938,20 @@ export default function HomePage({
       >
         <div className="stays-intro">
           <div className="stays-title-block">
-            <p className="kicker dark">D├ÇNH CHO Bß║áN</p>
+            <p className="kicker dark">DÀNH CHO BẠN</p>
 
             <h2>
-              HOMESTAY ─É╞»ß╗óC
+              HOMESTAY ĐƯỢC
               <br />
-              <em>Y├èU TH├ìCH</em>
+              <em>YÊU THÍCH</em>
             </h2>
           </div>
 
           <div className="stays-bottom-block">
             <p>
-              Kh├ím ph├í c├íc homestay ─æ╞░ß╗úc nhiß╗üu du kh├ích
-              y├¬u th├¡ch v├á lß╗▒a chß╗ìn cho h├ánh tr├¼nh ─æ├íng nhß╗¢
-              c├╣ng nhß╗»ng trß║úi nghiß╗çm trß╗ìn vß║╣n
+              Khám phá các homestay được nhiều du khách
+              yêu thích và lựa chọn cho hành trình đáng nhớ
+              cùng những trải nghiệm trọn vẹn
             </p>
 
             <button
@@ -961,11 +961,11 @@ export default function HomePage({
                 if (typeof onBrowseHomestays === 'function') {
                   onBrowseHomestays();
                 } else {
-                  onDeveloping('Xem tß║Ñt cß║ú homestay');
+                  onDeveloping('Xem tất cả homestay');
                 }
               }}
             >
-              <span>Xem tß║Ñt cß║ú</span>
+              <span>Xem tất cả</span>
               <span className="arrow-circle">
                 <Icon name="arrowUpRight" />
               </span>
@@ -986,7 +986,7 @@ export default function HomePage({
               } else if (typeof onBrowseHomestays === 'function') {
                 onBrowseHomestays();
               } else {
-                onDeveloping('─Éß║╖t ph├▓ng');
+                onDeveloping('Đặt phòng');
               }
             };
 
@@ -1018,18 +1018,18 @@ export default function HomePage({
                   <button
                     type="button"
                     className="stay-heart-btn"
-                    aria-label="Y├¬u th├¡ch"
+                    aria-label="Yêu thích"
                     onMouseUp={(e) => {
                       e.stopPropagation();
                       if (stayDrag.current.moved) return;
-                      onDeveloping('Y├¬u th├¡ch homestay');
+                      onDeveloping('Yêu thích homestay');
                     }}
                   >
                     <Icon name="heart" />
                   </button>
                 </div>
 
-                {/* Rectangle blur overlay W 350 H 185 tß╗½ Figma */}
+                {/* Rectangle blur overlay W 350 H 185 từ Figma */}
                 <div className="stay-blur-overlay" aria-hidden="true" />
 
                 {/* Card info */}
@@ -1037,12 +1037,12 @@ export default function HomePage({
                   <div className="stay-title-row">
                     <h3>{stay.name}</h3>
                     <span className="stay-rating-badge">
-                      {stay.rating} <span className="star-icon">Γÿà</span>
+                      {stay.rating} <span className="star-icon">★</span>
                     </span>
                   </div>
 
                   <p>
-                    {stay.description || 'Kh├ím ph├í ─æiß╗âm dß╗½ng ch├ón ho├án hß║úo vß╗¢i trß║úi nghiß╗çm nghß╗ë d╞░ß╗íng tiß╗çn nghi v├á ─æß║ºy cß║úm hß╗⌐ng'}
+                    {stay.description || 'Khám phá điểm dừng chân hoàn hảo với trải nghiệm nghỉ dưỡng tiện nghi và đầy cảm hứng'}
                   </p>
 
                   <footer>
@@ -1054,7 +1054,7 @@ export default function HomePage({
                         goToDetail(stayDrag.current.moved);
                       }}
                     >
-                      ─Éß║╖t ph├▓ng
+                      Đặt phòng
                     </button>
                   </footer>
                 </div>
@@ -1068,7 +1068,7 @@ export default function HomePage({
 
 
       {/* =====================================================
-          CTA - BANNER S├ôNG BIß╗éN (1440 x 600)
+          CTA - BANNER SÓNG BIỂN (1440 x 600)
           ===================================================== */}
       <section
         className="cta-section"
@@ -1077,19 +1077,19 @@ export default function HomePage({
         <img
           className="cta-bg-image"
           src={ctaWaveBanner}
-          alt="Banner s├│ng biß╗ân Tripio"
+          alt="Banner sóng biển Tripio"
           draggable="false"
         />
 
         <div className="cta-content">
           <p className="kicker">
-            Bß║«T ─Éß║ªU H├ÇNH TR├îNH
+            BẮT ĐẦU HÀNH TRÌNH
           </p>
 
           <h2>
-            ─Éß║╢T <em>HOMESTAY</em> Dß╗ä D├ÇNG V├Ç KH├üM PH├ü
+            ĐẶT <em>HOMESTAY</em> DỄ DÀNG VÀ KHÁM PHÁ
             <br />
-            NHIß╗ÇU H╞áN C├ÖNG <em>TRIPIO</em>
+            NHIỀU HƠN CÙNG <em>TRIPIO</em>
           </h2>
 
           <button
@@ -1099,11 +1099,11 @@ export default function HomePage({
               if (typeof onBrowseHomestays === 'function') {
                 onBrowseHomestays();
               } else {
-                onDeveloping('─Éß║╖t ph├▓ng');
+                onDeveloping('Đặt phòng');
               }
             }}
           >
-            <span>─Éß║╖t ph├▓ng ngay</span>
+            <span>Đặt phòng ngay</span>
             <span className="arrow-circle">
               <Icon name="arrowUpRight" />
             </span>
@@ -1119,11 +1119,11 @@ export default function HomePage({
         <header>
           <div>
             <p className="kicker dark">
-              XU H╞»ß╗ÜNG DU Lß╗èCH
+              XU HƯỚNG DU LỊCH
             </p>
 
             <h2>
-              C├üC ─ÉIß╗éM ─Éß║╛N ─ÉANG <em>THß╗èNH H├ÇNH</em>
+              CÁC ĐIỂM ĐẾN ĐANG <em>THỊNH HÀNH</em>
             </h2>
           </div>
 
@@ -1132,7 +1132,7 @@ export default function HomePage({
               type="button"
               className={`dest-arrow ${canDestPrev ? 'active' : ''}`}
               onClick={() => handleDestScroll('left')}
-              aria-label="─Éiß╗âm ─æß║┐n tr╞░ß╗¢c"
+              aria-label="Điểm đến trước"
             >
               <Icon name="arrowLeft" />
             </button>
@@ -1141,7 +1141,7 @@ export default function HomePage({
               type="button"
               className={`dest-arrow ${canDestNext ? 'active' : ''}`}
               onClick={() => handleDestScroll('right')}
-              aria-label="─Éiß╗âm ─æß║┐n tiß║┐p theo"
+              aria-label="Điểm đến tiếp theo"
             >
               <Icon name="arrowRight" />
             </button>
@@ -1165,7 +1165,7 @@ export default function HomePage({
                   if (typeof onBrowseHomestays === 'function') {
                     onBrowseHomestays({ search: name });
                   } else {
-                    onDeveloping(`─Éiß╗âm ─æß║┐n ${name}`);
+                    onDeveloping(`Điểm đến ${name}`);
                   }
                 }}
               >
@@ -1217,59 +1217,59 @@ export default function HomePage({
 
             <div className="offers-text-block">
               <p className="offers-kicker">
-                ╞»U ─É├âI C├ÖNG TRIPIO
+                ƯU ĐÃI CÙNG TRIPIO
               </p>
 
               <h2>
-                S─éN NGAY NHß╗«NG{' '}
-                <em>KHUYß║╛N M├âI</em>
-                {' '}Hß║ñP Dß║¬N NHß║ñT
+                SĂN NGAY NHỮNG{' '}
+                <em>KHUYẾN MÃI</em>
+                {' '}HẤP DẪN NHẤT
               </h2>
             </div>
           </div>
 
           <div
             className="voucher-list"
-            aria-label="Danh s├ích ╞░u ─æ├úi"
+            aria-label="Danh sách ưu đãi"
             ref={voucherListRef}
             onMouseDown={onVoucherMouseDown}
           >
             {[
               {
                 img: voucherWeek,
-                label: 'Tuß║ºn lß╗à v├áng',
-                title: '╞»U ─É├âI TUß║ªN Lß╗ä V├ÇNG',
-                desc: 'Giß║úm ─æß║┐n 30% cho ─æ╞ín ─æß║╖t ph├▓ng ─æß║ºu ti├¬n khi bß║ín trß║úi nghiß╗çm v├á ─æß║╖t homestay tr├¬n Tripio',
+                label: 'Tuần lễ vàng',
+                title: 'ƯU ĐÃI TUẦN LỄ VÀNG',
+                desc: 'Giảm đến 30% cho đơn đặt phòng đầu tiên khi bạn trải nghiệm và đặt homestay trên Tripio',
               },
               {
                 img: voucherHotDeal,
                 label: 'Summer Hot Deal',
-                title: 'SUMMER HOT DEAL ΓÇô SI├èU ╞»U ─É├âI 55%',
-                desc: '╞»u ─æ├úi ─æß║╖c biß╗çt m├╣a h├¿: giß║úm ─æß║┐n 55% cho c├íc g├│i nghß╗ë d╞░ß╗íng cao cß║Ñp tß║íi Tripio',
+                title: 'SUMMER HOT DEAL – SIÊU ƯU ĐÃI 55%',
+                desc: 'Ưu đãi đặc biệt mùa hè: giảm đến 55% cho các gói nghỉ dưỡng cao cấp tại Tripio',
               },
               {
                 img: voucherSummer,
                 label: 'Summer Essential Sale',
                 title: 'SUMMER ESSENTIAL SALE',
-                desc: 'Kß╗│ nghß╗ë m├╣a h├¿ trß╗ìn vß║╣n vß╗¢i ╞░u ─æ├úi giß║úm gi├í ─æß╗Öc quyß╗ün d├ánh ri├¬ng cho th├ánh vi├¬n Tripio',
+                desc: 'Kỳ nghỉ mùa hè trọn vẹn với ưu đãi giảm giá độc quyền dành riêng cho thành viên Tripio',
               },
               {
                 img: voucherWeek,
-                label: 'Cuß╗æi tuß║ºn vui',
-                title: '╞»U ─É├âI CUß╗ÉI TUß║ªN VUI Vß║║',
-                desc: 'Giß║úm ngay 20% khi ─æß║╖t ph├▓ng v├áo cuß╗æi tuß║ºn ΓÇô ├íp dß╗Ñng cho tß║Ñt cß║ú c├íc homestay tr├¬n Tripio',
+                label: 'Cuối tuần vui',
+                title: 'ƯU ĐÃI CUỐI TUẦN VUI VẺ',
+                desc: 'Giảm ngay 20% khi đặt phòng vào cuối tuần – áp dụng cho tất cả các homestay trên Tripio',
               },
               {
                 img: voucherHotDeal,
                 label: 'Flash Sale',
-                title: 'FLASH SALE ΓÇô GIß║óM ─Éß║╛N 40%',
-                desc: 'Chß╗¢p ngay c╞í hß╗Öi v├áng: flash sale 24h giß║úm ─æß║┐n 40% to├án bß╗Ö homestay ven biß╗ân',
+                title: 'FLASH SALE – GIẢM ĐẾN 40%',
+                desc: 'Chớp ngay cơ hội vàng: flash sale 24h giảm đến 40% toàn bộ homestay ven biển',
               },
               {
                 img: voucherSummer,
-                label: 'Lß╗à tß║┐t',
-                title: '╞»U ─É├âI Dß╗èP Lß╗ä Tß║╛T 2025',
-                desc: '─Éß║╖t sß╗¢m ΓÇô nghß╗ë ngon: ╞░u ─æ├úi ─æß║╖c biß╗çt dß╗ïp lß╗à Tß║┐t d├ánh cho gia ─æ├¼nh v├á nh├│m bß║ín',
+                label: 'Lễ tết',
+                title: 'ƯU ĐÃI DỊP LỄ TẾT 2025',
+                desc: 'Đặt sớm – nghỉ ngon: ưu đãi đặc biệt dịp lễ Tết dành cho gia đình và nhóm bạn',
               },
             ].map(({ img, label, title, desc }, index) => (
               <article
@@ -1290,17 +1290,17 @@ export default function HomePage({
                   <button
                     type="button"
                     className="voucher-save-btn"
-                    onClick={() => onDeveloping('L╞░u voucher')}
+                    onClick={() => onDeveloping('Lưu voucher')}
                   >
-                    L╞░u voucher
+                    Lưu voucher
                   </button>
                 </div>
 
                 <button
                   className="voucher-info-btn"
                   type="button"
-                  aria-label="Th├┤ng tin ╞░u ─æ├úi"
-                  onClick={() => onDeveloping('Th├┤ng tin ╞░u ─æ├úi')}
+                  aria-label="Thông tin ưu đãi"
+                  onClick={() => onDeveloping('Thông tin ưu đãi')}
                 >
                   <Icon name="info" />
                 </button>
@@ -1320,11 +1320,11 @@ export default function HomePage({
       >
         <div className="support-copy">
           <p>
-            LU├öN ─Éß╗ÆNG H├ÇNH C├ÖNG Bß║áN
+            LUÔN ĐỒNG HÀNH CÙNG BẠN
           </p>
 
           <h2>
-            Sß║┤N S├ÇNG GIß║óI ─É├üP THß║«C Mß║«C
+            SẴN SÀNG GIẢI ĐÁP THẮC MẮC
           </h2>
         </div>
 
@@ -1340,10 +1340,10 @@ export default function HomePage({
 
           <button
             type="button"
-            onClick={() => onDeveloping('Nhß║»n tin t╞░ vß║Ñn')}
+            onClick={() => onDeveloping('Nhắn tin tư vấn')}
           >
             <span><Icon name="message" /></span>
-            <b>Nhß║»n tin t╞░ vß║Ñn</b>
+            <b>Nhắn tin tư vấn</b>
           </button>
         </div>
       </section>
@@ -1359,11 +1359,11 @@ export default function HomePage({
         {/* ---- Header row: kicker+h2 left, arrows right ---- */}
         <header className="guide-header">
           <div className="guide-title-block">
-            <p className="kicker dark">Cß║¿M NANG DU Lß╗èCH</p>
+            <p className="kicker dark">CẨM NANG DU LỊCH</p>
 
             <h2>
-              Cß║¼P NHß║¼T XU H╞»ß╗ÜNG V├Ç{' '}
-              <em>─ÉIß╗éM ─Éß║╛N</em>
+              CẬP NHẬT XU HƯỚNG VÀ{' '}
+              <em>ĐIỂM ĐẾN</em>
             </h2>
           </div>
 
@@ -1371,7 +1371,7 @@ export default function HomePage({
             <button
               type="button"
               className={`guide-arrow${canBlogPrev ? ' active' : ''}`}
-              aria-label="Tr╞░ß╗¢c"
+              aria-label="Trước"
               onClick={() => handleBlogScroll('left')}
             >
               <Icon name="arrowLeft" />
@@ -1380,7 +1380,7 @@ export default function HomePage({
             <button
               type="button"
               className={`guide-arrow${canBlogNext ? ' active' : ''}`}
-              aria-label="Tiß║┐p theo"
+              aria-label="Tiếp theo"
               onClick={() => handleBlogScroll('right')}
             >
               <Icon name="arrowRight" />
@@ -1406,23 +1406,23 @@ export default function HomePage({
               <div className="post-card-body">
                 <p className="post-date">
                   <Icon name="calendar" />
-                  <span>30 Th├íng 1, 2026</span>
+                  <span>30 Tháng 1, 2026</span>
                 </p>
 
                 <h3>{title}</h3>
 
                 <p className="post-desc">
-                  Nhß╗»ng kinh nghiß╗çm hß╗»u ├¡ch gi├║p bß║ín dß╗à d├áng
-                  t├¼m ─æ╞░ß╗úc kh├┤ng gian l╞░u tr├║ ph├╣ hß╗úp vß╗¢i nhu
-                  cß║ºu, ng├ón s├ích v├á phong c├ích du lß╗ïch cß╗ºa m├¼nh
+                  Những kinh nghiệm hữu ích giúp bạn dễ dàng
+                  tìm được không gian lưu trú phù hợp với nhu
+                  cầu, ngân sách và phong cách du lịch của mình
                 </p>
 
                 <button
                   type="button"
                   className="post-link"
-                  onClick={() => onDeveloping('Cß║⌐m nang du lß╗ïch')}
+                  onClick={() => onDeveloping('Cẩm nang du lịch')}
                 >
-                  Xem th├¬m ΓåÆ
+                  Xem thêm →
                 </button>
               </div>
             </article>
@@ -1441,9 +1441,9 @@ export default function HomePage({
       >
         <div className="footer-newsletter">
           <div className="footer-newsletter-text">
-            <h3>─É─éNG K├¥ NHß║¼N TH├öNG TIN</h3>
+            <h3>ĐĂNG KÝ NHẬN THÔNG TIN</h3>
             <p>
-              Lu├┤n ─æ╞░ß╗úc cß║¡p nhß║¡t vß╗ü c├íc lß╗¥i khuy├¬n du lß╗ïch v├á khuyß║┐n m├úi mß╗¢i nhß║Ñt
+              Luôn được cập nhật về các lời khuyên du lịch và khuyến mãi mới nhất
             </p>
           </div>
 
@@ -1451,17 +1451,17 @@ export default function HomePage({
             className="footer-newsletter-form"
             onSubmit={(event) => {
               event.preventDefault();
-              onDeveloping('─É─âng k├╜ nhß║¡n th├┤ng tin');
+              onDeveloping('Đăng ký nhận thông tin');
             }}
           >
             <input
               type="email"
-              placeholder="Nhß║¡p Email cß╗ºa bß║ín"
+              placeholder="Nhập Email của bạn"
               required
             />
 
             <button type="submit">
-              Gß╗¡i ngay
+              Gửi ngay
             </button>
           </form>
         </div>
@@ -1476,9 +1476,9 @@ export default function HomePage({
             </a>
 
             <p>
-              Tripio mang ─æß║┐n giß║úi ph├íp ─æß║╖t homestay
-              tiß╗çn lß╗úi, gi├║p bß║ín dß╗à d├áng t├¼m kiß║┐m
-              kh├┤ng gian l╞░u tr├║.
+              Tripio mang đến giải pháp đặt homestay
+              tiện lợi, giúp bạn dễ dàng tìm kiếm
+              không gian lưu trú.
             </p>
 
             <div className="footer-socials">
@@ -1521,7 +1521,7 @@ export default function HomePage({
           </div>
 
           <div className="footer-col footer-col-contact">
-            <h4>TH├öNG TIN LI├èN Hß╗å</h4>
+            <h4>THÔNG TIN LIÊN HỆ</h4>
             <div className="footer-title-bar" />
 
             <div className="footer-contact-list">
@@ -1530,9 +1530,9 @@ export default function HomePage({
                   <Icon name="location" />
                 </span>
                 <span>
-                  140 L├¬ Trß╗ìng Tß║Ñn, Ph╞░ß╗¥ng T├óy Thß║ính,
+                  140 Lê Trọng Tấn, Phường Tây Thạnh,
                   <br />
-                  TP. Hß╗ô Ch├¡ Minh
+                  TP. Hồ Chí Minh
                 </span>
               </div>
 
@@ -1560,24 +1560,24 @@ export default function HomePage({
           </div>
 
           <div className="footer-col footer-col-links">
-            <h4>C├üC CH├ìNH S├üCH</h4>
+            <h4>CÁC CHÍNH SÁCH</h4>
             <div className="footer-title-bar" />
 
             <div className="footer-link-list">
-              <a href="#policy" onClick={(e) => { e.preventDefault(); onDeveloping('Ch├¡nh s├ích ─æß║╖t ph├▓ng'); }}>
-                Ch├¡nh s├ích ─æß║╖t ph├▓ng
+              <a href="#policy" onClick={(e) => { e.preventDefault(); onDeveloping('Chính sách đặt phòng'); }}>
+                Chính sách đặt phòng
               </a>
-              <a href="#policy" onClick={(e) => { e.preventDefault(); onDeveloping('Ch├¡nh s├ích thanh to├ín'); }}>
-                Ch├¡nh s├ích thanh to├ín
+              <a href="#policy" onClick={(e) => { e.preventDefault(); onDeveloping('Chính sách thanh toán'); }}>
+                Chính sách thanh toán
               </a>
-              <a href="#policy" onClick={(e) => { e.preventDefault(); onDeveloping('Ch├¡nh s├ích hß╗ºy ph├▓ng'); }}>
-                Ch├¡nh s├ích hß╗ºy ph├▓ng
+              <a href="#policy" onClick={(e) => { e.preventDefault(); onDeveloping('Chính sách hủy phòng'); }}>
+                Chính sách hủy phòng
               </a>
-              <a href="#policy" onClick={(e) => { e.preventDefault(); onDeveloping('Ch├¡nh s├ích ho├án tiß╗ün'); }}>
-                Ch├¡nh s├ích ho├án tiß╗ün
+              <a href="#policy" onClick={(e) => { e.preventDefault(); onDeveloping('Chính sách hoàn tiền'); }}>
+                Chính sách hoàn tiền
               </a>
-              <a href="#policy" onClick={(e) => { e.preventDefault(); onDeveloping('Ch├¡nh s├ích bß║úo mß║¡t'); }}>
-                Ch├¡nh s├ích bß║úo mß║¡t
+              <a href="#policy" onClick={(e) => { e.preventDefault(); onDeveloping('Chính sách bảo mật'); }}>
+                Chính sách bảo mật
               </a>
             </div>
           </div>
@@ -1597,24 +1597,24 @@ export default function HomePage({
                 </div>
                 <div className="footer-fanpage-info">
                   <b>Tripio</b>
-                  <small>3.108 l╞░ß╗út th├¡ch</small>
+                  <small>3.108 lượt thích</small>
                 </div>
               </div>
 
               <button
                 type="button"
                 className="footer-fanpage-btn"
-                onClick={() => onDeveloping('Th├¡ch fanpage')}
+                onClick={() => onDeveloping('Thích fanpage')}
               >
                 <Icon name="thumbsUp" />
-                <span>Th├¡ch trang</span>
+                <span>Thích trang</span>
               </button>
             </div>
           </div>
         </div>
 
         <div className="footer-bottom">
-          <p>┬⌐ 2026 Copyright TRIPIO. All rights reserved</p>
+          <p>© 2026 Copyright TRIPIO. All rights reserved</p>
         </div>
       </footer>
 
