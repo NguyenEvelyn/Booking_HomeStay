@@ -1576,18 +1576,715 @@
 
 .inline-room-detail .room-page-layout {
   display: grid;
-  grid-template-columns: 1.4fr 1fr;
+  grid-template-columns: 1.35fr 1fr;
   gap: 32px;
   align-items: flex-start;
 }
 
-.inline-room-detail .room-page-info,
-.inline-room-detail .room-page-booking {
-  padding: 24px;
-  border: 1px solid #e8edf5;
-  border-radius: 14px;
+.inline-room-detail .modern-room-info {
+  padding: 28px;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 4px 20px rgba(11, 74, 230, 0.04);
+}
+
+.room-facts-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.room-fact-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #f0f5ff;
+  border: 1px solid #dbeafe;
+  border-radius: 30px;
+  color: #0b4ae6;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.room-info-desc {
+  font-size: 14px;
+  line-height: 1.8;
+  color: #475569;
+  margin: 0;
+}
+
+.room-info-sep {
+  border: 0;
+  height: 1px;
+  background: #edf2f7;
+  margin: 24px 0;
+}
+
+.room-block-title {
+  font-family: 'Be Vietnam Pro', Arial, sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: #09275f;
+  margin: 0 0 16px;
+}
+
+.room-amenities-checklist {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 20px;
+}
+
+.room-amenities-checklist li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: #334155;
+  font-weight: 500;
+}
+
+.amenity-icon-check {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.room-policy-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.room-policy-mini-card {
+  padding: 16px 14px;
+  border-radius: 12px;
   background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.room-policy-mini-card.highlight-green {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.mini-card-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+}
+
+.mini-card-val {
+  display: block;
+  font-family: 'Be Vietnam Pro', Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #09275f;
+  margin-bottom: 4px;
+}
+
+.room-policy-mini-card.highlight-green .mini-card-val {
+  color: #15803d;
+}
+
+.mini-card-sub {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+/* Right Booking Card */
+.inline-room-detail .modern-booking-card {
+  padding: 26px;
+  border-radius: 18px;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  box-shadow: 0 12px 36px rgba(9, 39, 95, 0.08);
+  position: sticky;
+  top: 24px;
+}
+
+.booking-card-top-bar {
+  margin-bottom: 20px;
+}
+
+.booking-gold-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: #b45309;
+  background: #fef3c7;
+  padding: 3px 9px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
+.booking-rate-display {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.booking-price-number {
+  font-family: 'Be Vietnam Pro', Arial, sans-serif;
+  font-size: 32px;
+  font-weight: 800;
+  color: #09275f;
+  line-height: 1.1;
+}
+
+.booking-price-period {
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.booking-stock-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.booking-stock-pill.is-in-stock {
+  background: #ecfdf5;
+  border: 1px solid #bbf7d0;
+  color: #15803d;
+}
+
+.booking-stock-pill.is-sold-out {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+}
+
+.booking-section-group {
+  margin-bottom: 18px;
+}
+
+.booking-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.booking-group-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
+  margin: 0;
+}
+
+.booking-clear-dates-btn {
+  background: none;
+  border: none;
+  color: #ef4444;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.booking-clear-dates-btn:hover {
+  color: #b91c1c;
+}
+
+/* Date trigger button */
+.booking-date-trigger-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #f8fafc;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all .2s ease;
+  user-select: none;
+}
+
+.booking-date-trigger-row:hover,
+.booking-date-trigger-row.is-open {
+  background: #ffffff;
+  border-color: #0b4ae6;
+  box-shadow: 0 0 0 3px rgba(11, 74, 230, 0.12);
+}
+
+.date-trigger-box {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.date-trigger-box small {
+  font-size: 9px;
+  font-weight: 800;
+  color: #94a3b8;
+  letter-spacing: 0.08em;
+}
+
+.date-trigger-box strong {
+  font-family: 'Be Vietnam Pro', Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: #475569;
+}
+
+.date-trigger-box.has-date strong {
+  color: #0b4ae6;
+}
+
+.date-trigger-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Interactive Calendar with Green (Available) & Red (Booked) */
+.room-interactive-calendar {
+  margin-top: 12px;
+  padding: 16px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.09);
+  animation: calFadeIn .2s ease-out;
+}
+
+@keyframes calFadeIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.cal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.cal-month-nav-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1e293b;
+  cursor: pointer;
+  transition: all .15s;
+}
+
+.cal-month-nav-btn:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.cal-month-nav-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.cal-current-month-text {
+  font-family: 'Be Vietnam Pro', Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #09275f;
+}
+
+.cal-loading-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 11px;
+  color: #0b4ae6;
+  margin-bottom: 10px;
+}
+
+.cal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  margin-bottom: 6px;
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+
+.cal-day {
+  position: relative;
+  height: 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border-radius: 8px;
+  border: 1.5px solid transparent;
+  background: #f8fafc;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all .15s ease;
+  user-select: none;
+}
+
+.cal-day .day-number {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.cal-day .day-badge {
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 1;
+  margin-top: 3px;
+}
+
+/* Past or outside month days */
+.cal-day.is-past,
+.cal-day.other-month {
+  background: #f8fafc;
+  color: #cbd5e1;
+  border-color: transparent;
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* MÀU XANH LÁ: NGÀY PHÒNG CÒN TRỐNG (AVAILABLE) */
+.cal-day.is-available {
+  background: #ecfdf5;
+  border-color: #86efac;
+  color: #15803d;
+}
+
+.cal-day.is-available .day-badge {
+  color: #16a34a;
+}
+
+.cal-day.is-available:hover {
+  background: #bbf7d0;
+  border-color: #4ade80;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(34, 197, 94, 0.2);
+}
+
+/* MÀU ĐỎ: NGÀY PHÒNG ĐÃ ĐƯỢC ĐẶT / KÍN PHÒNG (BOOKED) */
+.cal-day.is-booked {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #b91c1c;
+  cursor: not-allowed;
+  opacity: 0.95;
+}
+
+.cal-day.is-booked .day-badge {
+  color: #dc2626;
+  font-weight: 800;
+}
+
+.cal-day.is-booked:hover {
+  background: #fecaca;
+}
+
+/* SELECTED ENDPOINTS: Check-in / Check-out */
+.cal-day.is-arrival,
+.cal-day.is-departure {
+  background: #0b4ae6 !important;
+  border-color: #0b4ae6 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 10px rgba(11, 74, 230, 0.35);
+  z-index: 2;
+}
+
+.cal-day.is-arrival .day-badge,
+.cal-day.is-departure .day-badge {
+  color: #ffffff !important;
+}
+
+/* IN-RANGE DAYS */
+.cal-day.is-in-range {
+  background: #e0e7ff !important;
+  border-color: #c7d2fe !important;
+  color: #1e40af !important;
+  border-radius: 4px;
+}
+
+.cal-day.is-hover-range {
+  background: #eff6ff !important;
+  border-color: #bfdbfe !important;
+}
+
+/* CALENDAR LEGEND */
+.cal-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  background: #f8fafc;
+  border-radius: 8px;
+  margin-top: 10px;
+}
+
+.legend-tag {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.legend-color-box {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.legend-color-box.green {
+  background: #22c55e;
+  border: 1px solid #16a34a;
+}
+
+.legend-color-box.red {
+  background: #ef4444;
+  border: 1px solid #dc2626;
+}
+
+.legend-color-box.blue {
+  background: #0b4ae6;
+}
+
+.cal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.cal-nights-counter {
+  font-size: 11px;
+  font-weight: 700;
+  color: #0b4ae6;
+}
+
+.cal-hint-text {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.cal-close-btn {
+  padding: 5px 14px;
+  border-radius: 6px;
+  background: #0b4ae6;
+  color: #ffffff;
+  border: none;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .15s;
+}
+
+.cal-close-btn:hover {
+  background: #093bb8;
+}
+
+/* GUESTS SELECT GRID */
+.booking-guests-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.guest-select-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.guest-card-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.guest-card-select {
+  height: 38px;
+  padding: 0 8px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  color: #0f172a;
+  cursor: pointer;
+  outline: none;
+  transition: border-color .2s;
+}
+
+.guest-card-select:focus {
+  border-color: #0b4ae6;
+}
+
+.booking-capacity-note {
+  margin: 10px 0 14px;
+}
+
+.booking-capacity-note small {
+  font-size: 11px;
+  line-height: 1.5;
+  color: #92400e;
+  background: #fef3c7;
+  padding: 8px 10px;
+  border-radius: 8px;
+  display: block;
+}
+
+/* BILL CARD */
+.booking-bill-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+.bill-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: #475569;
+  margin-bottom: 6px;
+}
+
+.bill-line strong {
+  color: #0f172a;
+}
+
+.bill-sep {
+  height: 1px;
+  background: #e2e8f0;
+  margin: 10px 0;
+}
+
+.bill-grand-total {
+  font-size: 14px;
+  font-weight: 700;
+  color: #09275f;
+  margin-bottom: 0;
+}
+
+.bill-total-amount {
+  font-family: 'Be Vietnam Pro', Arial, sans-serif;
+  font-size: 18px;
+  color: #0b4ae6;
+  font-weight: 800;
+}
+
+.booking-alert-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+
+/* CTA BUTTON */
+.booking-submit-action-btn {
+  width: 100%;
+  height: 52px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #ffb700 0%, #f59e0b 100%);
+  color: #09275f;
+  font-family: 'Be Vietnam Pro', Arial, sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);
+  transition: all .2s ease;
+}
+
+.booking-submit-action-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.45);
+}
+
+.booking-submit-action-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
   box-shadow: none;
+}
+
+.booking-security-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 10px;
+  font-size: 11px;
+  color: #64748b;
+}
+
+@media (max-width: 860px) {
+  .inline-room-detail .room-page-layout {
+    grid-template-columns: 1fr;
+  }
+  .inline-room-detail .modern-booking-card {
+    position: static;
+  }
+  .room-policy-cards-grid {
+    grid-template-columns: 1fr;
+  }
 }
 .detail-loader { width:38px; height:38px; margin:auto; border:4px solid #dce5f4; border-top-color:#0b4ae6; border-radius:50%; animation:detail-spin .8s linear infinite; } @keyframes detail-spin { to { transform:rotate(360deg); } }
 .room-modal-backdrop { position:fixed; z-index:500; inset:0; display:grid; place-items:center; padding:28px; background:rgba(3,16,40,.76); backdrop-filter:blur(6px); }
