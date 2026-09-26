@@ -1,4 +1,23 @@
-export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const configuredApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+function localApiUrl(value) {
+  if (typeof window === 'undefined') return value;
+  const pageHost = window.location.hostname;
+  if (!['localhost', '127.0.0.1'].includes(pageHost)) return value;
+
+  try {
+    const url = new URL(value);
+    if (['localhost', '127.0.0.1'].includes(url.hostname)) {
+      url.hostname = pageHost;
+      return url.toString().replace(/\/$/, '');
+    }
+  } catch {
+    // Keep relative or otherwise valid custom API values unchanged.
+  }
+  return value;
+}
+
+export const API_URL = localApiUrl(configuredApiUrl);
 
 export async function apiClient(path, options = {}) {
   const isForm = options.body instanceof FormData;
