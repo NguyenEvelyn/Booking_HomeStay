@@ -253,7 +253,7 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
   const [bookingBusy, setBookingBusy] = useState(false);
   const [bookingError, setBookingError] = useState('');
   const [roomCalendarData, setRoomCalendarData] = useState(null);
-  const [calendarOpen, setCalendarOpen] = useState(true);
+  const [calendarOpen, setCalendarOpen] = useState(() => !(initialSearch?.checkIn && initialSearch?.checkOut));
   const [calendarMonth, setCalendarMonth] = useState(() => new Date());
   const [calendarLoading, setCalendarLoading] = useState(false);
   const [calendarHoverDate, setCalendarHoverDate] = useState(null);
@@ -506,7 +506,7 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
     setSelectedRoom(room); setShowPaymentPage(false); setActiveRoomImage(0); setRoomQuantity(availableQuantity);
     setAdultCount((value) => Math.max(1, Math.min(value, room.maxAdults * availableQuantity)));
     setChildCount((value) => Math.min(value, room.maxChildren * availableQuantity));
-    setCalendarOpen(true);
+    setCalendarOpen(!(arrival && departure));
     setCalendarMonth(new Date());
     setBookingError('');
     window.setTimeout(() => document.getElementById('room-detail-inline')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
@@ -566,6 +566,7 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
         return;
       }
       setDeparture(dateStr);
+      setCalendarOpen(false);
     }
   };
 
@@ -1164,15 +1165,15 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
                     tabIndex={0}
                   >
                     <div className={`date-trigger-box ${arrival ? 'has-date' : ''}`}>
-                      <small>NGÀY NHẬN</small>
-                      <strong>{arrival ? formatShortDateVN(arrival) : 'Chọn ngày'}</strong>
+                      <span className="trigger-label">NGÀY NHẬN</span>
+                      <span className="trigger-val-text">{arrival ? formatShortDateVN(arrival) : 'Chọn ngày'}</span>
                     </div>
                     <div className="date-trigger-arrow">
-                      <Icon name="chevronRight" size={16} color="#64748b" />
+                      <Icon name="chevronRight" size={15} color="#94a3b8" />
                     </div>
                     <div className={`date-trigger-box ${departure ? 'has-date' : ''}`}>
-                      <small>NGÀY TRẢ</small>
-                      <strong>{departure ? formatShortDateVN(departure) : 'Chọn ngày'}</strong>
+                      <span className="trigger-label">NGÀY TRẢ</span>
+                      <span className="trigger-val-text">{departure ? formatShortDateVN(departure) : 'Chọn ngày'}</span>
                     </div>
                   </div>
 
@@ -1187,7 +1188,7 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
                           disabled={isPrevMonthDisabled()}
                           title="Tháng trước"
                         >
-                          <Icon name="chevronLeft" size={15} />
+                          <Icon name="chevronLeft" size={14} />
                         </button>
                         <span className="cal-current-month-text">
                           Tháng {calendarMonth.getMonth() + 1}, {calendarMonth.getFullYear()}
@@ -1198,14 +1199,14 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
                           onClick={handleNextMonth}
                           title="Tháng sau"
                         >
-                          <Icon name="chevronRight" size={15} />
+                          <Icon name="chevronRight" size={14} />
                         </button>
                       </div>
 
                       {calendarLoading && (
                         <div className="cal-loading-bar">
-                          <div className="detail-loader" style={{ width: 18, height: 18, borderWidth: 3 }} />
-                          <span>Đang kiểm tra tình trạng phòng...</span>
+                          <div className="detail-loader" style={{ width: 16, height: 16, borderWidth: 2 }} />
+                          <span>Đang tải lịch...</span>
                         </div>
                       )}
 
@@ -1259,11 +1260,6 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
                               }
                             >
                               <span className="day-number">{dayNum}</span>
-                              {!past && isCurrentMonth && (
-                                <span className="day-badge">
-                                  {booked ? 'Hết' : 'Trống'}
-                                </span>
-                              )}
                             </button>
                           );
                         })}
@@ -1309,12 +1305,12 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
 
                 {/* Chọn số khách & số lượng phòng */}
                 <div className="booking-section-group">
-                  <label className="booking-group-title">
+                  <div className="booking-group-title">
                     <Icon name="user" size={14} color="#0b4ae6" />
                     <span>Số lượng khách &amp; phòng</span>
-                  </label>
+                  </div>
                   <div className="booking-guests-grid">
-                    <label className="guest-select-card">
+                    <div className="guest-select-card">
                       <span className="guest-card-label">Người lớn</span>
                       <select
                         className="guest-card-select"
@@ -1325,9 +1321,9 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
                           <option key={value} value={value}>{value} người</option>
                         ))}
                       </select>
-                    </label>
+                    </div>
 
-                    <label className="guest-select-card">
+                    <div className="guest-select-card">
                       <span className="guest-card-label">Trẻ em</span>
                       <select
                         className="guest-card-select"
@@ -1338,9 +1334,9 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
                           <option key={value} value={value}>{value} trẻ em</option>
                         ))}
                       </select>
-                    </label>
+                    </div>
 
-                    <label className="guest-select-card">
+                    <div className="guest-select-card">
                       <span className="guest-card-label">Số phòng</span>
                       <select
                         className="guest-card-select"
@@ -1357,7 +1353,7 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
                           <option key={value} value={value}>{value} phòng</option>
                         ))}
                       </select>
-                    </label>
+                    </div>
                   </div>
                 </div>
 
