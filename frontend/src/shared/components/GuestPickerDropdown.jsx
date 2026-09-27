@@ -79,7 +79,7 @@ export default function GuestPickerDropdown({
           <div className="guest-popup-row">
             <div>
               <div className="guest-popup-title">Người lớn</div>
-              <div className="guest-popup-sub">18 tuổi trở lên</div>
+              <div className="guest-popup-sub">Từ 12 tuổi</div>
             </div>
             <div className="guest-stepper">
               <button
@@ -108,7 +108,7 @@ export default function GuestPickerDropdown({
           <div className="guest-popup-row">
             <div>
               <div className="guest-popup-title">Trẻ em</div>
-              <div className="guest-popup-sub">0 - 17 tuổi</div>
+              <div className="guest-popup-sub">0 - 11 tuổi (tùy chính sách phòng)</div>
             </div>
             <div className="guest-stepper">
               <button

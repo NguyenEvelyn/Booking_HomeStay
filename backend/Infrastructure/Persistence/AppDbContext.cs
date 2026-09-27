@@ -37,6 +37,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<HomestayPolicy> HomestayPolicies => Set<HomestayPolicy>();
     public DbSet<CancellationPolicyTier> CancellationPolicyTiers => Set<CancellationPolicyTier>();
     public DbSet<LateCheckoutFeeTier> LateCheckoutFeeTiers => Set<LateCheckoutFeeTier>();
+    public DbSet<CompensationCatalogItem> CompensationCatalogItems => Set<CompensationCatalogItem>();
+    public DbSet<CompensationClaim> CompensationClaims => Set<CompensationClaim>();
+    public DbSet<CompensationClaimItem> CompensationClaimItems => Set<CompensationClaimItem>();
+    public DbSet<CompensationEvidence> CompensationEvidence => Set<CompensationEvidence>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -156,6 +160,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         roomType.Property(x => x.MaxCapacity).HasColumnName("max_capacity").HasDefaultValue(2);
         roomType.Property(x => x.ExtraGuestAllowed).HasColumnName("extra_guest_allowed").HasDefaultValue(false);
         roomType.Property(x => x.ExtraGuestFee).HasColumnName("extra_guest_fee").HasPrecision(18, 2).HasDefaultValue(0);
+        roomType.Property(x => x.ExtraChildFee).HasColumnName("extra_child_fee").HasPrecision(18, 2).HasDefaultValue(0);
+        roomType.Property(x => x.ChildMaxAge).HasColumnName("child_max_age").HasDefaultValue(11);
         roomType.Property(x => x.DepositPercent).HasColumnName("deposit_percent").HasPrecision(5, 4).HasDefaultValue(.3m);
         roomType.Property(x => x.BedType).HasColumnName("bed_type").HasMaxLength(100).IsRequired();
         roomType.Property(x => x.RoomSize).HasColumnName("room_size").HasPrecision(8, 2);
@@ -416,6 +422,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         policy.Property(x => x.HoldMinutes).HasColumnName("hold_minutes"); policy.Property(x => x.ReviewCreateDays).HasColumnName("review_create_days"); policy.Property(x => x.ReviewEditDays).HasColumnName("review_edit_days");
         policy.Property(x => x.CommissionRate).HasColumnName("commission_rate").HasPrecision(5,4); policy.Property(x => x.GuestDowngradeRefundMode).HasColumnName("guest_downgrade_refund_mode").HasMaxLength(20);
         policy.Property(x => x.GuestDowngradeRefundPercent).HasColumnName("guest_downgrade_refund_percent").HasPrecision(5,2); policy.Property(x => x.AutoApproveLateCheckoutWithoutNextBooking).HasColumnName("auto_approve_late_checkout");
+        policy.Property(x => x.OperationalPolicyJson).HasColumnName("operational_policy").HasColumnType("jsonb");
         policy.Property(x => x.EffectiveFrom).HasColumnName("effective_from"); policy.Property(x => x.EffectiveTo).HasColumnName("effective_to"); policy.Property(x => x.Status).HasColumnName("status").HasMaxLength(20);
         policy.Property(x => x.CreatedBy).HasColumnName("created_by"); policy.Property(x => x.CreatedAt).HasColumnName("created_at");
 
@@ -428,5 +435,45 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         lateTier.Property(x => x.Id).HasColumnName("tier_id"); lateTier.Property(x => x.PolicyId).HasColumnName("policy_id"); lateTier.Property(x => x.FromMinutes).HasColumnName("from_minutes");
         lateTier.Property(x => x.ToMinutes).HasColumnName("to_minutes"); lateTier.Property(x => x.CalculationType).HasColumnName("calculation_type").HasMaxLength(20); lateTier.Property(x => x.Value).HasColumnName("value").HasPrecision(18,4);
         lateTier.HasOne(x => x.Policy).WithMany(x => x.LateCheckoutTiers).HasForeignKey(x => x.PolicyId).OnDelete(DeleteBehavior.Cascade);
+
+        var catalog = modelBuilder.Entity<CompensationCatalogItem>();
+        catalog.ToTable("compensation_catalog_items"); catalog.HasKey(x => x.Id); catalog.HasIndex(x => new { x.HomestayId, x.IsActive });
+        catalog.Property(x => x.Id).HasColumnName("catalog_item_id"); catalog.Property(x => x.HomestayId).HasColumnName("homestay_id");
+        catalog.Property(x => x.Name).HasColumnName("name").HasMaxLength(150); catalog.Property(x => x.Category).HasColumnName("category").HasMaxLength(50);
+        catalog.Property(x => x.Description).HasColumnName("description").HasMaxLength(500); catalog.Property(x => x.Unit).HasColumnName("unit").HasMaxLength(30);
+        catalog.Property(x => x.ReplacementCost).HasColumnName("replacement_cost").HasPrecision(18,2); catalog.Property(x => x.MaximumCompensation).HasColumnName("maximum_compensation").HasPrecision(18,2);
+        catalog.Property(x => x.DefaultDepreciationPercent).HasColumnName("default_depreciation_percent").HasPrecision(5,2); catalog.Property(x => x.IsActive).HasColumnName("is_active");
+        catalog.Property(x => x.EffectiveFrom).HasColumnName("effective_from"); catalog.Property(x => x.CreatedBy).HasColumnName("created_by");
+        catalog.Property(x => x.CreatedAt).HasColumnName("created_at"); catalog.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+        catalog.HasOne(x => x.Homestay).WithMany().HasForeignKey(x => x.HomestayId).OnDelete(DeleteBehavior.Cascade);
+
+        var claim = modelBuilder.Entity<CompensationClaim>();
+        claim.ToTable("compensation_claims"); claim.HasKey(x => x.Id); claim.HasIndex(x => new { x.BookingId, x.Status });
+        claim.Property(x => x.Id).HasColumnName("claim_id"); claim.Property(x => x.BookingId).HasColumnName("booking_id"); claim.Property(x => x.Status).HasColumnName("status").HasMaxLength(30);
+        claim.Property(x => x.IncidentType).HasColumnName("incident_type").HasMaxLength(40); claim.Property(x => x.Description).HasColumnName("description").HasMaxLength(2000);
+        claim.Property(x => x.IncidentAt).HasColumnName("incident_at"); claim.Property(x => x.RequestedAmount).HasColumnName("requested_amount").HasPrecision(18,2);
+        claim.Property(x => x.ApprovedAmount).HasColumnName("approved_amount").HasPrecision(18,2); claim.Property(x => x.ResponseDueAt).HasColumnName("response_due_at");
+        claim.Property(x => x.SubmittedAt).HasColumnName("submitted_at"); claim.Property(x => x.ConfirmedAt).HasColumnName("confirmed_at");
+        claim.Property(x => x.CreatedBy).HasColumnName("created_by"); claim.Property(x => x.AdditionalChargeId).HasColumnName("additional_charge_id");
+        claim.Property(x => x.CreatedAt).HasColumnName("created_at"); claim.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+        claim.HasOne(x => x.Booking).WithMany().HasForeignKey(x => x.BookingId).OnDelete(DeleteBehavior.Restrict);
+        claim.HasOne(x => x.AdditionalCharge).WithMany().HasForeignKey(x => x.AdditionalChargeId).OnDelete(DeleteBehavior.SetNull);
+
+        var claimItem = modelBuilder.Entity<CompensationClaimItem>();
+        claimItem.ToTable("compensation_claim_items"); claimItem.HasKey(x => x.Id);
+        claimItem.Property(x => x.Id).HasColumnName("claim_item_id"); claimItem.Property(x => x.ClaimId).HasColumnName("claim_id"); claimItem.Property(x => x.CatalogItemId).HasColumnName("catalog_item_id");
+        claimItem.Property(x => x.ItemName).HasColumnName("item_name").HasMaxLength(150); claimItem.Property(x => x.Category).HasColumnName("category").HasMaxLength(50);
+        claimItem.Property(x => x.DamageLevel).HasColumnName("damage_level").HasMaxLength(20); claimItem.Property(x => x.Quantity).HasColumnName("quantity");
+        claimItem.Property(x => x.UnitAmount).HasColumnName("unit_amount").HasPrecision(18,2); claimItem.Property(x => x.DepreciationPercent).HasColumnName("depreciation_percent").HasPrecision(5,2);
+        claimItem.Property(x => x.RequestedAmount).HasColumnName("requested_amount").HasPrecision(18,2); claimItem.Property(x => x.Note).HasColumnName("note").HasMaxLength(500);
+        claimItem.HasOne(x => x.Claim).WithMany(x => x.Items).HasForeignKey(x => x.ClaimId).OnDelete(DeleteBehavior.Cascade);
+        claimItem.HasOne(x => x.CatalogItem).WithMany().HasForeignKey(x => x.CatalogItemId).OnDelete(DeleteBehavior.SetNull);
+
+        var evidence = modelBuilder.Entity<CompensationEvidence>();
+        evidence.ToTable("compensation_evidence"); evidence.HasKey(x => x.Id);
+        evidence.Property(x => x.Id).HasColumnName("evidence_id"); evidence.Property(x => x.ClaimId).HasColumnName("claim_id"); evidence.Property(x => x.Url).HasColumnName("url").HasMaxLength(1000);
+        evidence.Property(x => x.MediaType).HasColumnName("media_type").HasMaxLength(20); evidence.Property(x => x.Caption).HasColumnName("caption").HasMaxLength(500);
+        evidence.Property(x => x.UploadedBy).HasColumnName("uploaded_by"); evidence.Property(x => x.CreatedAt).HasColumnName("created_at");
+        evidence.HasOne(x => x.Claim).WithMany(x => x.Evidence).HasForeignKey(x => x.ClaimId).OnDelete(DeleteBehavior.Cascade);
     }
 }

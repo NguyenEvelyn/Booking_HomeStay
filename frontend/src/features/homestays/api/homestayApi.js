@@ -62,6 +62,7 @@ export const homestayApi = {
   updateRoom: (id,roomId,data) => apiClient(`/host/homestays/${id}/rooms/${roomId}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteRoom: (id,roomId) => apiClient(`/host/homestays/${id}/rooms/${roomId}`, { method: 'DELETE' }),
   addRoomImage: (id,roomId,data) => apiClient(`/host/homestays/${id}/rooms/${roomId}/images`, { method: 'POST', body: JSON.stringify(data) }),
+  uploadRoomImages: (id,roomId,files) => { const body=new FormData(); files.forEach(file=>body.append('files',file)); return apiClient(`/host/homestays/${id}/rooms/${roomId}/images/upload`,{method:'POST',body}); },
   deleteRoomImage: (id,roomId,imageId) => apiClient(`/host/homestays/${id}/rooms/${roomId}/images/${imageId}`, { method: 'DELETE' }),
   addPricePeriod: (id,roomTypeId,data) => apiClient(`/host/homestays/${id}/room-types/${roomTypeId}/prices`, { method: 'POST', body: JSON.stringify(data) }),
   deletePricePeriod: (id,roomTypeId,priceId) => apiClient(`/host/homestays/${id}/room-types/${roomTypeId}/prices/${priceId}`, { method: 'DELETE' }),

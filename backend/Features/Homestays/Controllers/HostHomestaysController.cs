@@ -18,7 +18,7 @@ public sealed record HostOfflinePaymentRequest(string Method);
 [ApiController]
 [Route("api/host/homestays")]
 [Authorize(Roles = "Host")]
-public sealed class HostHomestaysController(IHomestayQueryService service, AppDbContext db) : ControllerBase
+public sealed class HostHomestaysController(IHomestayQueryService service, AppDbContext db, SupabaseStorageService storage) : ControllerBase
 {
     private long HostId => long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
@@ -40,6 +40,7 @@ public sealed class HostHomestaysController(IHomestayQueryService service, AppDb
         var items = await db.Rooms.AsNoTracking().Where(r => r.RoomType.Homestay.HostId == HostId).OrderBy(r => r.RoomType.Homestay.Name).ThenBy(r => r.RoomNumber)
             .Select(r => new { r.Id, r.RoomNumber, r.FloorNumber, r.Status, r.Note, RoomTypeId = r.RoomTypeId, RoomTypeName = r.RoomType.Name,
                 HomestayId = r.RoomType.HomestayId, HomestayName = r.RoomType.Homestay.Name, r.RoomType.MaxAdults, r.RoomType.MaxChildren,
+                r.RoomType.BaseCapacity, r.RoomType.MaxCapacity, r.RoomType.ExtraGuestAllowed,
                 r.RoomType.BasePrice, ThumbnailUrl = r.Images.OrderByDescending(i => i.IsThumbnail).ThenBy(i => i.SortOrder).Select(i => i.ImageUrl).FirstOrDefault(),
                 Images = r.Images.OrderByDescending(i => i.IsThumbnail).ThenBy(i => i.SortOrder).Select(i => new { i.Id, Url = i.ImageUrl, i.Caption, i.IsThumbnail }).ToList() }).ToListAsync();
         return Ok(new { items, homestays });
@@ -52,7 +53,7 @@ public sealed class HostHomestaysController(IHomestayQueryService service, AppDb
             .Select(h => new { h.Id, h.Name, h.Description, h.AddressLine, h.Ward, h.District, h.Province, h.CheckInTime, h.CheckOutTime, h.Status, h.RejectionReason,
                 Amenities = h.HomestayAmenities.Select(x => new { x.AmenityId, x.Amenity.Name, x.Amenity.Category }).ToList(),
                 Images = h.Images.OrderBy(x => x.SortOrder).Select(x => new { x.Id, Url = x.ImageUrl, x.Caption, x.IsThumbnail }).ToList(),
-                RoomTypes = h.RoomTypes.OrderBy(x => x.BasePrice).Select(r => new { r.Id, r.Name, r.Description, r.BasePrice, r.MaxAdults, r.MaxChildren, r.BaseCapacity, r.MaxCapacity, r.ExtraGuestAllowed, r.ExtraGuestFee, r.BedType, r.RoomSize, r.Status,
+                RoomTypes = h.RoomTypes.OrderBy(x => x.BasePrice).Select(r => new { r.Id, r.Name, r.Description, r.BasePrice, r.MaxAdults, r.MaxChildren, r.BaseCapacity, r.MaxCapacity, r.ExtraGuestAllowed, r.ExtraGuestFee, r.ExtraChildFee, r.ChildMaxAge, r.BedType, r.RoomSize, r.Status,
                     Rooms = r.Rooms.OrderBy(x => x.RoomNumber).Select(x => new { x.Id, x.RoomNumber, x.FloorNumber, x.Status, x.Note }).ToList(),
                     PricePeriods = r.PricePeriods.OrderBy(x => x.StartDate).Select(x => new { x.Id, x.Name, x.StartDate, x.EndDate, x.PricePerNight }).ToList() }).ToList()
             }).SingleOrDefaultAsync();
@@ -111,6 +112,7 @@ public sealed class HostHomestaysController(IHomestayQueryService service, AppDb
     {
         var image = await db.HomestayImages.SingleOrDefaultAsync(x => x.Id == imageId && x.HomestayId == id && x.Homestay.HostId == HostId);
         if (image is null) return NotFound(new { message = "Không tìm thấy ảnh." });
+        await storage.DeletePublicImageIfManagedAsync(image.ImageUrl, HttpContext.RequestAborted);
         db.HomestayImages.Remove(image); await db.SaveChangesAsync(); return Ok(new { message = "Đã xóa ảnh." });
     }
 
@@ -124,8 +126,8 @@ public sealed class HostHomestaysController(IHomestayQueryService service, AppDb
             return Conflict(new { message = "Tên loại phòng đã tồn tại trong Homestay." });
         var baseCapacity = request.BaseCapacity ?? Math.Min(2, request.MaxAdults + request.MaxChildren);
         var maxCapacity = request.MaxCapacity ?? request.MaxAdults + request.MaxChildren;
-        if (baseCapacity < 1 || maxCapacity < baseCapacity || (request.ExtraGuestFee ?? 0) < 0 || request.DepositPercent is < 0 or > 1) return BadRequest(new { message = "Cấu hình sức chứa, phụ phí hoặc tỷ lệ cọc không hợp lệ." });
-        var now = DateTime.UtcNow; var roomType = new RoomType { HomestayId = id, Name = request.Name.Trim(), Description = request.Description.Trim(), BasePrice = request.BasePrice, MaxAdults = maxCapacity, MaxChildren = 0, BaseCapacity = baseCapacity, MaxCapacity = maxCapacity, ExtraGuestAllowed = request.ExtraGuestAllowed ?? false, ExtraGuestFee = request.ExtraGuestFee ?? 0, DepositPercent = request.DepositPercent ?? .3m, BedType = request.BedType.Trim(), RoomSize = request.RoomSize, Status = "Active", CreatedAt = now, UpdatedAt = now };
+        if (baseCapacity < 1 || maxCapacity < baseCapacity || maxCapacity > request.MaxAdults + request.MaxChildren || (request.ExtraGuestFee ?? 0) < 0 || request.DepositPercent is < 0 or > 1) return BadRequest(new { message = "Cấu hình sức chứa, phụ phí hoặc tỷ lệ cọc không hợp lệ." });
+        var now = DateTime.UtcNow; var roomType = new RoomType { HomestayId = id, Name = request.Name.Trim(), Description = request.Description.Trim(), BasePrice = request.BasePrice, MaxAdults = request.MaxAdults, MaxChildren = request.MaxChildren, BaseCapacity = baseCapacity, MaxCapacity = maxCapacity, ExtraGuestAllowed = request.ExtraGuestAllowed ?? false, ExtraGuestFee = request.ExtraGuestFee ?? 0, DepositPercent = request.DepositPercent ?? .3m, BedType = request.BedType.Trim(), RoomSize = request.RoomSize, Status = "Active", CreatedAt = now, UpdatedAt = now };
         db.RoomTypes.Add(roomType); await db.SaveChangesAsync(); return Ok(new { roomType.Id, message = "Đã thêm loại phòng." });
     }
 
@@ -141,8 +143,8 @@ public sealed class HostHomestaysController(IHomestayQueryService service, AppDb
         var baseCapacity = request.BaseCapacity ?? item.BaseCapacity;
         var maxCapacity = request.MaxCapacity ?? item.MaxCapacity;
         var extraGuestFee = request.ExtraGuestFee ?? item.ExtraGuestFee;
-        if (baseCapacity < 1 || maxCapacity < baseCapacity || extraGuestFee < 0 || request.DepositPercent is < 0 or > 1) return BadRequest(new { message = "Cấu hình sức chứa, phụ phí hoặc tỷ lệ cọc không hợp lệ." });
-        item.Name = request.Name.Trim(); item.Description = request.Description.Trim(); item.BasePrice = request.BasePrice; item.MaxAdults = maxCapacity; item.MaxChildren = 0; item.BaseCapacity = baseCapacity; item.MaxCapacity = maxCapacity; item.ExtraGuestAllowed = request.ExtraGuestAllowed ?? item.ExtraGuestAllowed; item.ExtraGuestFee = extraGuestFee; item.DepositPercent = request.DepositPercent ?? item.DepositPercent; item.BedType = request.BedType.Trim(); item.RoomSize = request.RoomSize; item.UpdatedAt = DateTime.UtcNow;
+        if (baseCapacity < 1 || maxCapacity < baseCapacity || maxCapacity > request.MaxAdults + request.MaxChildren || extraGuestFee < 0 || request.DepositPercent is < 0 or > 1) return BadRequest(new { message = "Cấu hình sức chứa, phụ phí hoặc tỷ lệ cọc không hợp lệ." });
+        item.Name = request.Name.Trim(); item.Description = request.Description.Trim(); item.BasePrice = request.BasePrice; item.MaxAdults = request.MaxAdults; item.MaxChildren = request.MaxChildren; item.BaseCapacity = baseCapacity; item.MaxCapacity = maxCapacity; item.ExtraGuestAllowed = request.ExtraGuestAllowed ?? item.ExtraGuestAllowed; item.ExtraGuestFee = extraGuestFee; item.DepositPercent = request.DepositPercent ?? item.DepositPercent; item.BedType = request.BedType.Trim(); item.RoomSize = request.RoomSize; item.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(); return Ok(new { message = "Đã cập nhật loại phòng." });
     }
 
@@ -151,11 +153,11 @@ public sealed class HostHomestaysController(IHomestayQueryService service, AppDb
     {
         var item = await db.RoomTypes.SingleOrDefaultAsync(r => r.Id == roomTypeId && r.HomestayId == id && r.Homestay.HostId == HostId);
         if (item is null) return NotFound(new { message = "Không tìm thấy loại phòng." });
-        if (request.BaseCapacity < 1 || request.MaxCapacity < request.BaseCapacity || request.ExtraGuestFee < 0)
+        if (request.BaseCapacity < 1 || request.MaxCapacity < request.BaseCapacity || request.ExtraGuestFee < 0 || request.ExtraChildFee < 0 || request.ChildMaxAge is < 0 or > 17)
             return BadRequest(new { message = "Sức chứa hoặc phụ phí khách thêm không hợp lệ." });
         item.BaseCapacity = request.BaseCapacity; item.MaxCapacity = request.MaxCapacity;
-        item.MaxAdults = request.MaxCapacity; item.MaxChildren = 0;
         item.ExtraGuestAllowed = request.ExtraGuestAllowed; item.ExtraGuestFee = request.ExtraGuestAllowed ? request.ExtraGuestFee : 0;
+        item.ExtraChildFee = request.ExtraGuestAllowed ? request.ExtraChildFee : 0; item.ChildMaxAge = request.ChildMaxAge;
         item.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
         return Ok(new { message = "Đã cập nhật sức chứa và phụ phí khách thêm." });
@@ -164,11 +166,13 @@ public sealed class HostHomestaysController(IHomestayQueryService service, AppDb
     [HttpPatch("{id:long}/room-types/extra-guest-policy")]
     public async Task<IActionResult> BulkExtraGuestPolicy(long id, BulkExtraGuestPolicyRequest request)
     {
-        if (request.ExtraGuestFee < 0) return BadRequest(new { message = "Phụ phí khách thêm không hợp lệ." });
+        if (request.ExtraGuestFee < 0 || request.ExtraChildFee < 0 || request.ChildMaxAge is < 0 or > 17) return BadRequest(new { message = "Phụ phí hoặc độ tuổi trẻ em không hợp lệ." });
         if (!await db.Homestays.AnyAsync(h => h.Id == id && h.HostId == HostId)) return NotFound(new { message = "Không tìm thấy homestay." });
         await db.RoomTypes.Where(r => r.HomestayId == id).ExecuteUpdateAsync(setters => setters
             .SetProperty(r => r.ExtraGuestAllowed, request.ExtraGuestAllowed)
             .SetProperty(r => r.ExtraGuestFee, request.ExtraGuestAllowed ? request.ExtraGuestFee : 0)
+            .SetProperty(r => r.ExtraChildFee, request.ExtraGuestAllowed ? request.ExtraChildFee : 0)
+            .SetProperty(r => r.ChildMaxAge, request.ChildMaxAge)
             .SetProperty(r => r.UpdatedAt, DateTime.UtcNow));
         return Ok(new { message = "Đã áp dụng chính sách khách thêm cho tất cả loại phòng." });
     }
@@ -222,9 +226,42 @@ public sealed class HostHomestaysController(IHomestayQueryService service, AppDb
     public async Task<IActionResult> AddRoomImage(long id, long roomId, SaveImageRequest request)
     {
         if (!await db.Rooms.AnyAsync(r => r.Id == roomId && r.RoomType.HomestayId == id && r.RoomType.Homestay.HostId == HostId)) return NotFound(new { message = "Không tìm thấy phòng." });
+        if (!Uri.TryCreate(request.ImageUrl?.Trim(), UriKind.Absolute, out var imageUri) || imageUri.Scheme is not ("http" or "https")) return BadRequest(new { message = "Đường dẫn ảnh phòng không hợp lệ." });
         if (request.IsThumbnail) await db.RoomImages.Where(x => x.RoomId == roomId).ExecuteUpdateAsync(s => s.SetProperty(x => x.IsThumbnail, false));
         var image = new RoomImage { RoomId = roomId, ImageUrl = request.ImageUrl.Trim(), Caption = request.Caption?.Trim(), IsThumbnail = request.IsThumbnail, SortOrder = await db.RoomImages.CountAsync(x => x.RoomId == roomId), CreatedAt = DateTime.UtcNow };
         db.RoomImages.Add(image); await db.SaveChangesAsync(); return Ok(new { image.Id, message = "Đã thêm ảnh riêng cho phòng." });
+    }
+
+    [HttpPost("{id:long}/rooms/{roomId:long}/images/upload")]
+    [RequestSizeLimit(80_000_000)]
+    public async Task<IActionResult> UploadRoomImages(long id, long roomId, [FromForm] List<IFormFile> files, CancellationToken cancellationToken)
+    {
+        if (!await db.Rooms.AnyAsync(r => r.Id == roomId && r.RoomType.HomestayId == id && r.RoomType.Homestay.HostId == HostId, cancellationToken)) return NotFound(new { message = "Không tìm thấy phòng." });
+        if (files.Count is < 1 or > 10) return BadRequest(new { message = "Mỗi lần tải từ 1 đến 10 ảnh." });
+        var allowed = new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase){{".jpg","image/jpeg"},{".jpeg","image/jpeg"},{".png","image/png"},{".webp","image/webp"}};
+        if (files.Any(f => f.Length is <= 0 or > 8_000_000 || !allowed.TryGetValue(Path.GetExtension(f.FileName), out var type) || !string.Equals(type,f.ContentType,StringComparison.OrdinalIgnoreCase))) return BadRequest(new { message = "Chỉ nhận JPG, PNG, WEBP dưới 8 MB." });
+        var urls = new List<string>();
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            var hasImage = await db.RoomImages.AnyAsync(x=>x.RoomId==roomId,cancellationToken);
+            var sort = await db.RoomImages.CountAsync(x=>x.RoomId==roomId,cancellationToken);
+            foreach(var file in files)
+            {
+                var extension=Path.GetExtension(file.FileName).ToLowerInvariant();
+                await using var stream=file.OpenReadStream();
+                var url=await storage.UploadPublicImageAsync(stream,$"hosts/{HostId}/rooms/{roomId}/{Guid.NewGuid():N}{extension}",allowed[extension],cancellationToken);
+                urls.Add(url); db.RoomImages.Add(new RoomImage{RoomId=roomId,ImageUrl=url,Caption=$"Ảnh phòng",IsThumbnail=!hasImage&&urls.Count==1,SortOrder=sort++,CreatedAt=DateTime.UtcNow});
+            }
+            await db.SaveChangesAsync(cancellationToken); await transaction.CommitAsync(cancellationToken);
+            return Ok(new { count=urls.Count, message=$"Đã tải lên {urls.Count} ảnh phòng." });
+        }
+        catch
+        {
+            await transaction.RollbackAsync(CancellationToken.None);
+            foreach(var url in urls) try{await storage.DeletePublicImageIfManagedAsync(url,CancellationToken.None);}catch{/* best effort compensation */}
+            throw;
+        }
     }
 
     [HttpDelete("{id:long}/rooms/{roomId:long}/images/{imageId:long}")]
@@ -232,6 +269,7 @@ public sealed class HostHomestaysController(IHomestayQueryService service, AppDb
     {
         var image = await db.RoomImages.SingleOrDefaultAsync(x => x.Id == imageId && x.RoomId == roomId && x.Room.RoomType.HomestayId == id && x.Room.RoomType.Homestay.HostId == HostId);
         if (image is null) return NotFound(new { message = "Không tìm thấy ảnh phòng." });
+        await storage.DeletePublicImageIfManagedAsync(image.ImageUrl, HttpContext.RequestAborted);
         db.RoomImages.Remove(image); await db.SaveChangesAsync(); return Ok(new { message = "Đã xóa ảnh phòng." });
     }
 

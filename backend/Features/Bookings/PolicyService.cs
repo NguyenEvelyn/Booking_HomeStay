@@ -10,7 +10,10 @@ public sealed record LateTierSnapshot(int FromMinutes, int? ToMinutes, string Ca
 public sealed record BookingPolicySnapshot(long? PolicyId, int Version, int HoldMinutes, int ReviewCreateDays, int ReviewEditDays,
     decimal CommissionRate, string GuestDowngradeRefundMode, decimal GuestDowngradeRefundPercent,
     bool AutoApproveLateCheckoutWithoutNextBooking, IReadOnlyList<CancellationTierSnapshot> CancellationTiers,
-    IReadOnlyList<LateTierSnapshot> LateCheckoutTiers);
+    IReadOnlyList<LateTierSnapshot> LateCheckoutTiers)
+{
+    public OperationalPolicyDocument? Document { get; init; }
+}
 
 public sealed class PolicyService(AppDbContext db)
 {
@@ -24,8 +27,9 @@ public sealed class PolicyService(AppDbContext db)
         if (policy is not null) return ToSnapshot(policy);
         var homestay = await db.Homestays.AsNoTracking().SingleAsync(x => x.Id == homestayId);
         return new BookingPolicySnapshot(null, 0, 15, 14, 14, .10m, "None", 0, true,
-            [new(8, null, 100), new(0, 7, 50)],
-            [new(1, 180, "Fixed", homestay.LateCheckout1To3HoursFee), new(181, 360, "Fixed", homestay.LateCheckout4To6HoursFee), new(361, null, "Fixed", homestay.LateCheckoutHalfDayFee)]);
+            [new(15, null, 100), new(7, 14, 70), new(3, 6, 50), new(0, 2, 0)],
+            [new(1, 180, "NightlyPercent", 30), new(181, 360, "NightlyPercent", 50), new(361, null, "NightlyPercent", 100)])
+            { Document = OperationalPolicyDocument.SunriseGardenDefault() };
     }
 
     public static BookingPolicySnapshot ParseSnapshot(string json)
@@ -33,14 +37,17 @@ public sealed class PolicyService(AppDbContext db)
         try
         {
             var parsed = JsonSerializer.Deserialize<BookingPolicySnapshot>(json, JsonOptions);
-            if (parsed is not null && parsed.HoldMinutes > 0 && parsed.CancellationTiers?.Count > 0) return parsed;
+            if (parsed is not null && parsed.HoldMinutes > 0 && parsed.CancellationTiers?.Count > 0)
+                return parsed.Document is null ? parsed with { Document = OperationalPolicyDocument.SunriseGardenDefault() } : parsed;
         }
         catch (JsonException) { }
         return DefaultSnapshot();
     }
     public static string Serialize(BookingPolicySnapshot policy) => JsonSerializer.Serialize(policy, JsonOptions);
     public static BookingPolicySnapshot DefaultSnapshot() => new(null, 0, 15, 14, 14, .10m, "None", 0, true,
-        [new(8, null, 100), new(0, 7, 50)], [new(1, 180, "Fixed", 200000), new(181, 360, "Fixed", 400000), new(361, null, "Fixed", 500000)]);
+        [new(15, null, 100), new(7, 14, 70), new(3, 6, 50), new(0, 2, 0)],
+        [new(1, 180, "NightlyPercent", 30), new(181, 360, "NightlyPercent", 50), new(361, null, "NightlyPercent", 100)])
+        { Document = OperationalPolicyDocument.SunriseGardenDefault() };
 
     public static decimal RefundPercent(BookingPolicySnapshot policy, int daysBeforeCheckIn) => policy.CancellationTiers
         .Where(x => daysBeforeCheckIn >= x.MinimumDays && (!x.MaximumDays.HasValue || daysBeforeCheckIn <= x.MaximumDays.Value))
@@ -56,5 +63,20 @@ public sealed class PolicyService(AppDbContext db)
     private static BookingPolicySnapshot ToSnapshot(HomestayPolicy p) => new(p.Id, p.Version, p.HoldMinutes, p.ReviewCreateDays, p.ReviewEditDays,
         p.CommissionRate, p.GuestDowngradeRefundMode, p.GuestDowngradeRefundPercent, p.AutoApproveLateCheckoutWithoutNextBooking,
         p.CancellationTiers.OrderByDescending(x => x.MinimumDays).Select(x => new CancellationTierSnapshot(x.MinimumDays, x.MaximumDays, x.RefundPercent)).ToList(),
-        p.LateCheckoutTiers.OrderBy(x => x.FromMinutes).Select(x => new LateTierSnapshot(x.FromMinutes, x.ToMinutes, x.CalculationType, x.Value)).ToList());
+        p.LateCheckoutTiers.OrderBy(x => x.FromMinutes).Select(x => new LateTierSnapshot(x.FromMinutes, x.ToMinutes, x.CalculationType, x.Value)).ToList())
+        { Document = ParseDocument(p.OperationalPolicyJson) };
+
+    public static OperationalPolicyDocument ParseDocument(string? json)
+    {
+        if (!string.IsNullOrWhiteSpace(json) && json != "{}")
+        {
+            try
+            {
+                var document = JsonSerializer.Deserialize<OperationalPolicyDocument>(json, JsonOptions);
+                if (document is not null) return document;
+            }
+            catch (JsonException) { }
+        }
+        return OperationalPolicyDocument.SunriseGardenDefault();
+    }
 }
