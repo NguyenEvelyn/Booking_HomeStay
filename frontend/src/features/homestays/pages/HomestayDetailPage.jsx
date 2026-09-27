@@ -123,6 +123,7 @@ function Icon({ name, size = 16, className = '', color = 'currentColor', fill = 
     sparkles: (
       <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z" />
     ),
+    check: <polyline points="20 6 9 17 4 12" />,
     chevronRight: <polyline points="9 18 15 12 9 6" />,
     chevronLeft: <polyline points="15 18 9 12 15 6" />,
     x: (
@@ -172,6 +173,72 @@ function getAmenitySvg(name = '', category = '') {
   return <Icon name="sparkles" size={20} />;
 }
 
+const toDateStr = (d) => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const formatDateVN = (dateStr) => {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  return dateStr;
+};
+
+const formatShortDateVN = (dateStr) => {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    const day = parts[2];
+    const month = parts[1];
+    const year = parts[0];
+    return `${day} Th${parseInt(month, 10)} ${year}`;
+  }
+  return dateStr;
+};
+
+const getCalendarMonthDays = (year, month) => {
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+
+  let startDay = firstDay.getDay() - 1;
+  if (startDay < 0) startDay = 6;
+
+  const days = [];
+  const prevMonthLastDate = new Date(year, month, 0).getDate();
+  for (let i = startDay - 1; i >= 0; i--) {
+    const d = new Date(year, month - 1, prevMonthLastDate - i);
+    days.push({
+      dateStr: toDateStr(d),
+      dayNum: prevMonthLastDate - i,
+      isCurrentMonth: false,
+    });
+  }
+
+  for (let i = 1; i <= lastDay.getDate(); i++) {
+    const d = new Date(year, month, i);
+    days.push({
+      dateStr: toDateStr(d),
+      dayNum: i,
+      isCurrentMonth: true,
+    });
+  }
+
+  const remaining = (7 - (days.length % 7)) % 7;
+  for (let i = 1; i <= remaining; i++) {
+    const d = new Date(year, month + 1, i);
+    days.push({
+      dateStr: toDateStr(d),
+      dayNum: i,
+      isCurrentMonth: false,
+    });
+  }
+
+  return days;
+};
+
 export default function HomestayDetailPage({ id, initialSearch, user, onHome, onBack, onBookings, onAccount, onDeveloping, refreshKey = 0 }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
@@ -186,6 +253,11 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
   const [bookingBusy, setBookingBusy] = useState(false);
   const [bookingError, setBookingError] = useState('');
   const [dateAvailability, setDateAvailability] = useState(null);
+  const [roomCalendarData, setRoomCalendarData] = useState(null);
+  const [calendarOpen, setCalendarOpen] = useState(() => !(initialSearch?.checkIn && initialSearch?.checkOut));
+  const [calendarMonth, setCalendarMonth] = useState(() => new Date());
+  const [calendarLoading, setCalendarLoading] = useState(false);
+  const [calendarHoverDate, setCalendarHoverDate] = useState(null);
   const [reviews, setReviews] = useState({ average: 0, total: 0, distribution: [], items: [] });
   const [reviewForm, setReviewForm] = useState({ bookingId: '', rating: 5, comment: '' });
   const [reviewBookings, setReviewBookings] = useState([]);
@@ -327,6 +399,29 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
     setBookingError(availableRooms > 0 ? '' : 'Loại phòng này đã hết phòng trong khoảng ngày bạn chọn.');
   }, [selectedRoom?.id, dateAvailability]);
 
+  useEffect(() => {
+    if (!selectedRoom?.id) {
+      setRoomCalendarData(null);
+      return;
+    }
+    let isMounted = true;
+    setCalendarLoading(true);
+    homestayApi.roomCalendar(selectedRoom.id, 6)
+      .then((res) => {
+        if (isMounted) {
+          setRoomCalendarData(res);
+          setCalendarLoading(false);
+        }
+      })
+      .catch((err) => {
+        console.error('Lỗi khi tải lịch phòng:', err);
+        if (isMounted) setCalendarLoading(false);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedRoom?.id]);
+
   if (error) return <main className="detail-state"><p>{error}</p><button onClick={onBack}>Quay lại danh sách</button></main>;
   if (!data) return <main className="detail-state"><div className="detail-loader" />Đang tải chi tiết homestay...</main>;
 
@@ -455,10 +550,106 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
     setSelectedRoom(room); setShowPaymentPage(false); setActiveRoomImage(0); setRoomQuantity(availableQuantity);
     setAdultCount((value) => Math.max(1, Math.min(value, capacityPerRoom * availableQuantity)));
     setChildCount(0);
+    setCalendarOpen(!(arrival && departure));
+    setCalendarMonth(new Date());
+    setBookingError('');
     window.setTimeout(() => document.getElementById('room-detail-inline')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
     try { const detail = await homestayApi.roomTypeDetail(room.id); setSelectedRoom((current) => current?.id === room.id ? { ...current, ...detail, availableRoomCount: current.availableRoomCount } : current); } catch { /* giữ dữ liệu danh sách nếu tải gallery thất bại */ }
   };
   const closeRoomDetail = () => { setSelectedRoom(null); setShowPaymentPage(false); window.setTimeout(() => document.querySelector('.rooms-section')?.scrollIntoView({ behavior: 'smooth' }), 0); };
+
+  const todayStr = toDateStr(new Date());
+  const isPast = (dateStr) => Boolean(dateStr && dateStr < todayStr);
+  const isBooked = (dateStr) => {
+    if (!dateStr || isPast(dateStr)) return false;
+    if (!roomCalendarData) return false;
+    return (
+      (Array.isArray(roomCalendarData.bookedDates) && roomCalendarData.bookedDates.includes(dateStr)) ||
+      roomCalendarData.dailyStatus?.[dateStr]?.status === 'booked'
+    );
+  };
+  const isAvailable = (dateStr) => {
+    if (!dateStr || isPast(dateStr)) return false;
+    if (isBooked(dateStr)) return false;
+    return true;
+  };
+
+  const handleCalendarDateClick = (dateStr) => {
+    if (!dateStr || isPast(dateStr)) return;
+    if (isBooked(dateStr)) {
+      setBookingError(`Ngày ${formatDateVN(dateStr)} phòng này đã kín/được đặt trước. Vui lòng chọn ngày khác.`);
+      return;
+    }
+    setBookingError('');
+    if (!arrival || (arrival && departure)) {
+      setArrival(dateStr);
+      setDeparture('');
+      return;
+    }
+    if (arrival && !departure) {
+      if (dateStr <= arrival) {
+        setArrival(dateStr);
+        setDeparture('');
+        return;
+      }
+      let cur = new Date(arrival);
+      const end = new Date(dateStr);
+      let hasBlocked = false;
+      let conflictDate = '';
+      while (cur < end) {
+        const curStr = toDateStr(cur);
+        if (isBooked(curStr)) {
+          hasBlocked = true;
+          conflictDate = curStr;
+          break;
+        }
+        cur.setDate(cur.getDate() + 1);
+      }
+      if (hasBlocked) {
+        setBookingError(`Không thể chọn khoảng này vì ngày ${formatDateVN(conflictDate)} phòng đã có người đặt trước.`);
+        return;
+      }
+      setDeparture(dateStr);
+      setCalendarOpen(false);
+    }
+  };
+
+  const handleClearDates = () => {
+    setArrival('');
+    setDeparture('');
+    setBookingError('');
+  };
+
+  const handlePrevMonth = () => {
+    const today = new Date();
+    const currentFirst = new Date(today.getFullYear(), today.getMonth(), 1);
+    const target = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1);
+    if (target >= currentFirst) {
+      setCalendarMonth(target);
+    }
+  };
+
+  const handleNextMonth = () => {
+    const maxMonth = new Date();
+    maxMonth.setMonth(maxMonth.getMonth() + 6);
+    const target = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1);
+    if (target <= maxMonth) {
+      setCalendarMonth(target);
+    }
+  };
+
+  const isPrevMonthDisabled = () => {
+    const today = new Date();
+    return (
+      calendarMonth.getFullYear() === today.getFullYear() &&
+      calendarMonth.getMonth() === today.getMonth()
+    );
+  };
+
+  const calendarDays = getCalendarMonthDays(
+    calendarMonth.getFullYear(),
+    calendarMonth.getMonth()
+  );
   const bookingNights = arrival && departure ? Math.max(0, Math.round((new Date(departure) - new Date(arrival)) / 86400000)) : 0;
   const allowedGuestCapacity=selectedRoom?(selectedRoom.extraGuestAllowed?selectedRoom.maxCapacity:selectedRoom.baseCapacity)*roomQuantity:1;
   const includedAdultCount = selectedRoom ? selectedRoom.baseCapacity * roomQuantity : 0;
@@ -904,133 +1095,377 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
               </div>
             </div>
             <div className="room-page-layout">
-              <article className="room-page-info">
-                <div className="room-page-facts">
-                  <span>
-                    <Icon name="user" size={14} />
+              <article className="room-page-info modern-room-info">
+                <div className="room-facts-pills">
+                  <span className="room-fact-pill">
+                    <Icon name="user" size={15} color="#0b4ae6" />
                     Tối đa {selectedRoom.extraGuestAllowed ? selectedRoom.maxCapacity : selectedRoom.baseCapacity} khách
                   </span>
-                  <span>
-                    <Icon name="bed" size={14} />
+                  <span className="room-fact-pill">
+                    <Icon name="bed" size={15} color="#0b4ae6" />
                     {selectedRoom.bedType}
                   </span>
-                  <span>
-                    <Icon name="maximize" size={14} />
+                  <span className="room-fact-pill">
+                    <Icon name="maximize" size={15} color="#0b4ae6" />
                     {selectedRoom.roomSize || '—'} m²
                   </span>
                 </div>
-                <p>
-                  {selectedRoom.description} Không gian được thiết kế ấm cúng, nhiều ánh sáng tự nhiên và đầy đủ tiện nghi cho một kỳ nghỉ thoải mái.
+
+                <p className="room-info-desc">
+                  {selectedRoom.description || 'Không gian được thiết kế ấm cúng, nhiều ánh sáng tự nhiên và đầy đủ tiện nghi cho một kỳ nghỉ thoải mái.'}
                 </p>
-                <hr />
-                <h2>Tiện nghi trong phòng</h2>
-                <ul className="room-page-amenities">
-                  <li>WiFi tốc độ cao miễn phí</li>
-                  <li>Máy điều hòa</li>
-                  <li>Phòng tắm riêng &amp; nước nóng</li>
-                  <li>TV màn hình phẳng</li>
-                  <li>Ấm đun nước và minibar</li>
-                  <li>{selectedRoom.name.toLowerCase().includes('ban công') ? 'Ban công riêng, nhìn ra thành phố' : 'Dọn phòng hằng ngày'}</li>
-                </ul>
-                <hr />
-                <h2>Chính sách phòng</h2>
-                <div className="room-page-policy">
-                  <p><b>Nhận phòng</b><span>Từ {data.checkInTime.slice(0, 5)}</span></p>
-                  <p><b>Trả phòng</b><span>Trước {data.checkOutTime.slice(0, 5)}</span></p>
-                  <p><b>Hủy phòng</b><span>Miễn phí trước 7 ngày</span></p>
+
+                <hr className="room-info-sep" />
+
+                <div className="room-amenities-block">
+                  <h3 className="room-block-title">Tiện nghi trong phòng</h3>
+                  <ul className="room-amenities-checklist">
+                    <li>
+                      <i className="amenity-icon-check"><Icon name="check" size={14} color="#10b981" /></i>
+                      <span>WiFi tốc độ cao miễn phí</span>
+                    </li>
+                    <li>
+                      <i className="amenity-icon-check"><Icon name="check" size={14} color="#10b981" /></i>
+                      <span>Máy điều hòa 2 chiều</span>
+                    </li>
+                    <li>
+                      <i className="amenity-icon-check"><Icon name="check" size={14} color="#10b981" /></i>
+                      <span>Phòng tắm riêng &amp; nước nóng</span>
+                    </li>
+                    <li>
+                      <i className="amenity-icon-check"><Icon name="check" size={14} color="#10b981" /></i>
+                      <span>TV thông minh màn hình phẳng</span>
+                    </li>
+                    <li>
+                      <i className="amenity-icon-check"><Icon name="check" size={14} color="#10b981" /></i>
+                      <span>Ấm đun siêu tốc &amp; minibar</span>
+                    </li>
+                    <li>
+                      <i className="amenity-icon-check"><Icon name="check" size={14} color="#10b981" /></i>
+                      <span>{selectedRoom.name.toLowerCase().includes('ban công') ? 'Ban công riêng, ngắm cảnh ngoài trời' : 'Dọn phòng & khăn sạch hằng ngày'}</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <hr className="room-info-sep" />
+
+                <div className="room-policy-block">
+                  <h3 className="room-block-title">Chính sách phòng</h3>
+                  <div className="room-policy-cards-grid">
+                    <div className="room-policy-mini-card">
+                      <span className="mini-card-label">Nhận phòng</span>
+                      <strong className="mini-card-val">Từ {data.checkInTime ? data.checkInTime.slice(0, 5) : '14:00'}</strong>
+                      <small className="mini-card-sub">Nhận phòng linh hoạt</small>
+                    </div>
+                    <div className="room-policy-mini-card">
+                      <span className="mini-card-label">Trả phòng</span>
+                      <strong className="mini-card-val">Trước {data.checkOutTime ? data.checkOutTime.slice(0, 5) : '12:00'}</strong>
+                      <small className="mini-card-sub">Bàn giao phòng</small>
+                    </div>
+                    <div className="room-policy-mini-card highlight-green">
+                      <span className="mini-card-label">Hủy phòng</span>
+                      <strong className="mini-card-val">Miễn phí trước 7 ngày</strong>
+                      <small className="mini-card-sub">Hoàn tiền 100%</small>
+                    </div>
+                  </div>
                 </div>
               </article>
-              <aside className="room-page-booking">
-                <small>GIÁ PHÒNG</small>
-                <div>
-                  <strong>{money(selectedRoom.basePrice)}</strong>
-                  <span>/ phòng / đêm</span>
+
+              <aside className="room-page-booking modern-booking-card">
+                <div className="booking-card-top-bar">
+                  <span className="booking-gold-badge">GIÁ PHÒNG</span>
+                  <div className="booking-rate-display">
+                    <strong className="booking-price-number">{money(selectedRoom.basePrice)}</strong>
+                    <span className="booking-price-period">/ phòng / đêm</span>
+                  </div>
+                  <div className={`booking-stock-pill ${selectedRoom.availableRoomCount > 0 ? 'is-in-stock' : 'is-sold-out'}`}>
+                    {selectedRoom.availableRoomCount > 0 ? (
+                      <>
+                        <Icon name="check" size={13} color="#15803d" />
+                        <span>{selectedRoom.availableRoomCount} phòng đang còn trống</span>
+                      </>
+                    ) : (
+                      <>
+                        <Icon name="x" size={13} color="#b91c1c" />
+                        <span>Tạm hết phòng này</span>
+                      </>
+                    )}
+                  </div>
                 </div>
-                <p>{selectedRoomAvailableCount === null
-                  ? 'Chọn ngày nhận và trả để kiểm tra phòng trống'
-                  : `✓ ${selectedRoomAvailableCount} phòng trống trong ngày đã chọn`}</p>
-                <label>
-                  Ngày nhận
-                  <input
-                    type="date"
-                    min={new Date().toISOString().slice(0, 10)}
-                    value={arrival}
-                    onChange={(e) => { setArrival(e.target.value); setBookingError(''); }}
-                  />
-                </label>
-                <label>
-                  Ngày trả
-                  <input
-                    type="date"
-                    min={arrival || new Date().toISOString().slice(0, 10)}
-                    value={departure}
-                    onChange={(e) => { setDeparture(e.target.value); setBookingError(''); }}
-                  />
-                </label>
-                <div className="guest-room-fields">
-                  <label>
-                    Người lớn
-                    <select
-                      value={adultCount}
-                      onChange={(e) => { setAdultCount(Number(e.target.value)); setBookingError(''); }}
-                    >
-                      {Array.from({ length: Math.max(1,allowedGuestCapacity-childCount) }, (_, i) => i + 1).map((value) => (
-                        <option key={value}>{value}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    Trẻ em
-                    <select
-                      value={childCount}
-                      onChange={(e) => { setChildCount(Number(e.target.value)); setBookingError(''); }}
-                    >
-                      {Array.from({ length: Math.max(0,allowedGuestCapacity-adultCount)+1 }, (_, i) => i).map((value) => (
-                        <option key={value}>{value}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    Số phòng
-                    <select
-                      value={roomQuantity}
-                      onChange={(e) => {
-                        const quantity = Number(e.target.value);
-                        setRoomQuantity(quantity);
-                        const allowed = (selectedRoom.extraGuestAllowed ? selectedRoom.maxCapacity : selectedRoom.baseCapacity) * quantity;
-                        setAdultCount((value) => Math.max(1,Math.min(value, allowed)));
-                        setChildCount(0);
-                        setBookingError('');
-                      }}
-                    >
-                      {Array.from({ length: selectedRoomAvailableCount === null ? 1 : Math.max(1, Math.min(selectedRoomAvailableCount, 10)) }, (_, i) => i + 1).map((value) => (
-                        <option key={value}>{value}</option>
-                      ))}
-                    </select>
-                  </label>
+                {/* Chọn ngày lưu trú với trigger & popover/inline calendar */}
+                <div className="booking-section-group">
+                  <div className="booking-group-header">
+                    <label className="booking-group-title">
+                      <Icon name="calendar" size={14} color="#0b4ae6" />
+                      <span>Thời gian lưu trú</span>
+                    </label>
+                    {arrival && departure && (
+                      <button
+                        type="button"
+                        className="booking-clear-dates-btn"
+                        onClick={handleClearDates}
+                      >
+                        Xóa ngày
+                      </button>
+                    )}
+                  </div>
+
+                  <div
+                    className={`booking-date-trigger-row ${calendarOpen ? 'is-open' : ''}`}
+                    onClick={() => setCalendarOpen(!calendarOpen)}
+                    role="button"
+                    tabIndex={0}
+                  >
+                    <div className={`date-trigger-box ${arrival ? 'has-date' : ''}`}>
+                      <span className="trigger-label">NGÀY NHẬN</span>
+                      <span className="trigger-val-text">{arrival ? formatShortDateVN(arrival) : 'Chọn ngày'}</span>
+                    </div>
+                    <div className="date-trigger-arrow">
+                      <Icon name="chevronRight" size={15} color="#94a3b8" />
+                    </div>
+                    <div className={`date-trigger-box ${departure ? 'has-date' : ''}`}>
+                      <span className="trigger-label">NGÀY TRẢ</span>
+                      <span className="trigger-val-text">{departure ? formatShortDateVN(departure) : 'Chọn ngày'}</span>
+                    </div>
+                  </div>
+
+                  {/* Lịch đặt phòng tương tác: Xanh lá (còn trống) / Đỏ (đã đặt) */}
+                  {calendarOpen && (
+                    <div className="room-interactive-calendar">
+                      <div className="cal-header">
+                        <button
+                          type="button"
+                          className="cal-month-nav-btn"
+                          onClick={handlePrevMonth}
+                          disabled={isPrevMonthDisabled()}
+                          title="Tháng trước"
+                        >
+                          <Icon name="chevronLeft" size={14} />
+                        </button>
+                        <span className="cal-current-month-text">
+                          Tháng {calendarMonth.getMonth() + 1}, {calendarMonth.getFullYear()}
+                        </span>
+                        <button
+                          type="button"
+                          className="cal-month-nav-btn"
+                          onClick={handleNextMonth}
+                          title="Tháng sau"
+                        >
+                          <Icon name="chevronRight" size={14} />
+                        </button>
+                      </div>
+
+                      {calendarLoading && (
+                        <div className="cal-loading-bar">
+                          <div className="detail-loader" style={{ width: 16, height: 16, borderWidth: 2 }} />
+                          <span>Đang tải lịch...</span>
+                        </div>
+                      )}
+
+                      {/* Header các ngày trong tuần */}
+                      <div className="cal-weekdays">
+                        <span>T2</span>
+                        <span>T3</span>
+                        <span>T4</span>
+                        <span>T5</span>
+                        <span>T6</span>
+                        <span>T7</span>
+                        <span>CN</span>
+                      </div>
+
+                      {/* Lưới ngày */}
+                      <div className="cal-grid">
+                        {calendarDays.map((dayItem, idx) => {
+                          const { dateStr, dayNum, isCurrentMonth } = dayItem;
+                          const past = isPast(dateStr);
+                          const booked = isBooked(dateStr);
+                          const available = isAvailable(dateStr);
+                          const isArr = arrival === dateStr;
+                          const isDep = departure === dateStr;
+                          const inRange = arrival && departure && dateStr > arrival && dateStr < departure;
+                          const isHoverRange = arrival && !departure && calendarHoverDate && dateStr > arrival && dateStr <= calendarHoverDate && !booked;
+
+                          let dayClass = 'cal-day';
+                          if (!isCurrentMonth) dayClass += ' other-month';
+                          if (past) dayClass += ' is-past';
+                          else if (booked) dayClass += ' is-booked'; // MÀU ĐỎ: ĐÃ ĐƯỢC ĐẶT
+                          else if (available) dayClass += ' is-available'; // MÀU XANH LÁ: CÒN TRỐNG
+
+                          if (isArr) dayClass += ' is-arrival';
+                          if (isDep) dayClass += ' is-departure';
+                          if (inRange) dayClass += ' is-in-range';
+                          if (isHoverRange) dayClass += ' is-hover-range';
+
+                          return (
+                            <button
+                              key={`${dateStr}-${idx}`}
+                              type="button"
+                              className={dayClass}
+                              disabled={past || booked || !isCurrentMonth}
+                              onClick={() => handleCalendarDateClick(dateStr)}
+                              onMouseEnter={() => setCalendarHoverDate(dateStr)}
+                              onMouseLeave={() => setCalendarHoverDate(null)}
+                              title={
+                                past ? 'Ngày đã qua' :
+                                booked ? 'Ngày này phòng đã kín / có người đặt trước' :
+                                `Còn trống ngày ${formatDateVN(dateStr)} (Nhấp để chọn)`
+                              }
+                            >
+                              <span className="day-number">{dayNum}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Chú thích màu sắc */}
+                      <div className="cal-legend">
+                        <div className="legend-tag legend-green">
+                          <span className="legend-color-box green" />
+                          <span>Còn trống (Xanh)</span>
+                        </div>
+                        <div className="legend-tag legend-red">
+                          <span className="legend-color-box red" />
+                          <span>Đã đặt (Đỏ)</span>
+                        </div>
+                        <div className="legend-tag legend-blue">
+                          <span className="legend-color-box blue" />
+                          <span>Đang chọn</span>
+                        </div>
+                      </div>
+
+                      <div className="cal-footer">
+                        {bookingNights > 0 ? (
+                          <span className="cal-nights-counter">
+                            ✓ {bookingNights} đêm ({formatDateVN(arrival)} → {formatDateVN(departure)})
+                          </span>
+                        ) : (
+                          <span className="cal-hint-text">
+                            {!arrival ? 'Chọn ngày nhận phòng' : 'Chọn ngày trả phòng'}
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          className="cal-close-btn"
+                          onClick={() => setCalendarOpen(false)}
+                        >
+                          {arrival && departure ? 'Xong ✓' : 'Đóng'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <small className="capacity-note">
-                  Giá gồm {selectedRoom.baseCapacity} khách/phòng{selectedRoom.extraGuestAllowed&&selectedRoom.maxCapacity>selectedRoom.baseCapacity?`; tối đa ${selectedRoom.maxCapacity} khách. Phụ thu: người lớn ${money(selectedRoom.extraGuestFee)}, trẻ em 0–${selectedRoom.childMaxAge??11} tuổi ${money(selectedRoom.extraChildFee)}/đêm`:''}.
-                </small>
+
+                {/* Chọn số khách & số lượng phòng */}
+                <div className="booking-section-group">
+                  <div className="booking-group-title">
+                    <Icon name="user" size={14} color="#0b4ae6" />
+                    <span>Số lượng khách &amp; phòng</span>
+                  </div>
+                  <div className="booking-guests-grid">
+                    <div className="guest-select-card">
+                      <span className="guest-card-label">Người lớn</span>
+                      <select
+                        className="guest-card-select"
+                        value={adultCount}
+                        onChange={(e) => { setAdultCount(Number(e.target.value)); setBookingError(''); }}
+                      >
+                        {Array.from({ length: Math.max(1, allowedGuestCapacity - childCount) }, (_, i) => i + 1).map((value) => (
+                          <option key={value} value={value}>{value} người</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="guest-select-card">
+                      <span className="guest-card-label">Trẻ em</span>
+                      <select
+                        className="guest-card-select"
+                        value={childCount}
+                        onChange={(e) => { setChildCount(Number(e.target.value)); setBookingError(''); }}
+                      >
+                        {Array.from({ length: Math.max(0, allowedGuestCapacity - adultCount) + 1 }, (_, i) => i).map((value) => (
+                          <option key={value} value={value}>{value} trẻ em</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="guest-select-card">
+                      <span className="guest-card-label">Số phòng</span>
+                      <select
+                        className="guest-card-select"
+                        value={roomQuantity}
+                        onChange={(e) => {
+                          const quantity = Number(e.target.value);
+                          setRoomQuantity(quantity);
+                          const allowed = (selectedRoom.extraGuestAllowed ? selectedRoom.maxCapacity : selectedRoom.baseCapacity) * quantity;
+                          setAdultCount((value) => Math.max(1, Math.min(value, allowed)));
+                          setChildCount(0);
+                          setBookingError('');
+                        }}
+                      >
+                        {Array.from({ length: selectedRoomAvailableCount === null ? 1 : Math.max(1, Math.min(selectedRoomAvailableCount, 10)) }, (_, i) => i + 1).map((value) => (
+                          <option key={value} value={value}>{value} phòng</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="booking-capacity-note">
+                  <small>
+                    * Giá gồm {selectedRoom.baseCapacity} khách/phòng{selectedRoom.extraGuestAllowed && selectedRoom.maxCapacity > selectedRoom.baseCapacity ? `; tối đa ${selectedRoom.maxCapacity} khách. Phụ thu: người lớn ${money(selectedRoom.extraGuestFee)}, trẻ em 0–${selectedRoom.childMaxAge ?? 11} tuổi ${money(selectedRoom.extraChildFee)}/đêm` : ''}.
+                  </small>
+                </div>
+
+                {/* Bảng chi tiết giá khi đã chọn số đêm */}
                 {bookingNights > 0 && (
-                  <div className="booking-price-breakdown">
-                    <div><span>Tiền phòng</span><strong>{money(roomPriceTotal)}</strong></div>
-                    {extraAdultCount > 0 && <div><span>Thêm {extraAdultCount} người lớn</span><strong>+ {money(extraAdultTotal)}</strong></div>}
-                    {extraChildCount > 0 && <div><span>Thêm {extraChildCount} trẻ em</span><strong>+ {money(childFeeTotal)}</strong></div>}
-                    <div className="booking-total"><span>Tổng cộng</span><strong>{money(bookingGrandTotal)}</strong></div>
+                  <div className="booking-bill-card">
+                    <div className="bill-line">
+                      <span>Tiền phòng ({bookingNights} đêm × {roomQuantity} phòng)</span>
+                      <strong>{money(roomPriceTotal)}</strong>
+                    </div>
+                    {extraAdultCount > 0 && (
+                      <div className="bill-line">
+                        <span>Phụ thu {extraAdultCount} người lớn</span>
+                        <strong>+ {money(extraAdultTotal)}</strong>
+                      </div>
+                    )}
+                    {childCount > 0 && (
+                      <div className="bill-line">
+                        <span>Phụ thu {childCount} trẻ em</span>
+                        <strong>+ {money(childFeeTotal)}</strong>
+                      </div>
+                    )}
+                    <div className="bill-sep" />
+                    <div className="bill-line bill-grand-total">
+                      <span>Tổng thanh toán</span>
+                      <strong className="bill-total-amount">{money(bookingGrandTotal)}</strong>
+                    </div>
                   </div>
                 )}
-                {bookingError && <div className="booking-error">{bookingError}</div>}
+
+                {bookingError && (
+                  <div className="booking-alert-box">
+                    <Icon name="x" size={16} color="#dc2626" />
+                    <span>{bookingError}</span>
+                  </div>
+                )}
+
                 <button
                   type="button"
-                  disabled={!hasValidStayDates || selectedRoomAvailableCount === 0}
+                  className="booking-submit-action-btn"
+                  disabled={!hasValidStayDates || selectedRoomAvailableCount === 0 || bookingBusy}
                   onClick={openPaymentPage}
                 >
-                  {!hasValidStayDates
-                    ? 'Chọn ngày để kiểm tra'
-                    : (selectedRoomAvailableCount > 0 ? 'Đến trang thanh toán →' : 'Phòng đã hết trong ngày đã chọn')}
+                  {bookingBusy
+                    ? 'Đang kiểm tra...'
+                    : !hasValidStayDates
+                      ? 'Chọn ngày để kiểm tra'
+                      : (selectedRoomAvailableCount > 0 ? 'Đến trang thanh toán →' : 'Phòng đã hết trong ngày đã chọn')}
                 </button>
-                <em>Chưa phát sinh giao dịch ở bước này</em>
+                <div className="booking-security-badge">
+                  <Icon name="shield" size={13} color="#15803d" />
+                  <span>Chưa phát sinh giao dịch ở bước này · Yên tâm đặt phòng</span>
+                </div>
               </aside>
             </div>
           </section>
