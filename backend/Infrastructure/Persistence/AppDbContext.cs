@@ -422,6 +422,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         policy.Property(x => x.HoldMinutes).HasColumnName("hold_minutes"); policy.Property(x => x.ReviewCreateDays).HasColumnName("review_create_days"); policy.Property(x => x.ReviewEditDays).HasColumnName("review_edit_days");
         policy.Property(x => x.CommissionRate).HasColumnName("commission_rate").HasPrecision(5,4); policy.Property(x => x.GuestDowngradeRefundMode).HasColumnName("guest_downgrade_refund_mode").HasMaxLength(20);
         policy.Property(x => x.GuestDowngradeRefundPercent).HasColumnName("guest_downgrade_refund_percent").HasPrecision(5,2); policy.Property(x => x.AutoApproveLateCheckoutWithoutNextBooking).HasColumnName("auto_approve_late_checkout");
+        policy.Property(x => x.OperationalPolicyJson).HasColumnName("operational_policy").HasColumnType("jsonb");
         policy.Property(x => x.EffectiveFrom).HasColumnName("effective_from"); policy.Property(x => x.EffectiveTo).HasColumnName("effective_to"); policy.Property(x => x.Status).HasColumnName("status").HasMaxLength(20);
         policy.Property(x => x.CreatedBy).HasColumnName("created_by"); policy.Property(x => x.CreatedAt).HasColumnName("created_at");
 

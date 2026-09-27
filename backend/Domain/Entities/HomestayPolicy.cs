@@ -12,6 +12,7 @@ public class HomestayPolicy
     public required string GuestDowngradeRefundMode { get; set; }
     public decimal GuestDowngradeRefundPercent { get; set; }
     public bool AutoApproveLateCheckoutWithoutNextBooking { get; set; } = true;
+    public string OperationalPolicyJson { get; set; } = "{}";
     public DateTime EffectiveFrom { get; set; }
     public DateTime? EffectiveTo { get; set; }
     public required string Status { get; set; }

@@ -12,7 +12,8 @@ public sealed record CancellationTierRequest(int MinimumDays, int? MaximumDays, 
 public sealed record LateTierRequest(int FromMinutes, int? ToMinutes, string CalculationType, decimal Value);
 public sealed record SavePolicyRequest(int HoldMinutes, int ReviewCreateDays, int ReviewEditDays, decimal CommissionRate,
     string GuestDowngradeRefundMode, decimal GuestDowngradeRefundPercent, bool AutoApproveLateCheckoutWithoutNextBooking,
-    DateTime? EffectiveFrom, IReadOnlyList<CancellationTierRequest> CancellationTiers, IReadOnlyList<LateTierRequest> LateCheckoutTiers);
+    DateTime? EffectiveFrom, IReadOnlyList<CancellationTierRequest> CancellationTiers, IReadOnlyList<LateTierRequest> LateCheckoutTiers,
+    OperationalPolicyDocument? Document = null);
 
 [ApiController, Route("api/host/homestays/{homestayId:long}/booking-policy"), Authorize(Roles = "Host")]
 public sealed class HomestayPoliciesController(AppDbContext db, PolicyService policies) : ControllerBase
@@ -39,7 +40,9 @@ public sealed class HomestayPoliciesController(AppDbContext db, PolicyService po
         var version = (await db.HomestayPolicies.Where(x => x.HomestayId == homestayId).MaxAsync(x => (int?)x.Version) ?? 0) + 1;
         var policy = new HomestayPolicy { HomestayId = homestayId, Version = version, HoldMinutes = request.HoldMinutes, ReviewCreateDays = request.ReviewCreateDays, ReviewEditDays = request.ReviewEditDays,
             CommissionRate = request.CommissionRate, GuestDowngradeRefundMode = request.GuestDowngradeRefundMode, GuestDowngradeRefundPercent = request.GuestDowngradeRefundPercent,
-            AutoApproveLateCheckoutWithoutNextBooking = request.AutoApproveLateCheckoutWithoutNextBooking, EffectiveFrom = effective, Status = "Active", CreatedBy = UserId, CreatedAt = now };
+            AutoApproveLateCheckoutWithoutNextBooking = request.AutoApproveLateCheckoutWithoutNextBooking,
+            OperationalPolicyJson = JsonSerializer.Serialize(request.Document ?? OperationalPolicyDocument.SunriseGardenDefault()),
+            EffectiveFrom = effective, Status = "Active", CreatedBy = UserId, CreatedAt = now };
         foreach (var tier in request.CancellationTiers) policy.CancellationTiers.Add(new CancellationPolicyTier { MinimumDays = tier.MinimumDays, MaximumDays = tier.MaximumDays, RefundPercent = tier.RefundPercent });
         foreach (var tier in request.LateCheckoutTiers) policy.LateCheckoutTiers.Add(new LateCheckoutFeeTier { FromMinutes = tier.FromMinutes, ToMinutes = tier.ToMinutes, CalculationType = tier.CalculationType, Value = tier.Value });
         db.HomestayPolicies.Add(policy); db.AuditLogs.Add(new AuditLog { ActorId = UserId, ActorRole = "Host", Action = "booking_policy.created", TargetType = "Homestay", TargetId = homestayId.ToString(), AfterJson = JsonSerializer.Serialize(request), CreatedAt = now, Ip = HttpContext.Connection.RemoteIpAddress });
@@ -55,6 +58,22 @@ public sealed class HomestayPoliciesController(AppDbContext db, PolicyService po
         if (r.LateCheckoutTiers.Count == 0 || r.LateCheckoutTiers.Any(x => x.FromMinutes < 1 || x.ToMinutes < x.FromMinutes || x.CalculationType is not ("Fixed" or "NightlyPercent") || x.Value < 0)) return "Các mức late checkout không hợp lệ.";
         if (HasOverlap(r.CancellationTiers.Select(x => (x.MinimumDays, x.MaximumDays)))) return "Các khoảng ngày hủy bị chồng lấn.";
         if (HasOverlap(r.LateCheckoutTiers.Select(x => (x.FromMinutes, x.ToMinutes)))) return "Các khoảng late checkout bị chồng lấn.";
+        if (r.Document is not null)
+        {
+            var d = r.Document;
+            if (d.Payment.StandardDepositPercent is < 0 or > 100 || d.Payment.VillaDepositPercent is < 0 or > 100 || d.Payment.HolidayDepositPercent is < 0 or > 100)
+                return "Tỷ lệ đặt cọc phải nằm trong khoảng 0–100%.";
+            if (d.Guests.AdultAge is < 1 or > 18 || d.Guests.ChildFeeTiers.Count == 0 ||
+                d.Guests.ChildFeeTiers.Any(x => x.MinimumAge < 0 || x.MaximumAgeExclusive <= x.MinimumAge || x.Percent is < 0 or > 100) ||
+                HasOverlap(d.Guests.ChildFeeTiers.Select(x => (x.MinimumAge, (int?)x.MaximumAgeExclusive - 1))))
+                return "Các mức phụ thu trẻ em không hợp lệ hoặc bị chồng lấn.";
+            if (d.SeasonalSurcharges.Any(x => string.IsNullOrWhiteSpace(x.Code) || string.IsNullOrWhiteSpace(x.Name) || x.Percent < 0 || x.EndDate < x.StartDate))
+                return "Phụ thu theo ngày không hợp lệ.";
+            if (d.Promotions.EarlyBirdPercent is < 0 or > 100 || d.Promotions.LongStayPercent is < 0 or > 100 || d.Promotions.ExtendedStayPercent is < 0 or > 100)
+                return "Tỷ lệ khuyến mãi phải nằm trong khoảng 0–100%.";
+            if (d.DayUse.DepositPercent is < 0 or > 100 || d.Pets.MaximumPerRoom < 0 || d.Pets.FeePerNight < 0)
+                return "Chính sách day-use hoặc thú cưng không hợp lệ.";
+        }
         return null;
     }
     private static bool HasOverlap(IEnumerable<(int From, int? To)> ranges)
