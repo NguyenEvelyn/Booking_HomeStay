@@ -37,7 +37,8 @@ public sealed class BookingOperationsController(AppDbContext db, RoomInventorySe
         await inventory.LockRoom(request.RoomId);
         var room = await db.Rooms.Include(x => x.RoomType).SingleOrDefaultAsync(x => x.Id == request.RoomId && x.Status == "Available");
         if (room is null) return NotFound(new { message = "Phòng không tồn tại hoặc không kinh doanh." });
-        if (request.GuestCount > room.RoomType.MaxCapacity) return BadRequest(new { message = "Số khách vượt sức chứa tối đa." });
+        var allowedCapacity = room.RoomType.ExtraGuestAllowed ? room.RoomType.MaxCapacity : room.RoomType.BaseCapacity;
+        if (request.GuestCount > allowedCapacity) return BadRequest(new { message = "Số khách vượt sức chứa được phép." });
         if (!await inventory.IsAvailable(room.Id, request.CheckIn, request.CheckOut))
             return Conflict(new { message = "Phòng đã được giữ hoặc đặt trong khoảng thời gian này." });
         var nights = request.CheckOut.DayNumber - request.CheckIn.DayNumber;

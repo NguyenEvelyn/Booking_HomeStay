@@ -26,6 +26,15 @@ public static class BookingRules
     public static decimal ExtraFee(int guests, int baseCapacity, int quantity, decimal fee, int nights) =>
         Math.Max(0, guests - baseCapacity * quantity) * fee * nights;
 
+    public static (int ExtraAdults, int ExtraChildren, decimal Total) ExtraGuestFees(int adults, int children, int baseCapacity, int quantity, decimal adultFee, decimal childFee, int nights)
+    {
+        var included = baseCapacity * quantity;
+        var extraAdults = Math.Max(0, adults - included);
+        var remainingIncluded = Math.Max(0, included - adults);
+        var extraChildren = Math.Max(0, children - remainingIncluded);
+        return (extraAdults, extraChildren, (extraAdults * adultFee + extraChildren * childFee) * nights);
+    }
+
     public static decimal Deposit(decimal roomAmount, decimal depositPercent) =>
         decimal.Round(roomAmount * Math.Clamp(depositPercent, 0m, 1m), 0, MidpointRounding.AwayFromZero);
 

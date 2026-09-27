@@ -123,5 +123,5 @@ public sealed class BookingService(RoomInventoryService inventory)
         return await inventory.IsAvailable(roomId, from, to, excludingBookingId);
     }
 
-    public static string PricingSnapshot(RoomType roomType, decimal roomAmount, int nights) => JsonSerializer.Serialize(new { roomType.Id, roomType.Name, nightlyPrice = roomType.BasePrice, roomAmount, nights, roomType.BaseCapacity, roomType.MaxCapacity, roomType.ExtraGuestFee, roomType.DepositPercent });
+    public static string PricingSnapshot(RoomType roomType, decimal roomAmount, int nights) => JsonSerializer.Serialize(new { roomType.Id, roomType.Name, nightlyPrice = roomType.BasePrice, roomAmount, nights, roomType.BaseCapacity, roomType.MaxCapacity, adultExtraFee = roomType.ExtraGuestFee, roomType.ExtraChildFee, roomType.ChildMaxAge, roomType.DepositPercent });
 }

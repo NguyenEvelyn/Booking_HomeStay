@@ -25,6 +25,8 @@ Check(BookingRules.ValidateDates(today, today, today) is not null, "zero-night s
 Check(BookingRules.ValidateGuests(2, 1, 1) is null, "valid guests");
 Check(BookingRules.ValidateGuests(0, 1, 1) is not null, "adult required");
 Check(BookingRules.ExtraFee(5, 2, 2, 100000, 3) == 300000, "extra guest fee uses total guests and nights");
+var mixedGuestFees = BookingRules.ExtraGuestFees(3, 1, 2, 1, 150000, 100000, 2);
+Check(mixedGuestFees.ExtraAdults == 1 && mixedGuestFees.ExtraChildren == 1 && mixedGuestFees.Total == 500000, "adult and child surcharges share total capacity but use separate rates");
 Check(BookingRules.Deposit(1_000_000, .3m) == 300_000, "deposit is based on room amount");
 var earlyCancellation = BookingRules.Cancellation(300_000, 8, 100);
 Check(earlyCancellation.Refund == 300_000 && earlyCancellation.Penalty == 0, "early cancellation refunds paid amount");
@@ -40,4 +42,6 @@ Check(PolicyService.RefundPercent(dynamicPolicy, 1) == 0, "dynamic non-refundabl
 Check(PolicyService.LateCheckoutFee(dynamicPolicy, 90, 1_000_000) == 150_000, "fixed late checkout tier");
 Check(PolicyService.LateCheckoutFee(dynamicPolicy, 240, 1_000_000) == 500_000, "nightly percentage late checkout tier");
 Check(PolicyService.ParseSnapshot(PolicyService.Serialize(dynamicPolicy)).HoldMinutes == 25, "policy snapshot round trip");
+Check(CompensationRules.RequestedAmount(2, 1_000_000, 20) == 1_600_000, "compensation applies quantity and depreciation");
+Check(CompensationRules.RequestedAmount(2, 1_000_000, 0, 700_000) == 1_400_000, "compensation respects per-item maximum");
 Console.WriteLine("Booking rule checks passed.");

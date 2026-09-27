@@ -40,6 +40,19 @@ public sealed class SupabaseStorageService(HttpClient httpClient)
         return $"{_baseUrl}/storage/v1/object/public/{encodedBucket}/{encodedPath}";
     }
 
+    public async Task DeletePublicImageIfManagedAsync(string imageUrl, CancellationToken cancellationToken = default)
+    {
+        var prefix = $"{_baseUrl}/storage/v1/object/public/{Uri.EscapeDataString(_bucket)}/";
+        if (!imageUrl.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) return;
+        var encodedPath = imageUrl[prefix.Length..];
+        using var request = new HttpRequestMessage(HttpMethod.Delete, $"{_baseUrl}/storage/v1/object/{Uri.EscapeDataString(_bucket)}/{encodedPath}");
+        request.Headers.TryAddWithoutValidation("apikey", _secretKey);
+        request.Headers.TryAddWithoutValidation("Authorization", $"Bearer {_secretKey}");
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        if (!response.IsSuccessStatusCode && response.StatusCode != System.Net.HttpStatusCode.NotFound)
+            throw new InvalidOperationException($"Không thể xóa file ảnh trên Supabase ({(int)response.StatusCode}).");
+    }
+
     private static string Require(string name) =>
         Environment.GetEnvironmentVariable(name) is { Length: > 0 } value
             ? value

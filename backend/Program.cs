@@ -252,6 +252,8 @@ await using (var schemaScope = app.Services.CreateAsyncScope())
         ALTER TABLE room_types ADD COLUMN IF NOT EXISTS max_capacity INTEGER NOT NULL DEFAULT 2;
         ALTER TABLE room_types ADD COLUMN IF NOT EXISTS extra_guest_allowed BOOLEAN NOT NULL DEFAULT FALSE;
         ALTER TABLE room_types ADD COLUMN IF NOT EXISTS extra_guest_fee NUMERIC(18,2) NOT NULL DEFAULT 0;
+        ALTER TABLE room_types ADD COLUMN IF NOT EXISTS extra_child_fee NUMERIC(18,2) NOT NULL DEFAULT 0;
+        ALTER TABLE room_types ADD COLUMN IF NOT EXISTS child_max_age INTEGER NOT NULL DEFAULT 11;
         ALTER TABLE room_types ADD COLUMN IF NOT EXISTS deposit_percent NUMERIC(5,4) NOT NULL DEFAULT .30;
         ALTER TABLE homestays ADD COLUMN IF NOT EXISTS time_zone_id VARCHAR(100) NOT NULL DEFAULT 'Asia/Ho_Chi_Minh';
         ALTER TABLE homestays ADD COLUMN IF NOT EXISTS cleaning_buffer_minutes INTEGER NOT NULL DEFAULT 120;
