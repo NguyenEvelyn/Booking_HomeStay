@@ -318,6 +318,39 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
   },[id,arrival,departure,refreshKey]);
 
   useEffect(() => {
+    if (!selectedRoom?.id || !arrival || !departure || departure <= arrival) {
+      setPriceQuote(null);
+      return undefined;
+    }
+    let active = true;
+    const timer = window.setTimeout(() => {
+      bookingApi.quote({
+        roomTypeId: selectedRoom.id,
+        checkInDate: arrival,
+        checkOutDate: departure,
+        adultCount,
+        childCount,
+        quantity: roomQuantity,
+        customerNote: null
+      }).then((quote) => {
+        if (active) {
+          setPriceQuote(quote);
+          setBookingError('');
+        }
+      }).catch((quoteError) => {
+        if (active) {
+          setPriceQuote(null);
+          setBookingError(quoteError.message);
+        }
+      });
+    }, 250);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [selectedRoom?.id, arrival, departure, adultCount, childCount, roomQuantity, refreshKey]);
+
+  useEffect(() => {
     if (!selectedRoom || dateAvailability === null) return;
     const availableRooms = dateAvailability[selectedRoom.id] ?? 0;
     setSelectedRoom((current) => current?.id === selectedRoom.id
@@ -473,6 +506,8 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
   const quotedExtraAdultTotal = priceQuote?.extraAdultFee ?? extraAdultTotal;
   const quotedChildFeeTotal = priceQuote?.extraChildFee ?? childFeeTotal;
   const quotedGrandTotal = priceQuote?.total ?? bookingGrandTotal;
+  const hasFlexiblePrice = priceQuote?.nightsBreakdown?.some((night) => night.basePrice !== selectedRoom?.basePrice)
+    || priceQuote?.seasonalSurchargeAmount > 0;
   const selectedRoomImages = selectedRoom?.rooms?.flatMap((room) => room.images.map((image) => ({ ...image, caption: image.caption || `Phòng ${room.roomNumber}` })))?.length
     ? selectedRoom.rooms.flatMap((room) => room.images.map((image) => ({ ...image, caption: image.caption || `Phòng ${room.roomNumber}` })))
     : selectedRoom?.images?.length ? selectedRoom.images : eloraImages.map((url, index) => ({ id: `fallback-${index}`, url, caption: selectedRoom?.name || 'Ảnh phòng' }));
@@ -1014,10 +1049,11 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
                 </small>
                 {bookingNights > 0 && (
                   <div className="booking-price-breakdown">
-                    <div><span>Tiền phòng</span><strong>{money(roomPriceTotal)}</strong></div>
-                    {extraAdultCount > 0 && <div><span>Thêm {extraAdultCount} người lớn</span><strong>+ {money(extraAdultTotal)}</strong></div>}
-                    {extraChildCount > 0 && <div><span>Thêm {extraChildCount} trẻ em</span><strong>+ {money(childFeeTotal)}</strong></div>}
-                    <div className="booking-total"><span>Tổng cộng</span><strong>{money(bookingGrandTotal)}</strong></div>
+                    <div><span>Tiền phòng</span><strong>{money(quotedRoomTotal)}</strong></div>
+                    {hasFlexiblePrice && <div><span>✓ Đã áp dụng giá linh động theo ngày</span><strong>{priceQuote.nightsBreakdown.length} đêm</strong></div>}
+                    {(priceQuote?.extraAdults ?? extraAdultCount) > 0 && <div><span>Thêm {priceQuote?.extraAdults ?? extraAdultCount} người lớn</span><strong>+ {money(quotedExtraAdultTotal)}</strong></div>}
+                    {(priceQuote?.extraChildren ?? extraChildCount) > 0 && <div><span>Thêm {priceQuote?.extraChildren ?? extraChildCount} trẻ em</span><strong>+ {money(quotedChildFeeTotal)}</strong></div>}
+                    <div className="booking-total"><span>Tổng cộng</span><strong>{money(quotedGrandTotal)}</strong></div>
                   </div>
                 )}
                 {bookingError && <div className="booking-error">{bookingError}</div>}
