@@ -40,7 +40,7 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
         if (roomType is null) return NotFound(new { message = "Không tìm thấy loại phòng đang kinh doanh." });
         var allowedCapacity = (roomType.ExtraGuestAllowed ? roomType.MaxCapacity : roomType.BaseCapacity) * request.Quantity;
         var capacityError = BookingRules.ValidateCapacity(request.AdultCount, request.ChildCount, request.Quantity,
-            roomType.MaxAdults, roomType.MaxChildren, allowedCapacity / request.Quantity);
+            allowedCapacity / request.Quantity);
         if (capacityError is not null) return BadRequest(new { message = capacityError });
         var available = (await BookingAvailability.AvailableRoomIds(db, roomType.Id, request.CheckInDate, request.CheckOutDate, DateTime.UtcNow)).Count;
         if (available < request.Quantity)
@@ -179,7 +179,7 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
         if (roomType is null) return NotFound(new { message = "Loại phòng không tồn tại hoặc Homestay chưa được duyệt." });
         var allowedCapacity = (roomType.ExtraGuestAllowed ? roomType.MaxCapacity : roomType.BaseCapacity) * request.Quantity;
         var capacityError = BookingRules.ValidateCapacity(request.AdultCount, request.ChildCount, request.Quantity,
-            roomType.MaxAdults, roomType.MaxChildren, allowedCapacity / request.Quantity);
+            allowedCapacity / request.Quantity);
         if (capacityError is not null) return BadRequest(new { message = capacityError });
 
         var allocatableRooms = (await BookingAvailability.AvailableRoomIds(db, roomType.Id, request.CheckInDate, request.CheckOutDate, DateTime.UtcNow)).Take(request.Quantity).ToList();

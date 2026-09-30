@@ -452,9 +452,8 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
   const openRoomDetail = async (room) => {
     const availableQuantity = Math.max(1, Math.min(roomQuantity, room.availableRoomCount || 1));
     const capacityPerRoom = room.extraGuestAllowed ? room.maxCapacity : room.baseCapacity;
-    const adultCapacityPerRoom = room.maxAdults > 0 ? Math.min(room.maxAdults, capacityPerRoom) : capacityPerRoom;
     setSelectedRoom(room); setShowPaymentPage(false); setActiveRoomImage(0); setRoomQuantity(availableQuantity);
-    setAdultCount((value) => Math.max(1, Math.min(value, adultCapacityPerRoom * availableQuantity)));
+    setAdultCount((value) => Math.max(1, Math.min(value, capacityPerRoom * availableQuantity)));
     setChildCount(0);
     window.setTimeout(() => document.getElementById('room-detail-inline')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
     try { const detail = await homestayApi.roomTypeDetail(room.id); setSelectedRoom((current) => current?.id === room.id ? { ...current, ...detail, availableRoomCount: current.availableRoomCount } : current); } catch { /* giữ dữ liệu danh sách nếu tải gallery thất bại */ }
@@ -462,8 +461,6 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
   const closeRoomDetail = () => { setSelectedRoom(null); setShowPaymentPage(false); window.setTimeout(() => document.querySelector('.rooms-section')?.scrollIntoView({ behavior: 'smooth' }), 0); };
   const bookingNights = arrival && departure ? Math.max(0, Math.round((new Date(departure) - new Date(arrival)) / 86400000)) : 0;
   const allowedGuestCapacity=selectedRoom?(selectedRoom.extraGuestAllowed?selectedRoom.maxCapacity:selectedRoom.baseCapacity)*roomQuantity:1;
-  const allowedAdultCapacity=selectedRoom?Math.min(allowedGuestCapacity,(selectedRoom.maxAdults>0?selectedRoom.maxAdults*roomQuantity:allowedGuestCapacity)):1;
-  const allowedChildCapacity=selectedRoom?Math.min(Math.max(0,allowedGuestCapacity-adultCount),(selectedRoom.maxChildren>0?selectedRoom.maxChildren*roomQuantity:allowedGuestCapacity)):0;
   const includedAdultCount = selectedRoom ? selectedRoom.baseCapacity * roomQuantity : 0;
   const extraAdultCount = Math.max(0, adultCount - includedAdultCount);
   const extraChildCount = Math.max(0,childCount-Math.max(0,includedAdultCount-adultCount));
@@ -977,7 +974,7 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
                       value={adultCount}
                       onChange={(e) => { setAdultCount(Number(e.target.value)); setBookingError(''); }}
                     >
-                      {Array.from({ length: Math.max(1,Math.min(allowedAdultCapacity,allowedGuestCapacity-childCount)) }, (_, i) => i + 1).map((value) => (
+                      {Array.from({ length: Math.max(1,allowedGuestCapacity-childCount) }, (_, i) => i + 1).map((value) => (
                         <option key={value}>{value}</option>
                       ))}
                     </select>
@@ -988,7 +985,7 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
                       value={childCount}
                       onChange={(e) => { setChildCount(Number(e.target.value)); setBookingError(''); }}
                     >
-                      {Array.from({ length: allowedChildCapacity+1 }, (_, i) => i).map((value) => (
+                      {Array.from({ length: Math.max(0,allowedGuestCapacity-adultCount)+1 }, (_, i) => i).map((value) => (
                         <option key={value}>{value}</option>
                       ))}
                     </select>
@@ -1001,8 +998,7 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
                         const quantity = Number(e.target.value);
                         setRoomQuantity(quantity);
                         const allowed = (selectedRoom.extraGuestAllowed ? selectedRoom.maxCapacity : selectedRoom.baseCapacity) * quantity;
-                        const adultAllowed = Math.min(allowed, selectedRoom.maxAdults > 0 ? selectedRoom.maxAdults * quantity : allowed);
-                        setAdultCount((value) => Math.max(1,Math.min(value, adultAllowed)));
+                        setAdultCount((value) => Math.max(1,Math.min(value, allowed)));
                         setChildCount(0);
                         setBookingError('');
                       }}
@@ -1014,9 +1010,7 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
                   </label>
                 </div>
                 <small className="capacity-note">
-                  Giá gồm {selectedRoom.baseCapacity} khách/phòng; tối đa {selectedRoom.extraGuestAllowed?selectedRoom.maxCapacity:selectedRoom.baseCapacity} khách/phòng
-                  {selectedRoom.maxAdults>0?`, ${selectedRoom.maxAdults} người lớn`:''}{selectedRoom.maxChildren>0?`, ${selectedRoom.maxChildren} trẻ em`:''}
-                  {selectedRoom.extraGuestAllowed&&selectedRoom.maxCapacity>selectedRoom.baseCapacity?`. Phụ thu: người lớn ${money(selectedRoom.extraGuestFee)}, trẻ em 0–${selectedRoom.childMaxAge??11} tuổi ${money(selectedRoom.extraChildFee)}/đêm`:''}.
+                  Giá gồm {selectedRoom.baseCapacity} khách/phòng{selectedRoom.extraGuestAllowed&&selectedRoom.maxCapacity>selectedRoom.baseCapacity?`; tối đa ${selectedRoom.maxCapacity} khách. Phụ thu: người lớn ${money(selectedRoom.extraGuestFee)}, trẻ em 0–${selectedRoom.childMaxAge??11} tuổi ${money(selectedRoom.extraChildFee)}/đêm`:''}.
                 </small>
                 {bookingNights > 0 && (
                   <div className="booking-price-breakdown">

@@ -24,10 +24,10 @@ Check(BookingRules.ValidateDates(today.AddDays(1), today.AddDays(2), today) is n
 Check(BookingRules.ValidateDates(today, today, today) is not null, "zero-night stay rejected");
 Check(BookingRules.ValidateGuests(2, 1, 1) is null, "valid guests");
 Check(BookingRules.ValidateGuests(0, 1, 1) is not null, "adult required");
-Check(BookingRules.ValidateCapacity(5, 2, 1, 5, 2, 7) is null, "adult, child, and total capacity accepted at limits");
-Check(BookingRules.ValidateCapacity(6, 1, 1, 5, 2, 7) == "Số người lớn vượt quá giới hạn của loại phòng.", "adult limit enforced even when total capacity fits");
-Check(BookingRules.ValidateCapacity(4, 3, 1, 5, 2, 7) == "Số trẻ em vượt quá giới hạn của loại phòng.", "child limit enforced even when total capacity fits");
-Check(BookingRules.ValidateCapacity(6, 2, 1, 7, 2, 7) == "Tổng số khách vượt quá sức chứa của phòng.", "total capacity enforced before category limits");
+Check(BookingRules.ValidateCapacity(5, 2, 1, 7) is null, "guest mix accepted at total capacity");
+Check(BookingRules.ValidateCapacity(6, 1, 1, 7) is null, "adult-heavy guest mix accepted when total capacity fits");
+Check(BookingRules.ValidateCapacity(4, 3, 1, 7) is null, "child-heavy guest mix accepted when total capacity fits");
+Check(BookingRules.ValidateCapacity(6, 2, 1, 7) == "Tổng số khách vượt quá sức chứa của phòng.", "total capacity enforced");
 Check(BookingRules.ExtraFee(5, 2, 2, 100000, 3) == 300000, "extra guest fee uses total guests and nights");
 var mixedGuestFees = BookingRules.ExtraGuestFees(3, 1, 2, 1, 150000, 100000, 2);
 Check(mixedGuestFees.ExtraAdults == 1 && mixedGuestFees.ExtraChildren == 1 && mixedGuestFees.Total == 500000, "adult and child surcharges share total capacity but use separate rates");

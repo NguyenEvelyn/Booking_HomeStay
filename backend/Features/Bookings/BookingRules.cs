@@ -23,14 +23,10 @@ public static class BookingRules
         adults < 1 || adults > 300 || children < 0 || children > 300 || quantity < 1 || quantity > 10
             ? "Số khách hoặc số phòng không hợp lệ." : null;
 
-    public static string? ValidateCapacity(int adults, int children, int quantity, int maxAdults, int maxChildren, int maxCapacity)
-    {
-        if (adults + children > maxCapacity * quantity) return "Tổng số khách vượt quá sức chứa của phòng.";
-        if (maxAdults > 0 && adults > maxAdults * quantity) return "Số người lớn vượt quá giới hạn của loại phòng.";
-        // MaxChildren = 0 is retained as a legacy value for room types created before child limits existed.
-        if (maxChildren > 0 && children > maxChildren * quantity) return "Số trẻ em vượt quá giới hạn của loại phòng.";
-        return null;
-    }
+    public static string? ValidateCapacity(int adults, int children, int quantity, int maxCapacity) =>
+        adults + children > maxCapacity * quantity
+            ? "Tổng số khách vượt quá sức chứa của phòng."
+            : null;
 
     public static decimal ExtraFee(int guests, int baseCapacity, int quantity, decimal fee, int nights) =>
         Math.Max(0, guests - baseCapacity * quantity) * fee * nights;
