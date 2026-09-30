@@ -32,6 +32,7 @@ export const homestayApi = {
   hostCustomerDetail: id => apiClient(`/host/customers/${id}`),
   saveHostCustomerNote: (id,note) => apiClient(`/host/customers/${id}/note`, { method: 'PUT', body: JSON.stringify({note}) }),
   roomTypeDetail: (id) => apiClient(`/room-types/${id}`),
+  roomCalendar: (id, months = 6) => apiClient(`/room-types/${id}/calendar?months=${months}`),
   hostList: () => apiClient('/host/homestays'),
   hostOverview: () => apiClient('/host/homestays/overview'),
   hostBookings: () => apiClient('/host/homestays/bookings'),
