@@ -5,6 +5,7 @@ import CustomerNav from '../../../shared/components/CustomerNav.jsx';
 import GuestPickerDropdown from '../../../shared/components/GuestPickerDropdown.jsx';
 import { freshImageUrl } from '../../../shared/utils/freshImageUrl.js';
 import { bookingApi } from '../../bookings/api/bookingApi.js';
+import HomestayPolicyModal from './HomestayPolicyModal.jsx';
 import pineHomestayImage from '../../../../assets/f6cd6879081dc8e8d4ff18669308ea86.jpg';
 import azureHomestayImage from '../../../../assets/ecf184f6b6cd2b6e2aa898ff3195ab7e.jpg';
 import sunsetHomestayImage from '../../../../assets/2fc6b619bb0af3dc94971c099d25bbae.jpg';
@@ -123,6 +124,7 @@ function Icon({ name, size = 16, className = '', color = 'currentColor', fill = 
     sparkles: (
       <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z" />
     ),
+    check: <polyline points="20 6 9 17 4 12" />,
     chevronRight: <polyline points="9 18 15 12 9 6" />,
     chevronLeft: <polyline points="15 18 9 12 15 6" />,
     x: (
@@ -196,11 +198,12 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
   const [showPaymentPage, setShowPaymentPage] = useState(false);
   const [bookingBusy, setBookingBusy] = useState(false);
   const [bookingError, setBookingError] = useState('');
-  const [dateAvailability, setDateAvailability] = useState(null);
   const [roomCalendarData, setRoomCalendarData] = useState(null);
-  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(() => !(initialSearch?.checkIn && initialSearch?.checkOut));
   const [calendarMonth, setCalendarMonth] = useState(() => new Date());
   const [calendarLoading, setCalendarLoading] = useState(false);
+  const [calendarHoverDate, setCalendarHoverDate] = useState(null);
+  const [dateAvailability, setDateAvailability] = useState(null);
   const [reviews, setReviews] = useState({ average: 0, total: 0, distribution: [], items: [] });
   const [reviewForm, setReviewForm] = useState({ bookingId: '', rating: 5, comment: '' });
   const [reviewBookings, setReviewBookings] = useState([]);
@@ -243,6 +246,9 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
     });
   };
 
+  const [policies, setPolicies] = useState(null);
+  const [showAllPolicies, setShowAllPolicies] = useState(false);
+
   useEffect(() => {
     window.scrollTo(0, 0);
     setError('');
@@ -254,6 +260,10 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
         return fresh ? { ...current, ...fresh } : null;
       });
     }).catch((e) => setError(e.message));
+
+    homestayApi.effectivePolicies(id)
+      .then(setPolicies)
+      .catch((err) => console.warn('Could not load effective policies:', err));
   }, [id, refreshKey]);
 
   // Track recommendation view event
@@ -313,24 +323,47 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
   }, [galleryModalOpen]);
 
   useEffect(() => {
+    if (!selectedRoom?.id) {
+      setRoomCalendarData(null);
+      return;
+    }
+    let isMounted = true;
+    setCalendarLoading(true);
+    homestayApi.roomCalendar(selectedRoom.id, 6)
+      .then((res) => {
+        if (isMounted) {
+          setRoomCalendarData(res);
+          setCalendarLoading(false);
+        }
+      })
+      .catch((err) => {
+        console.error('Lỗi khi tải lịch phòng:', err);
+        if (isMounted) setCalendarLoading(false);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedRoom?.id]);
+
+  useEffect(() => {
     if (!arrival || !departure || departure <= arrival) {
       setDateAvailability(null);
       return undefined;
     }
     let active = true;
-    homestayApi.availability(id,{checkIn:arrival,checkOut:departure,guests:1,rooms:1}).then(result=>{
-      if(!active)return;
+    homestayApi.availability(id, { checkIn: arrival, checkOut: departure, guests: 1, rooms: 1 }).then((result) => {
+      if (!active) return;
       setDateAvailability(Object.fromEntries(
         (result.items || []).map((item) => [item.roomTypeId, item.availableRooms || 0])
       ));
-    }).catch(availabilityError=>{
-      if(active){
+    }).catch((availabilityError) => {
+      if (active) {
         setDateAvailability(null);
         setBookingError(availabilityError.message);
       }
     });
-    return()=>{active=false};
-  },[id,arrival,departure,refreshKey]);
+    return () => { active = false; };
+  }, [id, arrival, departure, refreshKey]);
 
   useEffect(() => {
     if (!selectedRoom?.id || !arrival || !departure || departure <= arrival) {
@@ -514,10 +547,106 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
     setSelectedRoom(room); setShowPaymentPage(false); setActiveRoomImage(0); setRoomQuantity(availableQuantity); setCalendarOpen(true);
     setAdultCount((value) => Math.max(1, Math.min(value, capacityPerRoom * availableQuantity)));
     setChildCount(0);
+    setCalendarOpen(!(arrival && departure));
+    setCalendarMonth(new Date());
+    setBookingError('');
     window.setTimeout(() => document.getElementById('room-detail-inline')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
     try { const detail = await homestayApi.roomTypeDetail(room.id); setSelectedRoom((current) => current?.id === room.id ? { ...current, ...detail, availableRoomCount: current.availableRoomCount } : current); } catch { /* giữ dữ liệu danh sách nếu tải gallery thất bại */ }
   };
   const closeRoomDetail = () => { setSelectedRoom(null); setShowPaymentPage(false); window.setTimeout(() => document.querySelector('.rooms-section')?.scrollIntoView({ behavior: 'smooth' }), 0); };
+
+  const todayStr = toDateStr(new Date());
+  const isPast = (dateStr) => Boolean(dateStr && dateStr < todayStr);
+  const isBooked = (dateStr) => {
+    if (!dateStr || isPast(dateStr)) return false;
+    if (!roomCalendarData) return false;
+    return (
+      (Array.isArray(roomCalendarData.bookedDates) && roomCalendarData.bookedDates.includes(dateStr)) ||
+      roomCalendarData.dailyStatus?.[dateStr]?.status === 'booked'
+    );
+  };
+  const isAvailable = (dateStr) => {
+    if (!dateStr || isPast(dateStr)) return false;
+    if (isBooked(dateStr)) return false;
+    return true;
+  };
+
+  const handleCalendarDateClick = (dateStr) => {
+    if (!dateStr || isPast(dateStr)) return;
+    if (isBooked(dateStr)) {
+      setBookingError(`Ngày ${formatDateVN(dateStr)} phòng này đã kín/được đặt trước. Vui lòng chọn ngày khác.`);
+      return;
+    }
+    setBookingError('');
+    if (!arrival || (arrival && departure)) {
+      setArrival(dateStr);
+      setDeparture('');
+      return;
+    }
+    if (arrival && !departure) {
+      if (dateStr <= arrival) {
+        setArrival(dateStr);
+        setDeparture('');
+        return;
+      }
+      let cur = new Date(arrival);
+      const end = new Date(dateStr);
+      let hasBlocked = false;
+      let conflictDate = '';
+      while (cur < end) {
+        const curStr = toDateStr(cur);
+        if (isBooked(curStr)) {
+          hasBlocked = true;
+          conflictDate = curStr;
+          break;
+        }
+        cur.setDate(cur.getDate() + 1);
+      }
+      if (hasBlocked) {
+        setBookingError(`Không thể chọn khoảng này vì ngày ${formatDateVN(conflictDate)} phòng đã có người đặt trước.`);
+        return;
+      }
+      setDeparture(dateStr);
+      setCalendarOpen(false);
+    }
+  };
+
+  const handleClearDates = () => {
+    setArrival('');
+    setDeparture('');
+    setBookingError('');
+  };
+
+  const handlePrevMonth = () => {
+    const today = new Date();
+    const currentFirst = new Date(today.getFullYear(), today.getMonth(), 1);
+    const target = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1);
+    if (target >= currentFirst) {
+      setCalendarMonth(target);
+    }
+  };
+
+  const handleNextMonth = () => {
+    const maxMonth = new Date();
+    maxMonth.setMonth(maxMonth.getMonth() + 6);
+    const target = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1);
+    if (target <= maxMonth) {
+      setCalendarMonth(target);
+    }
+  };
+
+  const isPrevMonthDisabled = () => {
+    const today = new Date();
+    return (
+      calendarMonth.getFullYear() === today.getFullYear() &&
+      calendarMonth.getMonth() === today.getMonth()
+    );
+  };
+
+  const calendarDays = getCalendarMonthDays(
+    calendarMonth.getFullYear(),
+    calendarMonth.getMonth()
+  );
   const bookingNights = arrival && departure ? Math.max(0, Math.round((new Date(departure) - new Date(arrival)) / 86400000)) : 0;
   const allowedGuestCapacity=selectedRoom?(selectedRoom.extraGuestAllowed?selectedRoom.maxCapacity:selectedRoom.baseCapacity)*roomQuantity:1;
   const includedAdultCount = selectedRoom ? selectedRoom.baseCapacity * roomQuantity : 0;
@@ -976,47 +1105,102 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
               </div>
             </div>
             <div className="room-page-layout">
-              <article className="room-page-info">
-                <div className="room-page-facts">
-                  <span>
-                    <Icon name="user" size={14} />
+              <article className="room-page-info modern-room-info">
+                <div className="room-facts-pills">
+                  <span className="room-fact-pill">
+                    <Icon name="user" size={15} color="#0b4ae6" />
                     Tối đa {selectedRoom.extraGuestAllowed ? selectedRoom.maxCapacity : selectedRoom.baseCapacity} khách
                   </span>
-                  <span>
-                    <Icon name="bed" size={14} />
+                  <span className="room-fact-pill">
+                    <Icon name="bed" size={15} color="#0b4ae6" />
                     {selectedRoom.bedType}
                   </span>
-                  <span>
-                    <Icon name="maximize" size={14} />
+                  <span className="room-fact-pill">
+                    <Icon name="maximize" size={15} color="#0b4ae6" />
                     {selectedRoom.roomSize || '—'} m²
                   </span>
                 </div>
-                <p>
-                  {selectedRoom.description} Không gian được thiết kế ấm cúng, nhiều ánh sáng tự nhiên và đầy đủ tiện nghi cho một kỳ nghỉ thoải mái.
+
+                <p className="room-info-desc">
+                  {selectedRoom.description || 'Không gian được thiết kế ấm cúng, nhiều ánh sáng tự nhiên và đầy đủ tiện nghi cho một kỳ nghỉ thoải mái.'}
                 </p>
-                <hr />
-                <h2>Tiện nghi trong phòng</h2>
-                <ul className="room-page-amenities">
-                  <li>WiFi tốc độ cao miễn phí</li>
-                  <li>Máy điều hòa</li>
-                  <li>Phòng tắm riêng &amp; nước nóng</li>
-                  <li>TV màn hình phẳng</li>
-                  <li>Ấm đun nước và minibar</li>
-                  <li>{selectedRoom.name.toLowerCase().includes('ban công') ? 'Ban công riêng, nhìn ra thành phố' : 'Dọn phòng hằng ngày'}</li>
-                </ul>
-                <hr />
-                <h2>Chính sách phòng</h2>
-                <div className="room-page-policy">
-                  <p><b>Nhận phòng</b><span>Từ {data.checkInTime.slice(0, 5)}</span></p>
-                  <p><b>Trả phòng</b><span>Trước {data.checkOutTime.slice(0, 5)}</span></p>
-                  <p><b>Hủy phòng</b><span>Miễn phí trước 7 ngày</span></p>
+
+                <hr className="room-info-sep" />
+
+                <div className="room-amenities-block">
+                  <h3 className="room-block-title">Tiện nghi trong phòng</h3>
+                  <ul className="room-amenities-checklist">
+                    <li>
+                      <i className="amenity-icon-check"><Icon name="check" size={14} color="#10b981" /></i>
+                      <span>WiFi tốc độ cao miễn phí</span>
+                    </li>
+                    <li>
+                      <i className="amenity-icon-check"><Icon name="check" size={14} color="#10b981" /></i>
+                      <span>Máy điều hòa 2 chiều</span>
+                    </li>
+                    <li>
+                      <i className="amenity-icon-check"><Icon name="check" size={14} color="#10b981" /></i>
+                      <span>Phòng tắm riêng &amp; nước nóng</span>
+                    </li>
+                    <li>
+                      <i className="amenity-icon-check"><Icon name="check" size={14} color="#10b981" /></i>
+                      <span>TV thông minh màn hình phẳng</span>
+                    </li>
+                    <li>
+                      <i className="amenity-icon-check"><Icon name="check" size={14} color="#10b981" /></i>
+                      <span>Ấm đun siêu tốc &amp; minibar</span>
+                    </li>
+                    <li>
+                      <i className="amenity-icon-check"><Icon name="check" size={14} color="#10b981" /></i>
+                      <span>{selectedRoom.name.toLowerCase().includes('ban công') ? 'Ban công riêng, ngắm cảnh ngoài trời' : 'Dọn phòng & khăn sạch hằng ngày'}</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <hr className="room-info-sep" />
+
+                <div className="room-policy-block">
+                  <h3 className="room-block-title">Chính sách phòng</h3>
+                  <div className="room-policy-cards-grid">
+                    <div className="room-policy-mini-card">
+                      <span className="mini-card-label">Nhận phòng</span>
+                      <strong className="mini-card-val">Từ {data.checkInTime ? data.checkInTime.slice(0, 5) : '14:00'}</strong>
+                      <small className="mini-card-sub">Nhận phòng linh hoạt</small>
+                    </div>
+                    <div className="room-policy-mini-card">
+                      <span className="mini-card-label">Trả phòng</span>
+                      <strong className="mini-card-val">Trước {data.checkOutTime ? data.checkOutTime.slice(0, 5) : '12:00'}</strong>
+                      <small className="mini-card-sub">Bàn giao phòng</small>
+                    </div>
+                    <div className="room-policy-mini-card highlight-green">
+                      <span className="mini-card-label">Hủy phòng</span>
+                      <strong className="mini-card-val">Miễn phí trước 7 ngày</strong>
+                      <small className="mini-card-sub">Hoàn tiền 100%</small>
+                    </div>
+                  </div>
                 </div>
               </article>
-              <aside className="room-page-booking">
-                <small>GIÁ PHÒNG</small>
-                <div>
-                  <strong>{money(selectedRoom.basePrice)}</strong>
-                  <span>/ phòng / đêm</span>
+
+              <aside className="room-page-booking modern-booking-card">
+                <div className="booking-card-top-bar">
+                  <span className="booking-gold-badge">GIÁ PHÒNG</span>
+                  <div className="booking-rate-display">
+                    <strong className="booking-price-number">{money(selectedRoom.basePrice)}</strong>
+                    <span className="booking-price-period">/ phòng / đêm</span>
+                  </div>
+                  <div className={`booking-stock-pill ${selectedRoom.availableRoomCount > 0 ? 'is-in-stock' : 'is-sold-out'}`}>
+                    {selectedRoom.availableRoomCount > 0 ? (
+                      <>
+                        <Icon name="check" size={13} color="#15803d" />
+                        <span>{selectedRoom.availableRoomCount} phòng đang còn trống</span>
+                      </>
+                    ) : (
+                      <>
+                        <Icon name="x" size={13} color="#b91c1c" />
+                        <span>Tạm hết phòng này</span>
+                      </>
+                    )}
+                  </div>
                 </div>
                 <p>{selectedRoomAvailableCount === null
                   ? 'Chọn ngày nhận và trả để kiểm tra phòng trống'
@@ -1086,9 +1270,14 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
                     </select>
                   </label>
                 </div>
-                <small className="capacity-note">
-                  Giá gồm {selectedRoom.baseCapacity} khách/phòng{selectedRoom.extraGuestAllowed&&selectedRoom.maxCapacity>selectedRoom.baseCapacity?`; tối đa ${selectedRoom.maxCapacity} khách. Phụ thu: người lớn ${money(selectedRoom.extraGuestFee)}, trẻ em 0–${selectedRoom.childMaxAge??11} tuổi ${money(selectedRoom.extraChildFee)}/đêm`:''}.
-                </small>
+
+                <div className="booking-capacity-note">
+                  <small>
+                    * Giá gồm {selectedRoom.baseCapacity} khách/phòng{selectedRoom.extraGuestAllowed && selectedRoom.maxCapacity > selectedRoom.baseCapacity ? `; tối đa ${selectedRoom.maxCapacity} khách. Phụ thu: người lớn ${money(selectedRoom.extraGuestFee)}, trẻ em 0–${selectedRoom.childMaxAge ?? 11} tuổi ${money(selectedRoom.extraChildFee)}/đêm` : ''}.
+                  </small>
+                </div>
+
+                {/* Bảng chi tiết giá khi đã chọn số đêm */}
                 {bookingNights > 0 && (
                   <div className="booking-price-breakdown">
                     <div><span>Tiền phòng</span><strong>{money(quotedRoomTotal)}</strong></div>
@@ -1098,65 +1287,135 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
                     <div className="booking-total"><span>Tổng cộng</span><strong>{money(quotedGrandTotal)}</strong></div>
                   </div>
                 )}
-                {bookingError && <div className="booking-error">{bookingError}</div>}
+
+                {bookingError && (
+                  <div className="booking-alert-box">
+                    <Icon name="x" size={16} color="#dc2626" />
+                    <span>{bookingError}</span>
+                  </div>
+                )}
+
                 <button
                   type="button"
-                  disabled={!hasValidStayDates || selectedRoomAvailableCount === 0}
+                  className="booking-submit-action-btn"
+                  disabled={!hasValidStayDates || selectedRoomAvailableCount === 0 || bookingBusy}
                   onClick={openPaymentPage}
                 >
-                  {!hasValidStayDates
+                  {bookingBusy
+                    ? 'Đang kiểm tra...'
+                    : !hasValidStayDates
                     ? 'Chọn ngày để kiểm tra'
                     : (selectedRoomAvailableCount > 0 ? 'Đến trang thanh toán →' : 'Phòng đã hết trong ngày đã chọn')}
                 </button>
-                <em>Chưa phát sinh giao dịch ở bước này</em>
+                <div className="booking-security-badge">
+                  <Icon name="shield" size={13} color="#15803d" />
+                  <span>Chưa phát sinh giao dịch ở bước này · Yên tâm đặt phòng</span>
+                </div>
               </aside>
             </div>
           </section>
         )}
 
-        <section id="policy" className="detail-box policy-section">
-          <header className="section-title">
-            <small>THÔNG TIN CẦN BIẾT</small>
-            <h2>Chính sách homestay</h2>
-          </header>
-          <div className="policy-grid">
-            <article>
-              <i><Icon name="clock" size={24} /></i>
-              <div>
-                <b>Nhận phòng</b>
-                <strong>Từ {data.checkInTime.slice(0, 5)}</strong>
-                <small>Vui lòng xuất trình giấy tờ tùy thân</small>
+        {/* Dynamic Homestay Policy Section */}
+        {(() => {
+          const policyDoc = policies?.document;
+          const policyCheckIn = policyDoc?.checkInOut?.checkInTime
+            ? policyDoc.checkInOut.checkInTime.slice(0, 5)
+            : data.checkInTime.slice(0, 5);
+          const policyCheckOut = policyDoc?.checkInOut?.checkOutTime
+            ? policyDoc.checkInOut.checkOutTime.slice(0, 5)
+            : data.checkOutTime.slice(0, 5);
+
+          const cancellationTiers = policies?.cancellationTiers || [];
+          const fullRefundTier = cancellationTiers.find((t) => t.refundPercent >= 100);
+          const topRefundTier = cancellationTiers.length > 0
+            ? [...cancellationTiers].sort((a, b) => b.refundPercent - a.refundPercent)[0]
+            : null;
+
+          let cancelHighlight = 'Hủy phòng linh hoạt theo mốc';
+          let cancelSubtitle = 'Xem chi tiết các mốc hoàn tiền';
+          if (fullRefundTier) {
+            cancelHighlight = `Hoàn 100% trước ${fullRefundTier.minimumDays} ngày`;
+            cancelSubtitle = cancellationTiers.length > 1 ? `Có ${cancellationTiers.length} mốc hoàn tiền linh hoạt` : 'Miễn phí hủy phòng';
+          } else if (topRefundTier && topRefundTier.refundPercent > 0) {
+            cancelHighlight = `Hoàn ${topRefundTier.refundPercent}% trước ${topRefundTier.minimumDays} ngày`;
+            cancelSubtitle = `Xử lý hoàn tiền trong 3–15 ngày làm việc`;
+          }
+
+          const houseRules = policyDoc?.houseRules;
+          const quietTime = houseRules?.quietHoursFrom
+            ? `Giữ yên tĩnh ${houseRules.quietHoursFrom.slice(0, 5)} - ${houseRules.quietHoursTo.slice(0, 5)}`
+            : 'Giữ yên tĩnh sau 22:00';
+          const smokingRule = houseRules?.smokingInRoomAllowed
+            ? 'Cho phép hút thuốc (khu vực quy định)'
+            : 'Không hút thuốc trong phòng';
+          const petRule = policyDoc?.pets?.allowed
+            ? `Cho phép thú cưng (phụ phí ${money(policyDoc.pets.feePerNight || 150000)}/đêm)`
+            : 'Không mang theo thú cưng';
+
+          return (
+            <section id="policy" className="detail-box policy-section">
+              <header className="section-title policy-header">
+                <div>
+                  <small>THÔNG TIN CẦN BIẾT</small>
+                  <h2>Chính sách homestay</h2>
+                </div>
+                <button
+                  type="button"
+                  className="btn-policy-modal-trigger"
+                  onClick={() => setShowAllPolicies(true)}
+                >
+                  Xem tất cả chính sách →
+                </button>
+              </header>
+              <div className="policy-grid">
+                <article>
+                  <i><Icon name="clock" size={24} /></i>
+                  <div>
+                    <b>Nhận phòng</b>
+                    <strong>Từ {policyCheckIn}</strong>
+                    <small>
+                      {policyDoc?.checkInOut?.earlyCheckInTiers?.some((t) => t.percent === 0)
+                        ? 'Hỗ trợ check-in sớm miễn phí (tùy phòng)'
+                        : 'Vui lòng xuất trình giấy tờ tùy thân'}
+                    </small>
+                  </div>
+                </article>
+                <article>
+                  <i><Icon name="clock" size={24} /></i>
+                  <div>
+                    <b>Trả phòng</b>
+                    <strong>Trước {policyCheckOut}</strong>
+                    <small>
+                      {houseRules?.freeLuggageStorageHoursAfterCheckout
+                        ? `Gửi hành lý miễn phí ${houseRules.freeLuggageStorageHoursAfterCheckout}h sau trả phòng`
+                        : 'Hỗ trợ trả phòng linh hoạt (khi có thể)'}
+                    </small>
+                  </div>
+                </article>
+                <article>
+                  <i><Icon name="fileText" size={24} /></i>
+                  <div>
+                    <b>Hủy phòng & Hoàn tiền</b>
+                    <strong>{cancelHighlight}</strong>
+                    <small>{cancelSubtitle}</small>
+                  </div>
+                </article>
+                <article>
+                  <i><Icon name="shield" size={24} /></i>
+                  <div>
+                    <b>Quy định chung</b>
+                    <ul>
+                      <li>{smokingRule}</li>
+                      <li>{petRule}</li>
+                      <li>{quietTime}</li>
+                    </ul>
+                  </div>
+                </article>
               </div>
-            </article>
-            <article>
-              <i><Icon name="clock" size={24} /></i>
-              <div>
-                <b>Trả phòng</b>
-                <strong>Trước {data.checkOutTime.slice(0, 5)}</strong>
-                <small>Hỗ trợ trả phòng linh hoạt (khi có thể)</small>
-              </div>
-            </article>
-            <article>
-              <i><Icon name="fileText" size={24} /></i>
-              <div>
-                <b>Hủy phòng</b>
-                <strong>Miễn phí hủy trước 7 ngày</strong>
-                <small>Các trường hợp khác tùy theo điều kiện đặt phòng</small>
-              </div>
-            </article>
-            <article>
-              <i><Icon name="shield" size={24} /></i>
-              <div>
-                <b>Quy định chung</b>
-                <ul>
-                  <li>Không hút thuốc trong phòng</li>
-                  <li>Không mang thú cưng</li>
-                  <li>Giữ yên tĩnh sau 22:00</li>
-                </ul>
-              </div>
-            </article>
-          </div>
-        </section>
+            </section>
+          );
+        })()}
 
         <section id="reviews" className="detail-box review-section">
           <header className="section-title review-title">
@@ -1321,6 +1580,16 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
           </div>
         </div>
       )}
+
+      {/* Modal chi tiết đầy đủ chính sách homestay */}
+      <HomestayPolicyModal
+        isOpen={showAllPolicies}
+        onClose={() => setShowAllPolicies(false)}
+        homestayName={data?.name}
+        policies={policies}
+        defaultCheckIn={data?.checkInTime}
+        defaultCheckOut={data?.checkOutTime}
+      />
     </main>
   );
 }

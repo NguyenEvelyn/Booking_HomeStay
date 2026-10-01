@@ -14,6 +14,8 @@ public sealed record OperationalPolicyDocument
     public AssetPolicy Assets { get; init; } = new();
     public HouseRulesPolicy HouseRules { get; init; } = new();
     public PromotionPolicy Promotions { get; init; } = new();
+    public MinibarPolicy Minibar { get; init; } = new();
+    public ServiceCatalogPolicy Services { get; init; } = new();
     public IReadOnlyList<SeasonalSurchargeRule> SeasonalSurcharges { get; init; } = DefaultSeasonalSurcharges();
 
     public static OperationalPolicyDocument SunriseGardenDefault() => new();
@@ -33,6 +35,12 @@ public sealed record CheckInOutPolicy
         new() { From = new(0, 0), To = new(6, 0), Percent = 100 },
         new() { From = new(6, 0), To = new(10, 0), Percent = 50 },
         new() { From = new(10, 0), To = new(14, 0), Percent = 0 }
+    ];
+    public IReadOnlyList<TimeFeeTier> LateCheckOutTiers { get; init; } =
+    [
+        new() { From = new(12, 0), To = new(15, 0), Percent = 30 },
+        new() { From = new(15, 0), To = new(18, 0), Percent = 50 },
+        new() { From = new(18, 0), To = new(23, 59), Percent = 100 }
     ];
 }
 
@@ -142,6 +150,60 @@ public sealed record AssetPolicy
     public decimal TowelReplacement { get; init; } = 150_000;
     public decimal TvRemoteReplacement { get; init; } = 300_000;
     public decimal KeyReplacement { get; init; } = 200_000;
+    public IReadOnlyList<AssetCompensationItemPolicy> Items { get; init; } =
+    [
+        new() { Name = "Mất / hỏng Chìa khóa / Thẻ từ", UnitPrice = 200_000 },
+        new() { Name = "Mất / hỏng Điều khiển TV / Máy lạnh", UnitPrice = 300_000 },
+        new() { Name = "Làm ố bẩn / hỏng Khăn tắm, khăn mặt", UnitPrice = 150_000 },
+        new() { Name = "Làm vỡ ly, cốc thủy tinh / tách gốm", UnitPrice = 50_000 },
+        new() { Name = "Bẩn ga trải giường / nệm cần giặt tẩy", UnitPrice = 250_000 }
+    ];
+}
+
+public sealed record AssetCompensationItemPolicy
+{
+    public string Name { get; init; } = "";
+    public decimal UnitPrice { get; init; }
+}
+
+public sealed record MinibarPolicy
+{
+    public bool Enabled { get; init; } = true;
+    public IReadOnlyList<MinibarItemPolicy> Items { get; init; } =
+    [
+        new() { Name = "Nước suối Aquafina/Lavie (500ml)", UnitPrice = 15_000 },
+        new() { Name = "Coca Cola / Pepsi / 7Up (Lon)", UnitPrice = 20_000 },
+        new() { Name = "Bia lon Heineken / Tiger", UnitPrice = 30_000 },
+        new() { Name = "Mì ly ăn liền", UnitPrice = 25_000 },
+        new() { Name = "Snack khoai tây / Hạt điều", UnitPrice = 20_000 }
+    ];
+}
+
+public sealed record MinibarItemPolicy
+{
+    public string Name { get; init; } = "";
+    public decimal UnitPrice { get; init; }
+}
+
+public sealed record ServiceCatalogPolicy
+{
+    public bool Enabled { get; init; } = true;
+    public IReadOnlyList<ServiceCatalogItemPolicy> Items { get; init; } =
+    [
+        new() { Name = "Bữa sáng buffet / Alacarte", UnitPrice = 100_000, Unit = "suất" },
+        new() { Name = "Thuê xe máy tay ga (AirBlade/Vision)", UnitPrice = 160_000, Unit = "ngày" },
+        new() { Name = "Thuê xe máy số (Wave/Sirius)", UnitPrice = 120_000, Unit = "ngày" },
+        new() { Name = "Đưa đón sân bay (1 chiều)", UnitPrice = 300_000, Unit = "chuyến" },
+        new() { Name = "Bếp nướng BBQ & than hoa ngoài trời", UnitPrice = 200_000, Unit = "lần" },
+        new() { Name = "Giặt sấy quần áo nhanh", UnitPrice = 50_000, Unit = "kg" }
+    ];
+}
+
+public sealed record ServiceCatalogItemPolicy
+{
+    public string Name { get; init; } = "";
+    public decimal UnitPrice { get; init; }
+    public string Unit { get; init; } = "lượt";
 }
 
 public sealed record HouseRulesPolicy
@@ -177,3 +239,4 @@ public sealed record SeasonalSurchargeRule
     public IReadOnlyList<DayOfWeek> DaysOfWeek { get; init; } = [];
     public bool RequiresHolidayDeposit { get; init; }
 }
+
