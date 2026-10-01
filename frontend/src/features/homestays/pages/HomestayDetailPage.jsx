@@ -5,6 +5,7 @@ import CustomerNav from '../../../shared/components/CustomerNav.jsx';
 import GuestPickerDropdown from '../../../shared/components/GuestPickerDropdown.jsx';
 import { freshImageUrl } from '../../../shared/utils/freshImageUrl.js';
 import { bookingApi } from '../../bookings/api/bookingApi.js';
+import HomestayPolicyModal from './HomestayPolicyModal.jsx';
 import pineHomestayImage from '../../../../assets/f6cd6879081dc8e8d4ff18669308ea86.jpg';
 import azureHomestayImage from '../../../../assets/ecf184f6b6cd2b6e2aa898ff3195ab7e.jpg';
 import sunsetHomestayImage from '../../../../assets/2fc6b619bb0af3dc94971c099d25bbae.jpg';
@@ -300,6 +301,9 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
     });
   };
 
+  const [policies, setPolicies] = useState(null);
+  const [showAllPolicies, setShowAllPolicies] = useState(false);
+
   useEffect(() => {
     window.scrollTo(0, 0);
     setError('');
@@ -311,6 +315,10 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
         return fresh ? { ...current, ...fresh } : null;
       });
     }).catch((e) => setError(e.message));
+
+    homestayApi.effectivePolicies(id)
+      .then(setPolicies)
+      .catch((err) => console.warn('Could not load effective policies:', err));
   }, [id, refreshKey]);
 
   // Track recommendation view event
@@ -1472,49 +1480,106 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
           </section>
         )}
 
-        <section id="policy" className="detail-box policy-section">
-          <header className="section-title">
-            <small>THÔNG TIN CẦN BIẾT</small>
-            <h2>Chính sách homestay</h2>
-          </header>
-          <div className="policy-grid">
-            <article>
-              <i><Icon name="clock" size={24} /></i>
-              <div>
-                <b>Nhận phòng</b>
-                <strong>Từ {data.checkInTime.slice(0, 5)}</strong>
-                <small>Vui lòng xuất trình giấy tờ tùy thân</small>
+        {/* Dynamic Homestay Policy Section */}
+        {(() => {
+          const policyDoc = policies?.document;
+          const policyCheckIn = policyDoc?.checkInOut?.checkInTime
+            ? policyDoc.checkInOut.checkInTime.slice(0, 5)
+            : data.checkInTime.slice(0, 5);
+          const policyCheckOut = policyDoc?.checkInOut?.checkOutTime
+            ? policyDoc.checkInOut.checkOutTime.slice(0, 5)
+            : data.checkOutTime.slice(0, 5);
+
+          const cancellationTiers = policies?.cancellationTiers || [];
+          const fullRefundTier = cancellationTiers.find((t) => t.refundPercent >= 100);
+          const topRefundTier = cancellationTiers.length > 0
+            ? [...cancellationTiers].sort((a, b) => b.refundPercent - a.refundPercent)[0]
+            : null;
+
+          let cancelHighlight = 'Hủy phòng linh hoạt theo mốc';
+          let cancelSubtitle = 'Xem chi tiết các mốc hoàn tiền';
+          if (fullRefundTier) {
+            cancelHighlight = `Hoàn 100% trước ${fullRefundTier.minimumDays} ngày`;
+            cancelSubtitle = cancellationTiers.length > 1 ? `Có ${cancellationTiers.length} mốc hoàn tiền linh hoạt` : 'Miễn phí hủy phòng';
+          } else if (topRefundTier && topRefundTier.refundPercent > 0) {
+            cancelHighlight = `Hoàn ${topRefundTier.refundPercent}% trước ${topRefundTier.minimumDays} ngày`;
+            cancelSubtitle = `Xử lý hoàn tiền trong 3–15 ngày làm việc`;
+          }
+
+          const houseRules = policyDoc?.houseRules;
+          const quietTime = houseRules?.quietHoursFrom
+            ? `Giữ yên tĩnh ${houseRules.quietHoursFrom.slice(0, 5)} - ${houseRules.quietHoursTo.slice(0, 5)}`
+            : 'Giữ yên tĩnh sau 22:00';
+          const smokingRule = houseRules?.smokingInRoomAllowed
+            ? 'Cho phép hút thuốc (khu vực quy định)'
+            : 'Không hút thuốc trong phòng';
+          const petRule = policyDoc?.pets?.allowed
+            ? `Cho phép thú cưng (phụ phí ${money(policyDoc.pets.feePerNight || 150000)}/đêm)`
+            : 'Không mang theo thú cưng';
+
+          return (
+            <section id="policy" className="detail-box policy-section">
+              <header className="section-title policy-header">
+                <div>
+                  <small>THÔNG TIN CẦN BIẾT</small>
+                  <h2>Chính sách homestay</h2>
+                </div>
+                <button
+                  type="button"
+                  className="btn-policy-modal-trigger"
+                  onClick={() => setShowAllPolicies(true)}
+                >
+                  Xem tất cả chính sách →
+                </button>
+              </header>
+              <div className="policy-grid">
+                <article>
+                  <i><Icon name="clock" size={24} /></i>
+                  <div>
+                    <b>Nhận phòng</b>
+                    <strong>Từ {policyCheckIn}</strong>
+                    <small>
+                      {policyDoc?.checkInOut?.earlyCheckInTiers?.some((t) => t.percent === 0)
+                        ? 'Hỗ trợ check-in sớm miễn phí (tùy phòng)'
+                        : 'Vui lòng xuất trình giấy tờ tùy thân'}
+                    </small>
+                  </div>
+                </article>
+                <article>
+                  <i><Icon name="clock" size={24} /></i>
+                  <div>
+                    <b>Trả phòng</b>
+                    <strong>Trước {policyCheckOut}</strong>
+                    <small>
+                      {houseRules?.freeLuggageStorageHoursAfterCheckout
+                        ? `Gửi hành lý miễn phí ${houseRules.freeLuggageStorageHoursAfterCheckout}h sau trả phòng`
+                        : 'Hỗ trợ trả phòng linh hoạt (khi có thể)'}
+                    </small>
+                  </div>
+                </article>
+                <article>
+                  <i><Icon name="fileText" size={24} /></i>
+                  <div>
+                    <b>Hủy phòng & Hoàn tiền</b>
+                    <strong>{cancelHighlight}</strong>
+                    <small>{cancelSubtitle}</small>
+                  </div>
+                </article>
+                <article>
+                  <i><Icon name="shield" size={24} /></i>
+                  <div>
+                    <b>Quy định chung</b>
+                    <ul>
+                      <li>{smokingRule}</li>
+                      <li>{petRule}</li>
+                      <li>{quietTime}</li>
+                    </ul>
+                  </div>
+                </article>
               </div>
-            </article>
-            <article>
-              <i><Icon name="clock" size={24} /></i>
-              <div>
-                <b>Trả phòng</b>
-                <strong>Trước {data.checkOutTime.slice(0, 5)}</strong>
-                <small>Hỗ trợ trả phòng linh hoạt (khi có thể)</small>
-              </div>
-            </article>
-            <article>
-              <i><Icon name="fileText" size={24} /></i>
-              <div>
-                <b>Hủy phòng</b>
-                <strong>Miễn phí hủy trước 7 ngày</strong>
-                <small>Các trường hợp khác tùy theo điều kiện đặt phòng</small>
-              </div>
-            </article>
-            <article>
-              <i><Icon name="shield" size={24} /></i>
-              <div>
-                <b>Quy định chung</b>
-                <ul>
-                  <li>Không hút thuốc trong phòng</li>
-                  <li>Không mang thú cưng</li>
-                  <li>Giữ yên tĩnh sau 22:00</li>
-                </ul>
-              </div>
-            </article>
-          </div>
-        </section>
+            </section>
+          );
+        })()}
 
         <section id="reviews" className="detail-box review-section">
           <header className="section-title review-title">
@@ -1679,6 +1744,16 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
           </div>
         </div>
       )}
+
+      {/* Modal chi tiết đầy đủ chính sách homestay */}
+      <HomestayPolicyModal
+        isOpen={showAllPolicies}
+        onClose={() => setShowAllPolicies(false)}
+        homestayName={data?.name}
+        policies={policies}
+        defaultCheckIn={data?.checkInTime}
+        defaultCheckOut={data?.checkOutTime}
+      />
     </main>
   );
 }
