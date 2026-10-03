@@ -11,6 +11,7 @@ export const homestayApi = {
     return apiClient(`/homestays?${params}`);
   },
   detail: (id) => apiClient(`/homestays/${id}`),
+  effectivePolicies: (id) => apiClient(`/homestays/${id}/effective-policies`),
   availability: (id, { checkIn, checkOut, guests, rooms }) => apiClient(`/homestays/${id}/availability?${new URLSearchParams({ checkIn, checkOut, guests, rooms })}`),
   recommendations: ({ search = '', checkIn = '', checkOut = '', guests = 2, rooms = 1, totalBudget = '', amenities = [], roomType = '', minRating = 0, topK = 3 } = {}) => {
     const params = new URLSearchParams({ search, guests, rooms, roomType, minRating, topK, sessionId: recommendationSessionId() });
@@ -42,6 +43,19 @@ export const homestayApi = {
   updateBookingStatus: (id,status) => apiClient(`/host/homestays/bookings/${id}/status`, { method: 'PATCH', body: JSON.stringify({status}) }),
   markBookingViewed: (id) => apiClient(`/host/homestays/bookings/${id}/viewed`, { method: 'PATCH', body: JSON.stringify({}) }),
   updateBookingNote: (id,note) => apiClient(`/host/homestays/bookings/${id}/note`, { method: 'PATCH', body: JSON.stringify({note}) }),
+  adjustBookingTiming: (id, payload) => apiClient(`/host/homestays/bookings/${id}/adjust-timing`, { method: 'POST', body: JSON.stringify(payload) }),
+  checkInBooking: (id, payload) => apiClient(`/host/homestays/bookings/${id}/check-in`, { method: 'POST', body: JSON.stringify(payload) }),
+  extendStay: (id, payload) => apiClient(`/host/homestays/bookings/${id}/extend-stay`, { method: 'POST', body: JSON.stringify(payload) }),
+  calculateExtension: (id, payload) => apiClient(`/host/homestays/bookings/${id}/calculate-extension`, { method: 'POST', body: JSON.stringify(payload) }),
+  calculateDateChange: (id, payload) => apiClient(`/host/homestays/bookings/${id}/calculate-date-change`, { method: 'POST', body: JSON.stringify(payload) }),
+  changeBookingDates: (id, payload) => apiClient(`/host/homestays/bookings/${id}/change-dates`, { method: 'POST', body: JSON.stringify(payload) }),
+  calculateCancellation: (id) => apiClient(`/host/homestays/bookings/${id}/calculate-cancellation`, { method: 'POST' }),
+  cancelBooking: (id, payload) => apiClient(`/host/homestays/bookings/${id}/cancel`, { method: 'POST', body: JSON.stringify(payload) }),
+  addAdditionalCharge: (id, payload) => apiClient(`/host/homestays/bookings/${id}/additional-charges`, { method: 'POST', body: JSON.stringify(payload) }),
+  removeAdditionalCharge: (id, chargeId) => apiClient(`/host/homestays/bookings/${id}/additional-charges/${chargeId}`, { method: 'DELETE' }),
+  getAvailableRoomsForChange: (id) => apiClient(`/host/homestays/bookings/${id}/available-rooms`),
+  changeBookingRoom: (id, payload) => apiClient(`/host/homestays/bookings/${id}/change-room`, { method: 'POST', body: JSON.stringify(payload) }),
+  checkOutBooking: (id, payload) => apiClient(`/host/homestays/bookings/${id}/check-out`, { method: 'POST', body: JSON.stringify(payload) }),
   confirmOfflinePayment: (id,method) => apiClient(`/host/homestays/bookings/${id}/offline-payment`, { method: 'POST', body: JSON.stringify({method}) }),
   decideCancellation: (id,approve) => apiClient(`/host/homestays/bookings/${id}/cancellation`, { method: 'PATCH', body: JSON.stringify({approve}) }),
   hostRooms: () => apiClient('/host/homestays/rooms/manage'),

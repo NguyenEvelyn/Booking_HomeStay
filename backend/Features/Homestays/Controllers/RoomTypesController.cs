@@ -53,3 +53,4 @@ public sealed class RoomTypesController(IHomestayQueryService service, AppDbCont
         return Ok(new { roomTypeId, totalRooms, bookedDates, dailyStatus });
     }
 }
+
