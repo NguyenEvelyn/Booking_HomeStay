@@ -5,6 +5,7 @@ import CustomerNav from '../../../shared/components/CustomerNav.jsx';
 import GuestPickerDropdown from '../../../shared/components/GuestPickerDropdown.jsx';
 import { freshImageUrl } from '../../../shared/utils/freshImageUrl.js';
 import { bookingApi } from '../../bookings/api/bookingApi.js';
+import { findMissingCompanionIndex } from './bookingGuestValidation.js';
 import pineHomestayImage from '../../../../assets/f6cd6879081dc8e8d4ff18669308ea86.jpg';
 import azureHomestayImage from '../../../../assets/ecf184f6b6cd2b6e2aa898ff3195ab7e.jpg';
 import sunsetHomestayImage from '../../../../assets/2fc6b619bb0af3dc94971c099d25bbae.jpg';
@@ -630,7 +631,7 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
     if (!/^\d{8,15}$/.test(guestInfo.phone.replace(/\s/g, ''))) { setBookingError('Số điện thoại phải có 8–15 chữ số.'); document.querySelector('.payment-guest-card')?.scrollIntoView({ behavior:'smooth' }); return; }
     if (!guestInfo.birthDate || !guestInfo.gender || !guestInfo.documentNumber.trim() || !guestInfo.address.trim()) { setBookingError('Vui lòng hoàn tất ngày sinh, giới tính, giấy tờ và địa chỉ của khách chính.'); document.querySelector('.payment-guest-card')?.scrollIntoView({ behavior:'smooth' }); return; }
     if (guestInfo.documentType === 'CCCD' && !/^\d{12}$/.test(guestInfo.documentNumber)) { setBookingError('Số CCCD phải gồm đúng 12 chữ số.'); document.querySelector('.payment-guest-card')?.scrollIntoView({ behavior:'smooth' }); return; }
-    const missingCompanion = !declareLater && companions.findIndex((item) => !item.fullName.trim() || !item.birthDate || !item.gender || (item.type === 'adult' && !item.documentNumber.trim()));
+    const missingCompanion = findMissingCompanionIndex(companions, declareLater);
     if (missingCompanion >= 0) { setOpenCompanion(missingCompanion); setBookingError('Vui lòng hoàn tất thông tin khách đi cùng hoặc chọn khai báo sau.'); document.querySelector('.companion-card')?.scrollIntoView({ behavior:'smooth' }); return; }
     if (!privacyAccepted || !policyAccepted) { setBookingError('Vui lòng đồng ý xử lý dữ liệu cá nhân và chính sách hủy/hoàn cọc.'); return; }
     const guestCount = adultCount + childCount;
