@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Text.Json;
 using System.Data;
+using System.Text.RegularExpressions;
 using HomestayAuth.Api.Domain.Entities;
 using HomestayAuth.Api.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
@@ -9,15 +10,37 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HomestayAuth.Api.Features.Bookings;
 
+public sealed record BookingGuestInput(string Type, string FullName, DateOnly? BirthDate, string Gender, string Nationality,
+    string DocumentType, string? DocumentNumber, string? Address, string? AccompanyingAdult = null);
 public sealed record CreateBookingRequest(long RoomTypeId, DateOnly CheckInDate, DateOnly CheckOutDate, int AdultCount, int ChildCount, int Quantity,
-    string? CustomerNote, string? RecommendationSessionId = null, IReadOnlyList<int>? ChildAges = null, string? PaymentOption = null);
+    string? CustomerNote, string? RecommendationSessionId = null, IReadOnlyList<int>? ChildAges = null, string? PaymentOption = null,
+    int? DayUseHours = null, BookingGuestInput? PrimaryGuest = null, IReadOnlyList<BookingGuestInput>? Companions = null,
+    bool DeclareCompanionsLater = false, bool PrivacyAccepted = false, bool PolicyAccepted = false);
 public sealed record CancelBookingRequest(string Reason);
+public sealed record UpdateGuestDeclarationsRequest(IReadOnlyList<BookingGuestInput> Guests, bool PrivacyAccepted);
 
 [ApiController]
 [Route("api/bookings")]
 public sealed class BookingsController(AppDbContext db, VnPayService vnPay, PaymentService paymentService, RoomInventoryService inventory,
     PolicyService policyService, BookingPricingService pricingService) : ControllerBase
 {
+    private static string? ValidateGuest(BookingGuestInput guest, bool primary)
+    {
+        if (string.IsNullOrWhiteSpace(guest.FullName) || guest.FullName.Trim().Length > 150) return "Họ tên khách không hợp lệ.";
+        if (guest.BirthDate is null || guest.BirthDate > BookingRules.Today) return "Ngày sinh của khách không hợp lệ.";
+        if (guest.Type is not ("adult" or "child")) return "Loại khách không hợp lệ.";
+        var age = BookingRules.Today.Year - guest.BirthDate.Value.Year;
+        if (guest.BirthDate.Value > BookingRules.Today.AddYears(-age)) age--;
+        if ((guest.Type == "adult" && age < 14) || (guest.Type == "child" && age >= 14)) return "Loại khách không khớp với ngày sinh.";
+        if (string.IsNullOrWhiteSpace(guest.Gender) || string.IsNullOrWhiteSpace(guest.Nationality)) return "Vui lòng khai báo giới tính và quốc tịch.";
+        var document = guest.DocumentNumber?.Trim();
+        if (guest.DocumentType == "CCCD" && !Regex.IsMatch(document ?? "", "^\\d{12}$")) return "Số CCCD phải gồm 12 chữ số.";
+        if (guest.DocumentType == "Hộ chiếu" && !Regex.IsMatch(document ?? "", "^[A-Za-z0-9]{6,12}$")) return "Số hộ chiếu không hợp lệ.";
+        if ((primary || guest.Type == "adult") && string.IsNullOrWhiteSpace(document)) return "Người lớn phải cung cấp giấy tờ tùy thân.";
+        if (primary && string.IsNullOrWhiteSpace(guest.Address)) return "Khách chính phải cung cấp địa chỉ thường trú.";
+        if (guest.Type == "child" && string.IsNullOrWhiteSpace(guest.AccompanyingAdult)) return "Trẻ em phải khai báo người đi cùng.";
+        return null;
+    }
     private static object CancellationQuote(Booking booking, decimal paidAmount)
     {
         var daysBeforeCheckIn = booking.CheckInDate.DayNumber - BookingRules.Today.DayNumber;
@@ -30,7 +53,8 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
     [HttpPost("quote")]
     public async Task<IActionResult> Quote(CreateBookingRequest request)
     {
-        if (request.CheckOutDate <= request.CheckInDate || request.CheckInDate < BookingRules.Today)
+        var isDayUse = request.CheckOutDate == request.CheckInDate && request.DayUseHours is > 0;
+        if (request.CheckOutDate < request.CheckInDate || request.CheckInDate < BookingRules.Today)
             return BadRequest(new { message = "Ngày nhận hoặc trả phòng không hợp lệ." });
         if (BookingRules.ValidateGuests(request.AdultCount, request.ChildCount, request.Quantity) is not null)
             return BadRequest(new { message = "Số khách hoặc số phòng không hợp lệ." });
@@ -38,11 +62,17 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
         if (childAgeError is not null) return BadRequest(new { message = childAgeError });
         var roomType = await db.RoomTypes.AsNoTracking().SingleOrDefaultAsync(x => x.Id == request.RoomTypeId && x.Status == "Active" && x.Homestay.Status == "Approved");
         if (roomType is null) return NotFound(new { message = "Không tìm thấy loại phòng đang kinh doanh." });
+        var policy = await policyService.Resolve(roomType.HomestayId, DateTime.UtcNow);
+        if (isDayUse && (policy.Document?.DayUse.Enabled != true || request.DayUseHours is < 1 or > 12))
+            return BadRequest(new { message = "Chính sách đặt phòng trong ngày không khả dụng hoặc thời lượng không hợp lệ." });
+        if (!isDayUse && request.CheckOutDate == request.CheckInDate)
+            return BadRequest(new { message = "Vui lòng chọn thời lượng đặt phòng trong ngày." });
+        var inventoryCheckOut = isDayUse ? request.CheckInDate.AddDays(1) : request.CheckOutDate;
         var allowedCapacity = (roomType.ExtraGuestAllowed ? roomType.MaxCapacity : roomType.BaseCapacity) * request.Quantity;
         var capacityError = BookingRules.ValidateCapacity(request.AdultCount, request.ChildCount, request.Quantity,
             allowedCapacity / request.Quantity);
         if (capacityError is not null) return BadRequest(new { message = capacityError });
-        var available = (await BookingAvailability.AvailableRoomIds(db, roomType.Id, request.CheckInDate, request.CheckOutDate, DateTime.UtcNow)).Count;
+        var available = (await BookingAvailability.AvailableRoomIds(db, roomType.Id, request.CheckInDate, inventoryCheckOut, DateTime.UtcNow)).Count;
         if (available < request.Quantity)
         {
             db.BookingConflictEvents.Add(new BookingConflictEvent { CustomerId = long.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var customerId) ? customerId : null,
@@ -51,10 +81,9 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
             await db.SaveChangesAsync();
             return Conflict(new { message = "Không còn đủ phòng trong khoảng ngày đã chọn." });
         }
-        var periods = await db.RoomPricePeriods.AsNoTracking().Where(x => x.RoomTypeId == roomType.Id && x.StartDate < request.CheckOutDate && x.EndDate >= request.CheckInDate).ToListAsync();
-        var policy = await policyService.Resolve(roomType.HomestayId, DateTime.UtcNow);
+        var periods = await db.RoomPricePeriods.AsNoTracking().Where(x => x.RoomTypeId == roomType.Id && x.StartDate < inventoryCheckOut && x.EndDate >= request.CheckInDate).ToListAsync();
         var price = pricingService.Calculate(roomType, request.CheckInDate, request.CheckOutDate, request.AdultCount, request.ChildCount,
-            request.Quantity, request.ChildAges, request.PaymentOption, periods, policy, BookingRules.Today);
+            request.Quantity, request.ChildAges, request.PaymentOption, periods, policy, BookingRules.Today, request.DayUseHours);
         var extraChildren = request.ChildAges is { Count: > 0 } ? request.ChildAges.Count(x => x >= 2) :
             Math.Max(0, request.ChildCount - Math.Max(0, roomType.BaseCapacity * request.Quantity - request.AdultCount));
         return Ok(new { price.Nights, quantity = request.Quantity, roomTotal = price.RoomAmount, extraGuestCount = price.ExtraAdults + extraChildren,
@@ -63,7 +92,7 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
             total = price.TotalAmount, availableRooms = available, price.BaseRoomAmount, price.SeasonalSurchargeAmount,
             price.RoomAmountBeforeDiscount, price.PromotionCode, price.PromotionPercent, price.DiscountAmount,
             price.DepositPercent, price.DepositAmount, price.AmountDueNow, price.PaymentOption, price.NightsBreakdown,
-            price.ChildrenBreakdown, policyVersion = policy.Version });
+            price.ChildrenBreakdown, isDayUse, dayUseHours = isDayUse ? request.DayUseHours : null, policyVersion = policy.Version });
     }
 
     [Authorize(Roles = "Customer,Host")]
@@ -100,10 +129,37 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
                 HostPhone = db.Homestays.Where(h => h.Id == x.HomestayId).Select(h => db.Users.Where(u => u.Id == h.HostId).Select(u => u.PhoneNumber).FirstOrDefault()).FirstOrDefault(),
                 x.CheckInDate, x.CheckOutDate, x.AdultCount, x.ChildCount, x.Subtotal, x.DiscountAmount, x.ServiceFee, x.TaxAmount, x.TotalAmount, x.Status, x.CustomerNote, x.CreatedAt,
                 Details = x.Details.Select(d => new { d.Id, d.RoomTypeId, RoomTypeName = db.RoomTypes.Where(r => r.Id == d.RoomTypeId).Select(r => r.Name).First(), d.RoomId, RoomNumber = d.RoomId == null ? null : db.Rooms.Where(r => r.Id == d.RoomId).Select(r => r.RoomNumber).FirstOrDefault(), d.Quantity, d.PricePerNight, d.NumberOfNights, d.ExtraFee, d.LineTotal, d.GuestName, d.Note }).ToList(),
+                Guests = x.Guests.OrderByDescending(g => g.IsPrimary).ThenBy(g => g.Id).Select(g => new { g.Id, g.IsPrimary, Type = g.GuestType, g.FullName, g.BirthDate, g.Gender, g.Nationality, g.DocumentType, DocumentNumber = g.DocumentNumber == null ? null : "***" + g.DocumentNumber.Substring(Math.Max(0, g.DocumentNumber.Length - 4)), g.Address, g.AccompanyingAdult, g.DeclarationStatus, g.DeclarationDueAt }).ToList(),
                 Payments = x.Payments.OrderByDescending(p => p.CreatedAt).Select(p => new { p.Id, p.PaymentMethod, p.TransactionType, p.Amount, p.Status, p.PaidAt, p.CreatedAt }).ToList(),
                 Cancellation = db.Cancellations.Where(c => c.BookingId == x.Id).Select(c => new { c.Reason, c.CancellationFee, c.RefundAmount, c.Status, c.CancelledAt }).FirstOrDefault() })
             .SingleOrDefaultAsync();
         return item is null ? NotFound(new { message = "Không tìm thấy đơn đặt phòng." }) : Ok(item);
+    }
+
+    [Authorize(Roles = "Customer,Host")]
+    [HttpPut("{bookingId:long}/guests")]
+    public async Task<IActionResult> UpdateGuestDeclarations(long bookingId, UpdateGuestDeclarationsRequest request)
+    {
+        if (!request.PrivacyAccepted) return BadRequest(new { message = "Cần đồng ý xử lý dữ liệu cá nhân." });
+        var userId = long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var booking = await db.Bookings.Include(x => x.Guests).SingleOrDefaultAsync(x => x.Id == bookingId && x.CustomerId == userId);
+        if (booking is null) return NotFound(new { message = "Không tìm thấy đơn đặt phòng." });
+        if (booking.CheckInDate.ToDateTime(TimeOnly.MinValue).AddHours(-24) < DateTime.Now)
+            return BadRequest(new { message = "Đã quá hạn khai báo thông tin khách đi cùng." });
+        var deferred = booking.Guests.Where(x => !x.IsPrimary).OrderBy(x => x.Id).ToList();
+        if (request.Guests.Count != deferred.Count) return BadRequest(new { message = "Số khách khai báo không khớp với đơn đặt phòng." });
+        foreach (var guest in request.Guests) if (ValidateGuest(guest, false) is { } error) return BadRequest(new { message = error });
+        var now = DateTime.UtcNow;
+        for (var index = 0; index < deferred.Count; index++)
+        {
+            var entity = deferred[index]; var input = request.Guests[index];
+            entity.GuestType = input.Type; entity.FullName = input.FullName.Trim(); entity.BirthDate = input.BirthDate; entity.Gender = input.Gender;
+            entity.Nationality = input.Nationality; entity.DocumentType = input.DocumentType; entity.DocumentNumber = input.DocumentNumber?.Trim();
+            entity.Address = input.Address?.Trim(); entity.AccompanyingAdult = input.AccompanyingAdult?.Trim(); entity.DeclarationDeferred = false;
+            entity.DeclarationStatus = "Completed"; entity.UpdatedAt = now;
+        }
+        await db.SaveChangesAsync();
+        return Ok(new { message = "Đã hoàn tất khai báo lưu trú cho khách đi cùng." });
     }
 
     [Authorize(Roles = "Customer,Host")]
@@ -154,9 +210,20 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
     public async Task<IActionResult> CreateVnPayPayment(CreateBookingRequest request)
     {
         if (!vnPay.IsConfigured) return StatusCode(503, new { message = "VNPay chưa được cấu hình. Vui lòng thêm VNPAY_TMN_CODE và VNPAY_HASH_SECRET." });
-        if (request.CheckInDate < BookingRules.Today || request.CheckOutDate <= request.CheckInDate)
+        var isDayUse = request.CheckOutDate == request.CheckInDate && request.DayUseHours is > 0;
+        if (request.CheckInDate < BookingRules.Today || request.CheckOutDate < request.CheckInDate)
             return BadRequest(new { message = "Ngày nhận hoặc trả phòng không hợp lệ." });
         if (BookingRules.ValidateGuests(request.AdultCount, request.ChildCount, request.Quantity) is not null) return BadRequest(new { message = "Số khách hoặc số phòng không hợp lệ." });
+        if (!request.PrivacyAccepted || !request.PolicyAccepted) return BadRequest(new { message = "Bạn cần đồng ý xử lý dữ liệu cá nhân và chính sách hủy/hoàn cọc." });
+        if (request.PrimaryGuest is null) return BadRequest(new { message = "Thiếu thông tin khách chính." });
+        if (ValidateGuest(request.PrimaryGuest, true) is { } primaryGuestError) return BadRequest(new { message = primaryGuestError });
+        var expectedCompanions = request.AdultCount + request.ChildCount - 1;
+        var companionInputs = request.Companions ?? [];
+        if (!request.DeclareCompanionsLater && companionInputs.Count != expectedCompanions)
+            return BadRequest(new { message = "Số hồ sơ khách đi cùng không khớp với số khách đã chọn." });
+        if (!request.DeclareCompanionsLater)
+            foreach (var companion in companionInputs)
+                if (ValidateGuest(companion, false) is { } companionError) return BadRequest(new { message = companionError });
         var childAgeError = BookingPricingService.ValidateChildAges(request.ChildCount, request.ChildAges);
         if (childAgeError is not null) return BadRequest(new { message = childAgeError });
 
@@ -177,12 +244,18 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
         var roomType = await db.RoomTypes.Include(x => x.Rooms)
             .SingleOrDefaultAsync(x => x.Id == request.RoomTypeId && x.Status == "Active" && x.Homestay.Status == "Approved");
         if (roomType is null) return NotFound(new { message = "Loại phòng không tồn tại hoặc Homestay chưa được duyệt." });
+        var policy = await policyService.Resolve(roomType.HomestayId, DateTime.UtcNow);
+        if (isDayUse && (policy.Document?.DayUse.Enabled != true || request.DayUseHours is < 1 or > 12))
+            return BadRequest(new { message = "Chính sách đặt phòng trong ngày không khả dụng hoặc thời lượng không hợp lệ." });
+        if (!isDayUse && request.CheckOutDate == request.CheckInDate)
+            return BadRequest(new { message = "Vui lòng chọn thời lượng đặt phòng trong ngày." });
+        var inventoryCheckOut = isDayUse ? request.CheckInDate.AddDays(1) : request.CheckOutDate;
         var allowedCapacity = (roomType.ExtraGuestAllowed ? roomType.MaxCapacity : roomType.BaseCapacity) * request.Quantity;
         var capacityError = BookingRules.ValidateCapacity(request.AdultCount, request.ChildCount, request.Quantity,
             allowedCapacity / request.Quantity);
         if (capacityError is not null) return BadRequest(new { message = capacityError });
 
-        var allocatableRooms = (await BookingAvailability.AvailableRoomIds(db, roomType.Id, request.CheckInDate, request.CheckOutDate, DateTime.UtcNow)).Take(request.Quantity).ToList();
+        var allocatableRooms = (await BookingAvailability.AvailableRoomIds(db, roomType.Id, request.CheckInDate, inventoryCheckOut, DateTime.UtcNow)).Take(request.Quantity).ToList();
         if (allocatableRooms.Count < request.Quantity)
         {
             db.BookingConflictEvents.Add(new BookingConflictEvent { CustomerId = userId, RoomTypeId = request.RoomTypeId,
@@ -192,10 +265,9 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
             return Conflict(new { message = "Loại phòng này đã hết phòng trong khoảng ngày bạn chọn." });
         }
 
-        var specialPrices = await db.RoomPricePeriods.AsNoTracking().Where(x => x.RoomTypeId == roomType.Id && x.StartDate < request.CheckOutDate && x.EndDate >= request.CheckInDate).ToListAsync();
-        var policy = await policyService.Resolve(roomType.HomestayId, DateTime.UtcNow);
+        var specialPrices = await db.RoomPricePeriods.AsNoTracking().Where(x => x.RoomTypeId == roomType.Id && x.StartDate < inventoryCheckOut && x.EndDate >= request.CheckInDate).ToListAsync();
         var price = pricingService.Calculate(roomType, request.CheckInDate, request.CheckOutDate, request.AdultCount, request.ChildCount,
-            request.Quantity, request.ChildAges, request.PaymentOption, specialPrices, policy, BookingRules.Today);
+            request.Quantity, request.ChildAges, request.PaymentOption, specialPrices, policy, BookingRules.Today, request.DayUseHours);
         var nights = price.Nights;
         var roomTotal = price.RoomAmount;
         var extraFee = price.ExtraAdultFee + price.ChildSurcharge;
@@ -205,13 +277,20 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
         var now = DateTime.UtcNow;
         var bookingCode = $"TRP{now:yyMMddHHmmss}{Guid.NewGuid():N}"[..24].ToUpperInvariant();
         var transactionCode = $"{now:yyyyMMddHHmmss}{Guid.NewGuid():N}"[..30].ToUpperInvariant();
-        var booking = new Booking { BookingCode = bookingCode, CustomerId = userId, HomestayId = roomType.HomestayId, CheckInDate = request.CheckInDate, CheckOutDate = request.CheckOutDate, AdultCount = request.AdultCount, ChildCount = request.ChildCount, RoomAmount = roomTotal, DepositAmount = depositAmount, PaymentStatus = PaymentStatus.Unpaid, HoldExpiresAt = now.AddMinutes(policy.HoldMinutes), Subtotal = subtotal, DiscountAmount = price.DiscountAmount, ServiceFee = 0, TaxAmount = 0, TotalAmount = subtotal, CommissionRate = policy.CommissionRate, Status = BookingStatus.Hold, CustomerNote = request.CustomerNote, RecommendationSessionId = recommendationSessionId, PricingSnapshotJson = JsonSerializer.Serialize(new { roomType.Id, roomType.Name, nightlyPrice = roomType.BasePrice, roomAmount = roomTotal, nights, roomType.BaseCapacity, roomType.MaxCapacity, adultExtraFee = roomType.ExtraGuestFee, roomType.ExtraChildFee, roomType.ChildMaxAge, roomType.DepositPercent, request.ChildAges, price }), PolicySnapshotJson = PolicyService.Serialize(policy), ReviewCreateUntil = request.CheckOutDate.AddDays(policy.ReviewCreateDays), ReviewEditUntil = request.CheckOutDate.AddDays(policy.ReviewEditDays), CreatedAt = now, UpdatedAt = now };
+        var booking = new Booking { BookingCode = bookingCode, CustomerId = userId, HomestayId = roomType.HomestayId, CheckInDate = request.CheckInDate, CheckOutDate = inventoryCheckOut, AdultCount = request.AdultCount, ChildCount = request.ChildCount, RoomAmount = roomTotal, DepositAmount = depositAmount, PaymentStatus = PaymentStatus.Unpaid, HoldExpiresAt = now.AddMinutes(policy.HoldMinutes), Subtotal = subtotal, DiscountAmount = price.DiscountAmount, ServiceFee = 0, TaxAmount = 0, TotalAmount = subtotal, CommissionRate = policy.CommissionRate, Status = BookingStatus.Hold, CustomerNote = request.CustomerNote, RecommendationSessionId = recommendationSessionId, PricingSnapshotJson = JsonSerializer.Serialize(new { roomType.Id, roomType.Name, nightlyPrice = roomType.BasePrice, roomAmount = roomTotal, nights, isDayUse, dayUseHours = isDayUse ? request.DayUseHours : null, displayCheckOutDate = request.CheckOutDate, roomType.BaseCapacity, roomType.MaxCapacity, adultExtraFee = roomType.ExtraGuestFee, roomType.ExtraChildFee, roomType.ChildMaxAge, roomType.DepositPercent, request.ChildAges, price }), PolicySnapshotJson = PolicyService.Serialize(policy), ReviewCreateUntil = inventoryCheckOut.AddDays(policy.ReviewCreateDays), ReviewEditUntil = inventoryCheckOut.AddDays(policy.ReviewEditDays), CreatedAt = now, UpdatedAt = now };
+        booking.Guests.Add(new BookingGuest { IsPrimary = true, GuestType = request.PrimaryGuest.Type, FullName = request.PrimaryGuest.FullName.Trim(), BirthDate = request.PrimaryGuest.BirthDate, Gender = request.PrimaryGuest.Gender, Nationality = request.PrimaryGuest.Nationality, DocumentType = request.PrimaryGuest.DocumentType, DocumentNumber = request.PrimaryGuest.DocumentNumber?.Trim(), Address = request.PrimaryGuest.Address?.Trim(), DeclarationStatus = "Completed", CreatedAt = now, UpdatedAt = now });
+        if (request.DeclareCompanionsLater)
+        {
+            for (var index = 0; index < expectedCompanions; index++) booking.Guests.Add(new BookingGuest { IsPrimary = false, GuestType = index < Math.Max(0, request.AdultCount - 1) ? "adult" : "child", FullName = "Chưa khai báo", Gender = "Chưa khai báo", Nationality = "Chưa khai báo", DocumentType = "Chưa có giấy tờ", DeclarationDeferred = true, DeclarationStatus = "Deferred", DeclarationDueAt = request.CheckInDate.ToDateTime(TimeOnly.MinValue).AddHours(-24), CreatedAt = now, UpdatedAt = now });
+        }
+        else foreach (var guest in companionInputs) booking.Guests.Add(new BookingGuest { IsPrimary = false, GuestType = guest.Type, FullName = guest.FullName.Trim(), BirthDate = guest.BirthDate, Gender = guest.Gender, Nationality = guest.Nationality, DocumentType = guest.DocumentType, DocumentNumber = guest.DocumentNumber?.Trim(), Address = guest.Address?.Trim(), AccompanyingAdult = guest.AccompanyingAdult?.Trim(), DeclarationStatus = "Completed", CreatedAt = now, UpdatedAt = now });
         var perRoomExtraFee = extraFee / request.Quantity;
         var perRoomLineTotal = subtotal / request.Quantity;
         foreach (var room in allocatableRooms)
         {
-            booking.Details.Add(new BookingDetail { RoomTypeId = roomType.Id, RoomId = room, Quantity = 1, PricePerNight = price.RoomAmountBeforeDiscount / request.Quantity / nights, NumberOfNights = nights, ExtraFee = perRoomExtraFee, LineTotal = perRoomLineTotal });
-            inventory.Allocate(booking, room, request.CheckInDate, request.CheckOutDate, price.RoomAmountBeforeDiscount / request.Quantity / nights);
+            var billingUnits = Math.Max(1, nights);
+            booking.Details.Add(new BookingDetail { RoomTypeId = roomType.Id, RoomId = room, Quantity = 1, PricePerNight = price.RoomAmountBeforeDiscount / request.Quantity / billingUnits, NumberOfNights = nights, ExtraFee = perRoomExtraFee, LineTotal = perRoomLineTotal });
+            inventory.Allocate(booking, room, request.CheckInDate, inventoryCheckOut, price.RoomAmountBeforeDiscount / request.Quantity / billingUnits);
         }
         if (extraFee > 0) booking.AdditionalCharges.Add(new AdditionalCharge { Type = "extra_guest", Description = "Phụ thu khách vượt sức chứa cơ bản", Quantity = 1, UnitPrice = extraFee, TotalPrice = extraFee, RecordedBy = userId, CreatedAt = now });
         booking.Payments.Add(new Payment { TransactionCode = transactionCode, PaymentMethod = "VNPay", TransactionType = "Deposit", Amount = depositAmount, Status = "Pending", CreatedAt = now, UpdatedAt = now });

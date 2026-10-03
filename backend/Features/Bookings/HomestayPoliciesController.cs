@@ -71,7 +71,11 @@ public sealed class HomestayPoliciesController(AppDbContext db, PolicyService po
                 return "Phụ thu theo ngày không hợp lệ.";
             if (d.Promotions.EarlyBirdPercent is < 0 or > 100 || d.Promotions.LongStayPercent is < 0 or > 100 || d.Promotions.ExtendedStayPercent is < 0 or > 100)
                 return "Tỷ lệ khuyến mãi phải nằm trong khoảng 0–100%.";
-            if (d.DayUse.DepositPercent is < 0 or > 100 || d.Pets.MaximumPerRoom < 0 || d.Pets.FeePerNight < 0)
+            if (d.DayUse.From >= d.DayUse.To || d.DayUse.UpToThreeHoursPercent is < 0 or > 100 ||
+                d.DayUse.UpToSixHoursPercent is < 0 or > 100 || d.DayUse.OverSixHoursPercent is < 0 or > 100 ||
+                d.DayUse.UpToThreeHoursPercent > d.DayUse.UpToSixHoursPercent || d.DayUse.UpToSixHoursPercent > d.DayUse.OverSixHoursPercent ||
+                d.DayUse.DepositPercent is < 0 or > 100 || d.DayUse.NonRefundableCancellationWindowHours < 0 ||
+                d.Pets.MaximumPerRoom < 0 || d.Pets.FeePerNight < 0)
                 return "Chính sách day-use hoặc thú cưng không hợp lệ.";
         }
         return null;

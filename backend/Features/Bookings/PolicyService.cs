@@ -27,8 +27,8 @@ public sealed class PolicyService(AppDbContext db)
         if (policy is not null) return ToSnapshot(policy);
         var homestay = await db.Homestays.AsNoTracking().SingleAsync(x => x.Id == homestayId);
         return new BookingPolicySnapshot(null, 0, 15, 14, 14, .10m, "None", 0, true,
-            [new(15, null, 100), new(7, 14, 70), new(3, 6, 50), new(0, 2, 0)],
-            [new(1, 180, "NightlyPercent", 30), new(181, 360, "NightlyPercent", 50), new(361, null, "NightlyPercent", 100)])
+            [new(14, null, 100), new(7, 13, 70), new(3, 6, 50), new(0, 2, 0)],
+            [new(1, 179, "NightlyPercent", 30), new(180, 359, "NightlyPercent", 50), new(360, null, "NightlyPercent", 100)])
             { Document = OperationalPolicyDocument.SunriseGardenDefault() };
     }
 
@@ -45,8 +45,8 @@ public sealed class PolicyService(AppDbContext db)
     }
     public static string Serialize(BookingPolicySnapshot policy) => JsonSerializer.Serialize(policy, JsonOptions);
     public static BookingPolicySnapshot DefaultSnapshot() => new(null, 0, 15, 14, 14, .10m, "None", 0, true,
-        [new(15, null, 100), new(7, 14, 70), new(3, 6, 50), new(0, 2, 0)],
-        [new(1, 180, "NightlyPercent", 30), new(181, 360, "NightlyPercent", 50), new(361, null, "NightlyPercent", 100)])
+        [new(14, null, 100), new(7, 13, 70), new(3, 6, 50), new(0, 2, 0)],
+        [new(1, 179, "NightlyPercent", 30), new(180, 359, "NightlyPercent", 50), new(360, null, "NightlyPercent", 100)])
         { Document = OperationalPolicyDocument.SunriseGardenDefault() };
 
     public static decimal RefundPercent(BookingPolicySnapshot policy, int daysBeforeCheckIn) => policy.CancellationTiers

@@ -39,16 +39,19 @@ public sealed class BookingPricingService
         string? paymentOption,
         IReadOnlyList<RoomPricePeriod> pricePeriods,
         BookingPolicySnapshot policy,
-        DateOnly today)
+        DateOnly today,
+        int? dayUseHours = null)
     {
         var document = policy.Document ?? OperationalPolicyDocument.SunriseGardenDefault();
-        var nights = checkOut.DayNumber - checkIn.DayNumber;
+        var isDayUse = checkOut == checkIn && dayUseHours is > 0 && document.DayUse.Enabled;
+        var nights = isDayUse ? 0 : checkOut.DayNumber - checkIn.DayNumber;
+        var pricingEnd = isDayUse ? checkIn.AddDays(1) : checkOut;
         var nightLines = new List<NightlyPriceBreakdown>(nights);
         var baseRoomAmount = 0m;
         var seasonalSurcharge = 0m;
         var holidayDeposit = false;
 
-        for (var date = checkIn; date < checkOut; date = date.AddDays(1))
+        for (var date = checkIn; date < pricingEnd; date = date.AddDays(1))
         {
             var basePrice = pricePeriods
                 .Where(x => x.StartDate <= date && x.EndDate >= date)
@@ -68,14 +71,18 @@ public sealed class BookingPricingService
             nightLines.Add(new(date, basePrice, surcharge?.Code, surchargePercent, finalPrice));
         }
 
-        var roomBeforeDiscount = baseRoomAmount + seasonalSurcharge;
-        var promotion = BestPromotion(document.Promotions, today, checkIn, nights);
+        var dayUsePercent = isDayUse
+            ? dayUseHours <= 3 ? document.DayUse.UpToThreeHoursPercent : dayUseHours <= 6 ? document.DayUse.UpToSixHoursPercent : document.DayUse.OverSixHoursPercent
+            : 100m;
+        var roomBeforeDiscount = Round((baseRoomAmount + seasonalSurcharge) * dayUsePercent / 100m);
+        var promotion = isDayUse ? (Code: (string?)null, Percent: 0m) : BestPromotion(document.Promotions, today, checkIn, nights);
         var discount = Round(roomBeforeDiscount * promotion.Percent / 100m);
         var roomAmount = roomBeforeDiscount - discount;
 
         var included = roomType.BaseCapacity * quantity;
         var extraAdults = Math.Max(0, adults - included);
-        var extraAdultFee = extraAdults * roomType.ExtraGuestFee * nights;
+        var chargeUnits = isDayUse ? 1 : nights;
+        var extraAdultFee = extraAdults * roomType.ExtraGuestFee * chargeUnits;
         var childBreakdown = new List<ChildPriceBreakdown>();
         decimal childSurcharge;
         if (childAges is { Count: > 0 })
@@ -98,11 +105,11 @@ public sealed class BookingPricingService
         {
             var remainingIncluded = Math.Max(0, included - adults);
             var extraChildren = Math.Max(0, children - remainingIncluded);
-            childSurcharge = extraChildren * roomType.ExtraChildFee * nights;
+            childSurcharge = extraChildren * roomType.ExtraChildFee * chargeUnits;
         }
 
         var total = roomAmount + extraAdultFee + childSurcharge;
-        var standardDeposit = Math.Max(roomType.DepositPercent * 100m, document.Payment.StandardDepositPercent);
+        var standardDeposit = isDayUse ? document.DayUse.DepositPercent : Math.Max(roomType.DepositPercent * 100m, document.Payment.StandardDepositPercent);
         var depositPercent = standardDeposit;
         if (roomType.Name.Contains("villa", StringComparison.OrdinalIgnoreCase))
             depositPercent = Math.Max(depositPercent, document.Payment.VillaDepositPercent);

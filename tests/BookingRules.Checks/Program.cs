@@ -46,6 +46,17 @@ Check(PolicyService.RefundPercent(dynamicPolicy, 1) == 0, "dynamic non-refundabl
 Check(PolicyService.LateCheckoutFee(dynamicPolicy, 90, 1_000_000) == 150_000, "fixed late checkout tier");
 Check(PolicyService.LateCheckoutFee(dynamicPolicy, 240, 1_000_000) == 500_000, "nightly percentage late checkout tier");
 Check(PolicyService.ParseSnapshot(PolicyService.Serialize(dynamicPolicy)).HoldMinutes == 25, "policy snapshot round trip");
+var sunrisePolicy = PolicyService.DefaultSnapshot();
+Check(PolicyService.RefundPercent(sunrisePolicy, 14) == 100, "14-day cancellation receives full refund");
+Check(PolicyService.RefundPercent(sunrisePolicy, 13) == 70, "13-day cancellation receives 70 percent refund");
+Check(PolicyService.RefundPercent(sunrisePolicy, 7) == 70, "7-day cancellation receives 70 percent refund");
+Check(PolicyService.RefundPercent(sunrisePolicy, 6) == 50, "6-day cancellation receives 50 percent refund");
+Check(PolicyService.RefundPercent(sunrisePolicy, 3) == 50, "3-day cancellation receives 50 percent refund");
+Check(PolicyService.RefundPercent(sunrisePolicy, 2) == 0, "under 3-day cancellation is non-refundable");
+Check(PolicyService.LateCheckoutFee(sunrisePolicy, 179, 1_000_000) == 300_000, "late checkout before 15:00 costs 30 percent");
+Check(PolicyService.LateCheckoutFee(sunrisePolicy, 180, 1_000_000) == 500_000, "late checkout at 15:00 costs 50 percent");
+Check(PolicyService.LateCheckoutFee(sunrisePolicy, 359, 1_000_000) == 500_000, "late checkout before 18:00 costs 50 percent");
+Check(PolicyService.LateCheckoutFee(sunrisePolicy, 360, 1_000_000) == 1_000_000, "late checkout at 18:00 costs 100 percent");
 Check(CompensationRules.RequestedAmount(2, 1_000_000, 20) == 1_600_000, "compensation applies quantity and depreciation");
 Check(CompensationRules.RequestedAmount(2, 1_000_000, 0, 700_000) == 1_400_000, "compensation respects per-item maximum");
 Console.WriteLine("Booking rule checks passed.");

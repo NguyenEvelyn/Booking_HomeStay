@@ -18,6 +18,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<RoomImage> RoomImages => Set<RoomImage>();
     public DbSet<Booking> Bookings => Set<Booking>();
     public DbSet<BookingDetail> BookingDetails => Set<BookingDetail>();
+    public DbSet<BookingGuest> BookingGuests => Set<BookingGuest>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<Review> Reviews => Set<Review>();
     public DbSet<ReviewReport> ReviewReports => Set<ReviewReport>();
@@ -289,6 +290,18 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         booking.Property(x => x.CreatedAt).HasColumnName("created_at");
         booking.Property(x => x.UpdatedAt).HasColumnName("updated_at");
         booking.HasOne(x => x.Homestay).WithMany().HasForeignKey(x => x.HomestayId).OnDelete(DeleteBehavior.Restrict);
+
+        var bookingGuest = modelBuilder.Entity<BookingGuest>();
+        bookingGuest.ToTable("booking_guests"); bookingGuest.HasKey(x => x.Id);
+        bookingGuest.Property(x => x.Id).HasColumnName("booking_guest_id"); bookingGuest.Property(x => x.BookingId).HasColumnName("booking_id");
+        bookingGuest.Property(x => x.IsPrimary).HasColumnName("is_primary"); bookingGuest.Property(x => x.GuestType).HasColumnName("guest_type").HasMaxLength(20);
+        bookingGuest.Property(x => x.FullName).HasColumnName("full_name").HasMaxLength(150); bookingGuest.Property(x => x.BirthDate).HasColumnName("birth_date");
+        bookingGuest.Property(x => x.Gender).HasColumnName("gender").HasMaxLength(20); bookingGuest.Property(x => x.Nationality).HasColumnName("nationality").HasMaxLength(80);
+        bookingGuest.Property(x => x.DocumentType).HasColumnName("document_type").HasMaxLength(30); bookingGuest.Property(x => x.DocumentNumber).HasColumnName("document_number").HasMaxLength(50);
+        bookingGuest.Property(x => x.Address).HasColumnName("address").HasMaxLength(500); bookingGuest.Property(x => x.AccompanyingAdult).HasColumnName("accompanying_adult").HasMaxLength(150);
+        bookingGuest.Property(x => x.DeclarationDeferred).HasColumnName("declaration_deferred"); bookingGuest.Property(x => x.DeclarationStatus).HasColumnName("declaration_status").HasMaxLength(30);
+        bookingGuest.Property(x => x.DeclarationDueAt).HasColumnName("declaration_due_at"); bookingGuest.Property(x => x.CreatedAt).HasColumnName("created_at"); bookingGuest.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+        bookingGuest.HasOne(x => x.Booking).WithMany(x => x.Guests).HasForeignKey(x => x.BookingId).OnDelete(DeleteBehavior.Cascade);
 
         var detail = modelBuilder.Entity<BookingDetail>();
         detail.ToTable("booking_details"); detail.HasKey(x => x.Id);

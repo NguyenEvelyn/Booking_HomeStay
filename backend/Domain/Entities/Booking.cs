@@ -35,5 +35,6 @@ public class Booking
     public ICollection<Payment> Payments { get; set; } = [];
     public ICollection<AdditionalCharge> AdditionalCharges { get; set; } = [];
     public ICollection<BookingRoomStay> RoomStays { get; set; } = [];
+    public ICollection<BookingGuest> Guests { get; set; } = [];
     public Homestay Homestay { get; set; } = null!;
 }
