@@ -134,6 +134,7 @@ function Icon({ name, size = 16, className = '', color = 'currentColor', fill = 
     sparkles: (
       <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z" />
     ),
+    check: <polyline points="20 6 9 17 4 12" />,
     chevronRight: <polyline points="9 18 15 12 9 6" />,
     chevronLeft: <polyline points="15 18 9 12 15 6" />,
     x: (
@@ -1063,40 +1064,39 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
               </div>
             </div>
             <div className="room-page-layout">
-              <article className="room-page-info">
-                <div className="room-page-facts">
-                  <span>
+              <article className="room-page-info modern-room-info">
+                <div className="room-facts-pills">
+                  <span className="room-fact-pill">
                     <Icon name="user" size={14} />
                     Tối đa {selectedRoom.extraGuestAllowed ? selectedRoom.maxCapacity : selectedRoom.baseCapacity} khách
                   </span>
-                  <span>
+                  <span className="room-fact-pill">
                     <Icon name="bed" size={14} />
                     {selectedRoom.bedType}
                   </span>
-                  <span>
+                  <span className="room-fact-pill">
                     <Icon name="maximize" size={14} />
                     {selectedRoom.roomSize || '—'} m²
                   </span>
                 </div>
-                <p>
-                  {selectedRoom.description} Không gian được thiết kế ấm cúng, nhiều ánh sáng tự nhiên và đầy đủ tiện nghi cho một kỳ nghỉ thoải mái.
+                <p className="room-info-desc">
+                  {selectedRoom.description || 'Không gian được thiết kế ấm cúng, nhiều ánh sáng tự nhiên và đầy đủ tiện nghi cho một kỳ nghỉ thoải mái.'}
                 </p>
-                <hr />
-                <h2>Tiện nghi trong phòng</h2>
-                <ul className="room-page-amenities">
-                  <li>WiFi tốc độ cao miễn phí</li>
-                  <li>Máy điều hòa</li>
-                  <li>Phòng tắm riêng &amp; nước nóng</li>
-                  <li>TV màn hình phẳng</li>
-                  <li>Ấm đun nước và minibar</li>
-                  <li>{selectedRoom.name.toLowerCase().includes('ban công') ? 'Ban công riêng, nhìn ra thành phố' : 'Dọn phòng hằng ngày'}</li>
-                </ul>
-                <hr />
-                <h2>Chính sách phòng</h2>
-                <div className="room-page-policy">
-                  <p><b>Nhận phòng</b><span>Từ {data.checkInTime.slice(0, 5)}</span></p>
-                  <p><b>Trả phòng</b><span>Trước {data.checkOutTime.slice(0, 5)}</span></p>
-                  <p><b>Hủy phòng</b><span>{policy?.cancellationTiers?.[0] ? `Hoàn ${policy.cancellationTiers[0].refundPercent}% từ ${policy.cancellationTiers[0].minimumDays} ngày` : 'Xem chính sách bên dưới'}</span></p>
+                <hr className="room-info-sep" />
+                <div className="room-amenities-block">
+                  <h3 className="room-block-title">Tiện nghi trong phòng</h3>
+                  <ul className="room-amenities-checklist">
+                    {['WiFi tốc độ cao miễn phí', 'Máy điều hòa', 'Phòng tắm riêng & nước nóng', 'TV màn hình phẳng', 'Ấm đun nước và minibar', selectedRoom.name.toLowerCase().includes('ban công') ? 'Ban công riêng, nhìn ra thành phố' : 'Dọn phòng hằng ngày'].map((amenity) => <li key={amenity}><i className="amenity-icon-check"><Icon name="check" size={14} color="#10b981" /></i><span>{amenity}</span></li>)}
+                  </ul>
+                </div>
+                <hr className="room-info-sep" />
+                <div className="room-policy-block">
+                  <h3 className="room-block-title">Chính sách phòng</h3>
+                  <div className="room-policy-cards-grid">
+                    <div className="room-policy-mini-card"><span className="mini-card-label">Nhận phòng</span><strong className="mini-card-val">Từ {data.checkInTime?.slice(0, 5) || '—'}</strong><small className="mini-card-sub">Theo giờ quy định</small></div>
+                    <div className="room-policy-mini-card"><span className="mini-card-label">Trả phòng</span><strong className="mini-card-val">Trước {data.checkOutTime?.slice(0, 5) || '—'}</strong><small className="mini-card-sub">Bàn giao phòng</small></div>
+                    <div className="room-policy-mini-card highlight-green"><span className="mini-card-label">Hủy phòng</span><strong className="mini-card-val">{policy?.cancellationTiers?.[0] ? `Hoàn ${policy.cancellationTiers[0].refundPercent}%` : 'Xem chính sách'}</strong><small className="mini-card-sub">{policy?.cancellationTiers?.[0] ? `Từ ${policy.cancellationTiers[0].minimumDays} ngày trước` : 'Điều kiện áp dụng bên dưới'}</small></div>
+                  </div>
                 </div>
               </article>
               <aside className="room-page-booking booking-card-redesign">
