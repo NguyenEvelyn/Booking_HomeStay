@@ -649,6 +649,13 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
     const guestCount = adultCount + childCount;
     const countdown = `${String(Math.floor(paymentSecondsLeft / 60)).padStart(2, '0')}:${String(paymentSecondsLeft % 60).padStart(2, '0')}`;
     const formatDate = (value) => new Intl.DateTimeFormat('vi-VN', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(`${value}T00:00:00`));
+    const primaryGuestComplete = Boolean(guestInfo.firstName.trim() && guestInfo.lastName.trim() && /^\S+@\S+\.\S+$/.test(guestInfo.email.trim()) && /^\d{8,15}$/.test(guestInfo.phone.replace(/\s/g, '')) && guestInfo.birthDate && guestInfo.gender && guestInfo.documentNumber.trim() && guestInfo.address.trim() && (guestInfo.documentType !== 'CCCD' || /^\d{12}$/.test(guestInfo.documentNumber)));
+    const companionsComplete = declareLater || companions.every((item) => item.fullName.trim() && item.birthDate && item.gender && (item.type === 'child' || item.documentNumber.trim()));
+    const focusPaymentRequirement = (id) => {
+      const input = document.getElementById(id);
+      input?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      input?.focus({ preventScroll: true });
+    };
     return <main className="payment-page">
       <CustomerNav active="homestays" user={user} onHome={onHome} onHomestays={onBack} onBookings={onBookings} onAccount={onAccount} />
       <div className={`payment-countdown ${paymentSecondsLeft <= 60 ? 'urgent' : ''}`} role="timer" aria-live="polite"><span>{paymentSecondsLeft > 0 ? 'Chúng tôi đang giữ giá cho quý khách...' : 'Thời gian giữ giá đã hết'}</span><i>◷</i><strong>{countdown}</strong></div>
@@ -693,7 +700,7 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
                   <label><span>Loại giấy tờ {item.type==='adult'?'*':''}</span><select value={item.documentType} onChange={e=>setCompanions(c=>c.map((x,i)=>i===index?{...x,documentType:e.target.value}:x))}><option>CCCD</option><option>Hộ chiếu</option>{item.type==='child'&&<><option>Giấy khai sinh</option><option>Chưa có giấy tờ</option></>}</select></label>
                   <label><span>Số giấy tờ {item.type==='adult'?'*':'(tùy chọn)'}</span><input value={item.documentNumber} onChange={e=>setCompanions(c=>c.map((x,i)=>i===index?{...x,documentNumber:e.target.value}:x))}/></label>
                 </div>}</div>})}
-              <label className="payment-check privacy"><input type="checkbox" checked={privacyAccepted} onChange={e=>setPrivacyAccepted(e.target.checked)}/><span>Tôi đồng ý xử lý dữ liệu cá nhân để thực hiện đặt phòng và khai báo lưu trú. *</span></label>
+              <label className="payment-check privacy"><input id="payment-privacy-consent" type="checkbox" checked={privacyAccepted} onChange={e=>setPrivacyAccepted(e.target.checked)}/><span>Tôi đồng ý xử lý dữ liệu cá nhân để thực hiện đặt phòng và khai báo lưu trú. *</span></label>
             </section>
             <section className="payment-card payment-extra-card"><h2><i className="payment-step">5</i> Thông tin bổ sung</h2><label><span>Giờ dự kiến đến</span><select value={guestInfo.arrivalTime} onChange={updateGuestInfo('arrivalTime')}><option value="">Tôi chưa biết</option><option>09:00 - 12:00</option><option>12:00 - 14:00</option><option>14:00 - 16:00</option><option>16:00 - 18:00</option><option>Sau 18:00</option></select></label><label><span>Ghi chú cho chủ nhà (tùy chọn)</span><textarea maxLength="300" rows="4" value={guestInfo.note} onChange={updateGuestInfo('note')} placeholder="Yêu cầu đặc biệt, giờ đến dự kiến..."></textarea><small>{guestInfo.note.length}/300</small></label></section>
             <section className="payment-card payment-options"><h2><i className="payment-step">6</i> Phương thức thanh toán</h2>
@@ -701,10 +708,31 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
               <label className={paymentOption==='Full'?'selected':''}><input type="radio" name="paymentOption" checked={paymentOption==='Full'} onChange={()=>setPaymentOption('Full')}/><span><strong>Thanh toán toàn bộ</strong><small>{money(quotedGrandTotal)}</small></span></label>
               <p className="payment-note"><span className="vnpay-mark">VN<span>PAY</span></span> Bạn sẽ được chuyển sang cổng VNPay an toàn để hoàn tất thanh toán.</p>
               <button type="button" className="policy-link" onClick={()=>setShowCancellationPolicy(true)}>Chính sách hủy và hoàn cọc</button>
-              <label className="payment-check"><input type="checkbox" checked={policyAccepted} onChange={e=>setPolicyAccepted(e.target.checked)}/><span>Tôi đã đọc và đồng ý với chính sách hủy, hoàn cọc. *</span></label>
+              <label className="payment-check"><input id="payment-policy-consent" type="checkbox" checked={policyAccepted} onChange={e=>setPolicyAccepted(e.target.checked)}/><span>Tôi đã đọc và đồng ý với chính sách hủy, hoàn cọc. *</span></label>
             </section>
           </div>
-          <aside className="payment-summary" aria-live="polite"><h2>Chi tiết thanh toán</h2><div><span>{selectedRoom.name} · {isDayUse?`${dayUseHours<=6?dayUseHours:'trên 6'} giờ`:`${bookingNights} đêm`}</span><strong>{money(quotedRoomTotal)}</strong></div>{quotedExtraAdultTotal>0&&<div><span>Phụ thu khách</span><strong>{money(quotedExtraAdultTotal+quotedChildFeeTotal)}</strong></div>}<div><span>Phí dịch vụ</span><strong>0 đ</strong></div><hr/><div><span>Tổng tiền</span><strong>{money(quotedGrandTotal)}</strong></div><div className="payment-due"><span>Cần thanh toán hôm nay</span><strong>{money(paymentOption==='Full'?quotedGrandTotal:(priceQuote?.depositAmount??quotedGrandTotal*.3))}</strong>{paymentOption==='Deposit'&&<small>Còn lại trả tại homestay: {money(quotedGrandTotal-(priceQuote?.depositAmount??quotedGrandTotal*.3))}</small>}</div><p className="payment-checklist">Khách chính {guestInfo.documentNumber?'✓':'○'} · Khách đi cùng {declareLater?'gửi sau':`${companions.filter(x=>x.fullName&&x.birthDate).length}/${companions.length}`} · Chính sách {policyAccepted?'✓':'✗'}</p>{bookingError&&<div className="booking-error">{bookingError}</div>}<button disabled={bookingBusy||paymentSecondsLeft<=0||!privacyAccepted||!policyAccepted} onClick={payWithVnPay}>{bookingBusy?'Đang kết nối VNPay...':paymentOption==='Full'?`Thanh toán ${money(quotedGrandTotal)} qua VNPay`:`Thanh toán cọc ${money(priceQuote?.depositAmount??quotedGrandTotal*.3)} qua VNPay`}</button><small>🔒 Giao dịch được bảo mật bởi VNPay</small></aside>
+          <aside className="payment-summary" aria-live="polite">
+            <h2>Chi tiết thanh toán</h2>
+            <div><span>{selectedRoom.name} · {isDayUse?`${dayUseHours<=6?dayUseHours:'trên 6'} giờ`:`${bookingNights} đêm`}</span><strong>{money(quotedRoomTotal)}</strong></div>
+            {(quotedExtraAdultTotal+quotedChildFeeTotal)>0&&<div><span>Phụ thu khách</span><strong>{money(quotedExtraAdultTotal+quotedChildFeeTotal)}</strong></div>}
+            <div><span>Phí dịch vụ</span><strong>0 đ</strong></div>
+            <hr/>
+            <div><span>Tổng tiền</span><strong>{money(quotedGrandTotal)}</strong></div>
+            <div className="payment-due"><span>Cần thanh toán hôm nay</span><strong>{money(paymentOption==='Full'?quotedGrandTotal:(priceQuote?.depositAmount??quotedGrandTotal*.3))}</strong>{paymentOption==='Deposit'&&<small>Còn lại trả tại homestay: {money(quotedGrandTotal-(priceQuote?.depositAmount??quotedGrandTotal*.3))}</small>}</div>
+            <div className="payment-readiness" role="status">
+              <strong>Trước khi thanh toán</strong>
+              {paymentSecondsLeft>0&&(!privacyAccepted||!policyAccepted)&&<p className="payment-readiness-hint">Nút thanh toán sẽ mở sau khi bạn xác nhận các mục còn thiếu bên dưới.</p>}
+              <p>{primaryGuestComplete?'✓ Khách chính: đã hoàn tất':'○ Khách chính: cần hoàn tất thông tin'}</p>
+              <p>{companionsComplete ? (declareLater?'✓ Khách đi cùng: sẽ khai báo sau':'✓ Khách đi cùng: đã hoàn tất') : '○ Khách đi cùng: cần khai báo hoặc chọn khai báo sau'}</p>
+              {!privacyAccepted&&<button type="button" onClick={()=>focusPaymentRequirement('payment-privacy-consent')}>○ Đồng ý xử lý dữ liệu cá nhân →</button>}
+              {!policyAccepted&&<button type="button" onClick={()=>focusPaymentRequirement('payment-policy-consent')}>○ Đồng ý chính sách hủy và hoàn cọc →</button>}
+              {privacyAccepted&&policyAccepted&&<p>✓ Đã xác nhận các chính sách bắt buộc</p>}
+              {paymentSecondsLeft<=0&&<p className="payment-readiness-expired">⚠ Thời gian giữ giá đã hết. Vui lòng quay lại kiểm tra phòng và giá.</p>}
+            </div>
+            {bookingError&&<div className="booking-error" role="alert">{bookingError}</div>}
+            <button disabled={bookingBusy||paymentSecondsLeft<=0||!privacyAccepted||!policyAccepted} onClick={payWithVnPay}>{bookingBusy?'Đang kết nối VNPay...':paymentOption==='Full'?`Thanh toán ${money(quotedGrandTotal)} qua VNPay`:`Thanh toán cọc ${money(priceQuote?.depositAmount??quotedGrandTotal*.3)} qua VNPay`}</button>
+            <small>🔒 Giao dịch được bảo mật bởi VNPay</small>
+          </aside>
         </div>
       </section>
       {showCancellationPolicy&&<div className="customer-modal-backdrop" role="presentation" onClick={()=>setShowCancellationPolicy(false)}><section className="customer-action-modal policy-modal" role="dialog" aria-modal="true" aria-label="Chính sách hủy và hoàn cọc" onClick={e=>e.stopPropagation()}><button className="modal-x" onClick={()=>setShowCancellationPolicy(false)}>×</button><small>CHÍNH SÁCH THANH TOÁN</small><h2>Hủy phòng và hoàn cọc</h2><p>Khoản hoàn cọc được tính theo thời điểm hủy và chính sách hiệu lực của homestay. Số tiền thực tế sẽ được backend tính lại tại thời điểm thanh toán.</p><button onClick={()=>setShowCancellationPolicy(false)}>Tôi đã hiểu</button></section></div>}
