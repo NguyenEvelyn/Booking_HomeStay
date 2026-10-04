@@ -29,6 +29,9 @@ export async function apiClient(path, options = {}) {
     ...options
   });
   const data = await response.json().catch(() => ({}));
+  if (response.status === 401 && typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('tripio:unauthorized', { detail: { path } }));
+  }
   if (!response.ok) throw new Error(data.message || data.title || `Yêu cầu thất bại (HTTP ${response.status}).`);
   return data;
 }

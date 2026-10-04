@@ -123,13 +123,14 @@ export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings
 
       const [catalogResult, recommendationResult] = await Promise.allSettled([
         homestayApi.list(criteria(targetPage)),
-        location
-          ? Promise.resolve({ items: [], modelVersion: '' })
-          : homestayApi.recommendations({
+        homestayApi.recommendations({
               search,
+              location,
               checkIn,
               checkOut,
               guests: totalGuests,
+              adults: guestsConfig.adults,
+              children: guestsConfig.children,
               rooms: guestsConfig.rooms,
               totalBudget: maxPrice * guestsConfig.rooms * nights,
               amenities: preferredAmenities,
@@ -174,9 +175,12 @@ export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings
         recordRecommendationEvent({
           eventType: 'search',
           search: search.trim(),
+          location: location.trim(),
           checkIn: checkIn || null,
           checkOut: checkOut || null,
           guests: totalGuests,
+          adults: guestsConfig.adults,
+          children: guestsConfig.children,
           rooms: guestsConfig.rooms,
           totalBudget: maxPrice * guestsConfig.rooms * nights,
           amenities: preferredAmenities,
@@ -220,10 +224,7 @@ export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings
     localStorage.setItem('tripio-favorites', JSON.stringify(next));
   };
 
-  const openItem = (id) => {
-    recordRecommendationEvent('click', id).catch(() => {});
-    onOpen(id, criteria(page));
-  };
+  const openItem = (id) => onOpen(id, criteria(page));
   const pageCount = Math.max(1, Math.ceil(result.total / (result.pageSize || 12)));
 
   return (

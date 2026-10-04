@@ -74,7 +74,12 @@ public sealed class PaymentService(AppDbContext db)
         .Where(x => x.BookingId == bookingId && (x.Status == ChargeStatus.Approved || x.Status == ChargeStatus.Adjusted || x.Status == ChargeStatus.Paid))
         .SumAsync(x => (decimal?)x.TotalPrice) ?? 0;
 
-    public async Task<decimal> BalanceDue(Booking booking) => BookingRules.Balance(booking.RoomAmount, await ApprovedChargeTotal(booking.Id), await TotalPaid(booking.Id));
+    public async Task<decimal> BalanceDue(Booking booking)
+    {
+        var totalDue = booking.RoomAmount + await ApprovedChargeTotal(booking.Id)
+            - booking.DiscountAmount + booking.ServiceFee + booking.TaxAmount;
+        return Math.Max(0, totalDue) - await TotalPaid(booking.Id);
+    }
 
     public async Task RefreshPaymentStatus(Booking booking)
     {

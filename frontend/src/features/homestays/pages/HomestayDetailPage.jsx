@@ -300,7 +300,7 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
   useEffect(() => {
     if (data && viewedId.current !== data.id) {
       viewedId.current = data.id;
-      recordRecommendationEvent('view', data.id).catch(() => {});
+      recordRecommendationEvent({ eventType: 'view', homestayId: data.id }).catch(() => {});
     }
   }, [data]);
 

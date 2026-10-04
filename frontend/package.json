@@ -3,8 +3,25 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "scripts": { "dev": "vite", "build": "vite build", "preview": "vite preview" },
-  "dependencies": { "@vitejs/plugin-react": "^4.4.1", "vite": "^6.3.5", "react": "^19.1.0", "react-dom": "^19.1.0" },
-  "devDependencies": {}
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:mobile": "vite build --mode mobile",
+    "preview": "vite preview",
+    "mobile:sync": "pnpm build:mobile && cap sync android",
+    "mobile:open": "cap open android",
+    "mobile:run": "pnpm mobile:sync && cap run android",
+    "mobile:build": "pnpm mobile:sync && cd android && gradlew.bat assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
+    "@vitejs/plugin-react": "^4.4.1",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "vite": "^6.3.5"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.2"
+  }
 }
-

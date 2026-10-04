@@ -3,8 +3,10 @@ const query = values => { const params = new URLSearchParams(); Object.entries(v
 export const adminApi = {
   overview: () => apiClient('/admin/overview'),
   dashboard: (filters) => apiClient(`/admin/dashboard${query(filters)}`),
-  recommendationSummary: () => apiClient('/recommendation-events/summary?days=30'),
+  recommendationSummary: () => apiClient('/recommendation-events/summary?days=365'),
   recommendationExport: (days = 365) => apiClient(`/recommendation-events/export?days=${days}`),
+  demandForecast: ({ region = '', historyMonths = 36, horizon = 6 } = {}) => apiClient(`/admin/ai/demand-forecast${query({ region, historyMonths, horizon })}`),
+  demandForecastRegions: () => apiClient('/admin/ai/demand-forecast/regions'),
   homestays: (filters) => apiClient(`/admin/homestays${query(filters)}`),
   homestayFilters: () => apiClient('/admin/homestays/filters'),
   homestayDetail: (id) => apiClient(`/admin/homestays/${id}`),

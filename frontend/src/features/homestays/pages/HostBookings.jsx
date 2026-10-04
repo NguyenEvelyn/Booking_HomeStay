@@ -14,15 +14,19 @@ const today = () => {
 };
 
 const labels = {
+  Hold: 'Chờ thanh toán',
   Pending: 'Chờ xác nhận',
   PendingPayment: 'Chờ thanh toán',
   PaymentFailed: 'Thanh toán lỗi',
   Expired: 'Hết hạn',
   Confirmed: 'Đã xác nhận',
   CheckedIn: 'Đang ở',
+  CheckoutPendingPayment: 'Chờ xác nhận trả phòng',
+  CheckedOut: 'Đã trả phòng',
   Completed: 'Hoàn thành',
   CancellationRequested: 'Chờ duyệt hủy',
-  Cancelled: 'Đã hủy'
+  Cancelled: 'Đã hủy',
+  NoShow: 'Không đến'
 };
 
 const tabs = [
@@ -100,9 +104,9 @@ export default function HostBookings({ items, homestays, run }) {
   };
 
   const open = async (item, tab = 'overview') => {
-    setSelected({ ...item, isNew: false });
+    setSelected({ ...item, isNew: false, contactIsNew: false });
     setSelectedTab(tab);
-    if (item.isNew) homestayApi.markBookingViewed(item.id).catch(() => {});
+    if (item.isNew || item.contactIsNew) homestayApi.markBookingViewed(item.id).catch(() => {});
   };
 
   const reset = () => {
@@ -282,7 +286,7 @@ export default function HostBookings({ items, homestays, run }) {
           {visible.map(x => (
             <article key={x.id} className={x.isNew ? 'is-new' : ''} onClick={() => open(x)}>
               <div className="booking-primary">
-                <span>{x.isNew && <b>Mới</b>}{x.bookingCode}</span>
+                <span>{x.isNew && <b>Mới</b>}{x.contactIsNew && <b className="contact-updated-chip">Mới cập nhật</b>}{x.bookingCode}</span>
                 <h3>{x.customerName}</h3>
                 <small>{x.customerPhone || 'Chưa có SĐT'} · Đặt lúc {dateTime(x.createdAt)}</small>
               </div>
@@ -506,6 +510,7 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
   const [note, setNote] = useState(initialItem.hostNote || '');
   const [showIncidentalModal, setShowIncidentalModal] = useState(false);
   const [incidentalCategory, setIncidentalCategory] = useState('service');
+  const [isMaximized, setIsMaximized] = useState(false);
 
   const policy = item.policy || {};
   const capacity = item.details?.[0]?.capacity || {
@@ -888,7 +893,7 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
       setTimeout(() => setShowExtendModal(false), 1200);
       run(homestayApi.hostBookings, false);
     } catch (err) {
-      alert(err.message || 'Lỗi khi gia hạn lưu trú.');
+      setExtendMessage(err.message || 'Lỗi khi gia hạn lưu trú.');
     } finally {
       setExtendSaving(false);
     }
@@ -897,6 +902,8 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
   // 5. Thao tác Đổi phòng (Module III)
   const loadAvailableRooms = async () => {
     setLoadingRooms(true);
+    setSelectedNewRoomId('');
+    setRoomChangeMessage('');
     try {
       const res = await homestayApi.getAvailableRoomsForChange(item.id);
       setAvailableRooms(res.availableRooms || []);
@@ -927,19 +934,19 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
         ...prev,
         subtotal: res.subtotal,
         totalAmount: res.totalAmount,
-        details: (prev.details || []).map(d => ({
+        details: (prev.details || []).map(d => String(d.roomId) === String(res.oldRoomId) ? ({
           ...d,
           roomId: res.newRoomId,
           roomNumber: res.newRoomNumber,
-          roomTypeName: selectedRoom?.roomTypeName || d.roomTypeName
-        }))
+          roomTypeName: res.newRoomTypeName || selectedRoom?.roomTypeName || d.roomTypeName
+        }) : d)
       }));
       setRoomChangeMessage(res.message || 'Đổi phòng thành công!');
       run(homestayApi.hostBookings, false);
       loadAvailableRooms();
       setTimeout(() => setShowRoomChangeModal(false), 1200);
     } catch (err) {
-      alert(err.message || 'Lỗi khi thực hiện đổi phòng.');
+      setRoomChangeMessage(err.message || 'Lỗi khi thực hiện đổi phòng.');
     } finally {
       setRoomChangeSaving(false);
     }
@@ -1066,7 +1073,9 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
     let confirmMsg = `XÁC NHẬN QUYẾT TOÁN TRẢ PHÒNG (CHECK-OUT):\n\n`;
     confirmMsg += `1. TIỀN PHÒNG & DỊCH VỤ: ${balance > 0 ? `Thu thêm ${money(paymentAmount)}` : balance < 0 ? `Hoàn lại tiền cọc ${money(refundAmount)}` : 'Đã thanh toán đủ (0đ)'}\n`;
     confirmMsg += `2. CỌC TÀI SẢN: Cọc giữ ${money(recordedPropertyDeposit)} - Thiệt hại ${money(totalDamageCompensation)} = ${netPropertyDepositRefund > 0 ? `Hoàn trả cọc tài sản ${money(netPropertyDepositRefund)}` : excessDamageOwed > 0 ? `Thu thêm tiền bồi thường ${money(excessDamageOwed)}` : '0đ'}\n\n`;
-    confirmMsg += `Phương thức: ${checkoutPaymentMethod === 'Cash' ? 'Tiền mặt' : 'Chuyển khoản'}.\nXác nhận hoàn tất và giải phóng phòng?`;
+    confirmMsg += checkoutPaymentMethod === 'Cash'
+      ? `Phương thức: Tiền mặt.\nXác nhận hoàn tất và giải phóng phòng?`
+      : `Phương thức: VNPay.\nHệ thống sẽ mở lại cổng VNPay; chỉ hoàn tất và giải phóng phòng sau khi thanh toán thành công.`;
 
     if (!window.confirm(confirmMsg)) return;
 
@@ -1083,6 +1092,11 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
         damageItems: damageItemsList.length ? damageItemsList : null,
         note: checkoutNote.trim()
       });
+      if (res.requiresOnlinePayment && res.paymentUrl) {
+        setCheckoutMessage(res.message || 'Đang chuyển đến cổng thanh toán VNPay...');
+        window.location.assign(res.paymentUrl);
+        return;
+      }
       setItem(prev => ({
         ...prev,
         status: res.status,
@@ -1097,7 +1111,7 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
       setCheckoutMessage(res.message || 'Đã hoàn tất trả phòng thành công!');
       run(homestayApi.hostBookings, false);
     } catch (err) {
-      alert(err.message || 'Lỗi khi xử lý trả phòng.');
+      setCheckoutMessage(err.message || 'Lỗi khi xử lý trả phòng.');
     } finally {
       setCheckoutSaving(false);
     }
@@ -1403,13 +1417,14 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
   }, [item, print, loadAvailableRooms, fetchExtendQuote, fetchDateChangeQuote, fetchCancelQuote]);
 
   return (
-    <div className="booking-modal" onMouseDown={e => e.target === e.currentTarget && close()}>
+    <div className={`booking-modal ${isMaximized ? 'is-maximized' : ''}`} onMouseDown={e => e.target === e.currentTarget && close()}>
       <section>
         {/* REFACTORED HEADER BAR (SECTION XXII) */}
         <div className="booking-header-bar">
           <div className="booking-header-code-name">
-            <small>QUẢN LÝ VÒNG ĐỜI ĐƠN ĐẶT PHÒNG</small>
-            <h2>{item.bookingCode} • {item.customerName}</h2>
+            <small>CHI TIẾT ĐƠN ĐẶT PHÒNG</small>
+            <h2>{item.bookingCode}</h2>
+            <p><strong>{item.customerName}</strong><span>{item.homestayName}{item.details?.[0]?.roomNumber ? ` · Phòng ${item.details[0].roomNumber}` : ''}</span></p>
           </div>
 
           <div className="booking-header-badges">
@@ -1490,66 +1505,47 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
             {/* ACTION DROPDOWN MENU [⋮ Thao tác ▼] */}
             <BookingActionMenu actions={bookingActions} />
 
+            <button
+              type="button"
+              className="booking-modal-expand"
+              onClick={() => setIsMaximized(value => !value)}
+              aria-label={isMaximized ? 'Thu nhỏ cửa sổ' : 'Phóng to cửa sổ'}
+              title={isMaximized ? 'Thu nhỏ' : 'Phóng to'}
+              aria-pressed={isMaximized}
+            >
+              {isMaximized ? (
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4v5H4M15 20v-5h5M4 9l5-5M20 15l-5 5" /></svg>
+              ) : (
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5" /></svg>
+              )}
+            </button>
+
             <button className="booking-modal-close" onClick={close} aria-label="Đóng">
               <HostIcon name="close" size={20} />
             </button>
           </div>
         </div>
 
-        {/* 3-STAGE LIFECYCLE STEPPER */}
-        <div className="lifecycle-3stage-bar">
-          <div
-            className={`lifecycle-stage-step ${['Confirmed', 'CheckedIn', 'CheckedOut', 'Completed'].includes(item.status) ? 'done' : ''} ${activeTab === 'checkin' ? 'active' : ''}`}
-            onClick={() => setActiveTab('checkin')}
-          >
-            <div className="lifecycle-stage-dot">1</div>
-            <div className="lifecycle-stage-info">
-              <span className="step-title">1. CHECK-IN</span>
-              <span className="step-sub">{item.checkInOut?.guestIdentityNumber ? 'Đã đối chiếu CCCD' : 'Nhận phòng & Đối chiếu'}</span>
-            </div>
-          </div>
-
-          <div
-            className={`lifecycle-stage-step ${['CheckedIn', 'CheckedOut', 'Completed'].includes(item.status) ? (item.status === 'CheckedIn' ? 'current' : 'done') : ''} ${activeTab === 'stay' ? 'active' : ''}`}
-            onClick={() => setActiveTab('stay')}
-          >
-            <div className="lifecycle-stage-dot">2</div>
-            <div className="lifecycle-stage-info">
-              <span className="step-title">2. ĐANG Ở</span>
-              <span className="step-sub">{item.status === 'CheckedIn' ? 'Đang lưu trú tại phòng' : 'Quản lý lưu trú & Dịch vụ'}</span>
-            </div>
-          </div>
-
-          <div
-            className={`lifecycle-stage-step ${['CheckedOut', 'Completed'].includes(item.status) ? 'done' : (item.status === 'CheckedIn' ? 'current' : '')} ${activeTab === 'checkout' ? 'active' : ''}`}
-            onClick={() => setActiveTab('checkout')}
-          >
-            <div className="lifecycle-stage-dot">3</div>
-            <div className="lifecycle-stage-info">
-              <span className="step-title">3. CHECK-OUT</span>
-              <span className="step-sub">{['CheckedOut', 'Completed'].includes(item.status) ? 'Đã quyết toán' : 'Kiểm tra & Quyết toán'}</span>
-            </div>
-          </div>
-        </div>
-
         {/* 6 MAIN TABS NAV */}
-        <div className="lifecycle-tabs-nav">
+        <div className="lifecycle-tabs-nav" role="tablist" aria-label="Các phần của đơn đặt phòng">
           <button
             type="button"
             className={`lifecycle-tab-btn ${activeTab === 'overview' ? 'active' : ''}`}
             onClick={() => setActiveTab('overview')}
+            role="tab" aria-selected={activeTab === 'overview'}
           >
             <HostIcon name="bookings" size={15} />
-            <span>1. Tổng quan & Đối chiếu</span>
+            <span>Tổng quan</span>
           </button>
 
           <button
             type="button"
             className={`lifecycle-tab-btn ${activeTab === 'checkin' ? 'active' : ''}`}
             onClick={() => setActiveTab('checkin')}
+            role="tab" aria-selected={activeTab === 'checkin'}
           >
             <HostIcon name="key" size={15} />
-            <span>2. Check-in</span>
+            <span>Check-in</span>
             {item.checkInOut?.guestIdentityNumber && <span className="tab-pill-success">Đã đối chiếu</span>}
           </button>
 
@@ -1557,9 +1553,10 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
             type="button"
             className={`lifecycle-tab-btn ${activeTab === 'stay' ? 'active' : ''}`}
             onClick={() => setActiveTab('stay')}
+            role="tab" aria-selected={activeTab === 'stay'}
           >
             <HostIcon name="tag" size={15} />
-            <span>3. Đang ở & Quản lý lưu trú</span>
+            <span>Đang ở & dịch vụ</span>
             {inStayChargesList.length > 0 && <span className="tab-pill-count">{inStayChargesList.length}</span>}
           </button>
 
@@ -1567,9 +1564,10 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
             type="button"
             className={`lifecycle-tab-btn ${activeTab === 'checkout' ? 'active' : ''}`}
             onClick={() => setActiveTab('checkout')}
+            role="tab" aria-selected={activeTab === 'checkout'}
           >
             <HostIcon name="calendar" size={15} />
-            <span>4. Check-out & Quyết toán</span>
+            <span>Check-out</span>
             {['CheckedOut', 'Completed'].includes(item.status) && <span className="tab-pill-success">Đã trả</span>}
           </button>
 
@@ -1577,9 +1575,10 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
             type="button"
             className={`lifecycle-tab-btn ${activeTab === 'bill' ? 'active' : ''}`}
             onClick={() => setActiveTab('bill')}
+            role="tab" aria-selected={activeTab === 'bill'}
           >
             <HostIcon name="finance" size={15} />
-            <span>5. Hóa đơn & Công nợ</span>
+            <span>Hóa đơn</span>
             {liveRemainingDue > 0 && <span className="tab-pill-warning">Còn nợ</span>}
           </button>
 
@@ -1587,9 +1586,10 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
             type="button"
             className={`lifecycle-tab-btn ${activeTab === 'history' ? 'active' : ''}`}
             onClick={() => setActiveTab('history')}
+            role="tab" aria-selected={activeTab === 'history'}
           >
             <HostIcon name="clock" size={15} />
-            <span>6. Lịch sử thay đổi & Giao dịch</span>
+            <span>Lịch sử</span>
             {(item.payments?.length || 0) + (item.auditLogs?.length || 0) > 0 && (
               <span className="tab-pill-count">{(item.payments?.length || 0) + (item.auditLogs?.length || 0)}</span>
             )}
@@ -1598,7 +1598,7 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
 
         {/* TAB 1: TỔNG QUAN & LƯU TRÚ (Section 2, 3, 13, 16) */}
         {activeTab === 'overview' && (
-          <div className="tab-content-pane">
+          <div className="tab-content-pane overview-pane" role="tabpanel">
             {/* SECTION 13: TIẾN TRÌNH VÒNG ĐỜI KÈM TIMESTAMP */}
             <section className="booking-timeline" style={{ marginTop: 0 }}>
               <h3>Tiến trình vòng đời đơn đặt phòng (Lịch sử trạng thái)</h3>
@@ -1637,7 +1637,7 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
             </section>
 
             {/* SECTION 16: SO SÁNH GIÁ BAN ĐẦU VÀ GIÁ CUỐI CÙNG (DÒNG CHẢY BIẾN ĐỘNG) */}
-            <div className="price-fluctuation-card">
+            <div className={`price-fluctuation-card ${priceFluctuationDiff === 0 ? 'no-change' : ''}`}>
               <div className="price-fluctuation-title">
                 <span>Biến động giá booking (So sánh Giá ban đầu vs Giá cuối cùng)</span>
                 <span className={priceFluctuationDiff > 0 ? 'text-danger' : priceFluctuationDiff < 0 ? 'text-success' : ''}>
@@ -1834,7 +1834,7 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
             <div className="booking-detail-grid">
               {/* SECTION 2: THÔNG TIN KHÁCH HÀNG & ĐỐI CHIẾU */}
               <article>
-                <h3>Thông tin khách hàng & Đối chiếu</h3>
+                <h3>Người liên hệ & Đối chiếu {item.contactIsNew && <span className="contact-updated-chip">Mới cập nhật</span>}</h3>
                 <dl>
                   <dt>Họ tên khách</dt>
                   <dd><strong>{item.customerName}</strong></dd>
@@ -1850,6 +1850,8 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
                   </dd>
                   <dt>Email</dt>
                   <dd><a href={`mailto:${item.customerEmail}`}>{item.customerEmail}</a></dd>
+                  <dt>Khách nhận phòng</dt>
+                  <dd><strong>{item.guestName || item.customerName}</strong></dd>
                   <dt>CCCD / Hộ chiếu</dt>
                   <dd>
                     {item.checkInOut?.guestIdentityNumber ? (
@@ -2435,72 +2437,6 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
                 </table>
               </div>
 
-              {/* Form thêm nhanh trực tiếp dịch vụ */}
-              <div className="add-service-form-grid" style={{ marginTop: '16px' }}>
-                <div className="field-group">
-                  <label>Loại dịch vụ</label>
-                  <select
-                    className="form-input"
-                    value={chargeType}
-                    onChange={e => setChargeType(e.target.value)}
-                  >
-                    <option value="service">Dịch vụ chung</option>
-                    <option value="minibar">Minibar đồ uống</option>
-                    <option value="extra_bed">Giường phụ & vật dụng</option>
-                    <option value="pet">Thú cưng</option>
-                    <option value="damage_compensation">Bồi thường tài sản</option>
-                    <option value="custom_adjustment">Điều chỉnh khác (Cộng/Trừ)</option>
-                  </select>
-                </div>
-
-                <div className="field-group field-desc">
-                  <label>Mô tả chi tiết <span className="req">*</span></label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="VD: Thuê xe máy Vision (1 ngày)..."
-                    value={chargeDesc}
-                    onChange={e => setChargeDesc(e.target.value)}
-                  />
-                </div>
-
-                <div className="field-group field-qty">
-                  <label>Số lượng</label>
-                  <input
-                    type="number"
-                    min="1"
-                    className="form-input"
-                    value={chargeQty}
-                    onChange={e => setChargeQty(Math.max(1, Number(e.target.value) || 1))}
-                  />
-                </div>
-
-                <div className="field-group field-price">
-                  <label>Đơn giá (VNĐ) <span className="req">*</span></label>
-                  <input
-                    type="number"
-                    step="5000"
-                    className="form-input"
-                    placeholder="Nhập giá"
-                    value={chargePrice}
-                    onChange={e => setChargePrice(e.target.value)}
-                  />
-                </div>
-
-                <div className="field-group field-btn">
-                  <label>&nbsp;</label>
-                  <button
-                    type="button"
-                    className="btn-add-charge"
-                    onClick={() => handleAddCharge()}
-                    disabled={chargeSaving}
-                  >
-                    <HostIcon name="plus" size={15} />
-                    <span>{chargeSaving ? 'Đang thêm...' : 'Thêm vào Bill'}</span>
-                  </button>
-                </div>
-              </div>
-
               {chargeMessage && (
                 <div className="timing-message-alert" style={{ marginTop: '10px' }}>
                   <HostIcon name="check" size={15} />
@@ -2891,7 +2827,7 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
                         checked={checkoutPaymentMethod === 'BankTransfer'}
                         onChange={() => setCheckoutPaymentMethod('BankTransfer')}
                       />
-                      <span>Chuyển khoản ngân hàng (Bank Transfer)</span>
+                      <span>Chuyển khoản qua VNPay</span>
                     </label>
                   </div>
                 </div>
@@ -2908,8 +2844,8 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
                 </div>
 
                 {checkoutMessage && (
-                  <div className="timing-message-alert" style={{ marginTop: '12px' }}>
-                    <HostIcon name="check" size={15} />
+                  <div className={checkoutMessage.includes('Lỗi') || checkoutMessage.includes('lỗi') ? 'bo-message error' : 'timing-message-alert'} style={{ marginTop: '12px' }} role="alert">
+                    <HostIcon name={checkoutMessage.includes('Lỗi') || checkoutMessage.includes('lỗi') ? 'alert' : 'check'} size={15} />
                     <span>{checkoutMessage}</span>
                   </div>
                 )}
@@ -3279,6 +3215,7 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
                     log.action === 'ChangeRoom' ? 'Đổi phòng lưu trú' :
                     log.action === 'ExtendStay' ? 'Gia hạn thời gian lưu trú' :
                     log.action === 'CheckOut' ? 'Check-out trả phòng & Quyết toán' :
+                    log.action === 'booking.contact_updated' ? 'Khách cập nhật người liên hệ' :
                     log.action === 'UpdateNote' ? 'Cập nhật ghi chú nội bộ' : log.action;
 
                   const actorDisplayName = log.actorName || (log.actorRole === 'Host' ? 'Chủ nhà / Quản lý' : log.actorRole === 'Admin' ? 'Quản trị viên' : log.actorRole === 'Customer' ? item.customerName : 'Hệ thống');
@@ -3844,7 +3781,7 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
                     Phòng hiện tại: <strong style={{ color: '#09275f' }}>{item.details?.[0]?.roomNumber ? `Phòng ${item.details[0].roomNumber}` : item.roomName}</strong> ({item.details?.[0]?.roomTypeName || 'Tiêu chuẩn'})
                   </div>
                   <div style={{ fontSize: '13px', marginTop: '4px' }}>
-                    Số khách thực tế của đơn: <b>{actualTotalGuests} khách</b> ({actualAdultsCount} người lớn, {actualChildrenCount} trẻ em) · Số đêm còn lại: <b>{item.nights} đêm</b>
+                    Số khách thực tế của đơn: <b>{actualTotalGuests} khách</b> ({actualAdultsCount} người lớn, {actualChildrenCount} trẻ em)
                   </div>
                 </div>
 
@@ -3853,18 +3790,22 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
                   {loadingRooms ? (
                     <div style={{ padding: '10px', color: '#64748b' }}>Đang tải danh sách phòng trống...</div>
                   ) : (
-                    <select
-                      className="form-input"
-                      value={selectedNewRoomId}
-                      onChange={e => setSelectedNewRoomId(e.target.value)}
-                    >
-                      <option value="">-- Chọn phòng trống chuyển sang --</option>
-                      {availableRooms.map(r => (
-                        <option key={r.id} value={r.id}>
-                          Phòng {r.roomNumber} - {r.roomTypeName} (Sức chứa: {r.baseCapacity}-{r.maxCapacity} khách) - {money(r.pricePerNight)}/đêm {r.priceDifference > 0 ? `[+${money(r.priceDifference)}]` : r.priceDifference < 0 ? `[-${money(Math.abs(r.priceDifference))}]` : '[Bằng giá]'}
-                        </option>
-                      ))}
-                    </select>
+                    availableRooms.length ? (
+                      <select
+                        className="form-input"
+                        value={selectedNewRoomId}
+                        onChange={e => setSelectedNewRoomId(e.target.value)}
+                      >
+                        <option value="">-- Chọn phòng trống chuyển sang --</option>
+                        {availableRooms.map(r => (
+                          <option key={r.id} value={r.id}>
+                            Phòng {r.roomNumber} - {r.roomTypeName} (tối đa {r.maxCapacity} khách) - {money(r.pricePerNight)}/đêm {r.priceDifference > 0 ? `[+${money(r.priceDifference)} cho ${r.remainingNights} đêm]` : r.priceDifference < 0 ? `[-${money(Math.abs(r.priceDifference))} cho ${r.remainingNights} đêm]` : '[Bằng giá]'}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div className="bo-message error" role="status">Không có phòng phù hợp sức chứa và còn trống trong thời gian lưu trú còn lại.</div>
+                    )
                   )}
                 </div>
 
@@ -3873,7 +3814,8 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
                   const selRoom = availableRooms.find(r => String(r.id) === String(selectedNewRoomId));
                   if (!selRoom) return null;
                   const isOverCapacity = actualTotalGuests > (selRoom.maxCapacity || 99);
-                  const effectiveDiff = isHomestayFault ? 0 : (customDiff !== '' ? Number(customDiff) || 0 : selRoom.priceDifference || 0);
+                  const policyDiff = isHomestayFault && selRoom.diffPerNight > 0 ? 0 : (customDiff !== '' ? Number(customDiff) || 0 : selRoom.priceDifference || 0);
+                  const effectiveDiff = applyDiff ? policyDiff : 0;
                   const newDebt = liveRemainingDue + effectiveDiff;
                   return (
                     <div className="preview-flow-card" style={{ marginBottom: '16px' }}>
@@ -3911,10 +3853,10 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
 
                       <div className="preview-change-summary">
                         <div className="preview-change-row">
-                          <span>Chênh lệch niêm yết ({item.nights} đêm):</span>
+                          <span>Chênh lệch niêm yết ({selRoom.remainingNights} đêm còn lại):</span>
                           <b>{selRoom.priceDifference > 0 ? `+${money(selRoom.priceDifference)}` : selRoom.priceDifference < 0 ? `-${money(Math.abs(selRoom.priceDifference))}` : '0đ'}</b>
                         </div>
-                        {isHomestayFault && (
+                        {isHomestayFault && selRoom.diffPerNight > 0 && (
                           <div className="preview-change-row">
                             <span style={{ color: '#16a34a', fontWeight: 700 }}>Chính sách Lỗi Homestay:</span>
                             <b style={{ color: '#16a34a' }}>Miễn phí nâng hạng (0đ)</b>
@@ -3982,8 +3924,8 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
                 </div>
 
                 {roomChangeMessage && (
-                  <div className="timing-message-alert" style={{ marginBottom: '14px' }}>
-                    <HostIcon name="check" size={15} />
+                  <div className={roomChangeMessage.includes('thành công') ? 'timing-message-alert' : 'bo-message error'} style={{ marginBottom: '14px' }} role="alert">
+                    <HostIcon name={roomChangeMessage.includes('thành công') ? 'check' : 'alert'} size={15} />
                     <span>{roomChangeMessage}</span>
                   </div>
                 )}
@@ -4144,8 +4086,8 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
                 </div>
 
                 {extendMessage && (
-                  <div className="timing-message-alert" style={{ marginBottom: '14px' }}>
-                    <HostIcon name="check" size={15} />
+                  <div className={extendMessage.includes('Lỗi') || extendMessage.includes('lỗi') ? 'bo-message error' : 'timing-message-alert'} style={{ marginBottom: '14px' }} role="alert">
+                    <HostIcon name={extendMessage.includes('Lỗi') || extendMessage.includes('lỗi') ? 'alert' : 'check'} size={15} />
                     <span>{extendMessage}</span>
                   </div>
                 )}

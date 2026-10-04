@@ -12,12 +12,12 @@ using HomestayAuth.Api.Features.Admin.Authorization;
 namespace HomestayAuth.Api.Features.Recommendations;
 
 public sealed record RecommendationEventRequest(string SessionId, string EventType, long? HomestayId,
-    string? Search, DateOnly? CheckIn, DateOnly? CheckOut, int? Guests, int? Rooms,
+    string? Search, string? Location, DateOnly? CheckIn, DateOnly? CheckOut, int? Guests, int? Adults, int? Children, int? Rooms,
     decimal? TotalBudget, string[]? Amenities, long[]? RecommendedIds);
 
 [ApiController]
 [Route("api/recommendation-events")]
-public sealed class RecommendationEventsController(AppDbContext db) : ControllerBase
+public sealed class RecommendationEventsController(AppDbContext db, RecommendationWeightsProvider weightsProvider) : ControllerBase
 {
     [HttpPost]
     [EnableRateLimiting("recommendation-events")]
@@ -29,6 +29,9 @@ public sealed class RecommendationEventsController(AppDbContext db) : Controller
             || (request.EventType == "search" && request.HomestayId is not null)
             || request.Search?.Length > 200 || request.Amenities?.Length > 20
             || request.RecommendedIds?.Length > 10 || request.Guests is < 1 or > 30
+            || request.Adults is < 1 or > 30 || request.Children is < 0 or > 20
+            || (request.EventType == "search" && request.Adults.HasValue && request.Children.HasValue
+                && request.Adults.Value + request.Children.Value != request.Guests)
             || request.Rooms is < 1 or > 10 || request.TotalBudget is <= 0 or > 1000000000)
             return BadRequest(new { message = "Dữ liệu sự kiện không hợp lệ." });
 
@@ -45,7 +48,8 @@ public sealed class RecommendationEventsController(AppDbContext db) : Controller
             HomestayId = request.HomestayId,
             QueryData = JsonSerializer.Serialize(new
             {
-                search = request.Search?.Trim(), request.CheckIn, request.CheckOut, request.Guests, request.Rooms,
+                search = request.Search?.Trim(), location = request.Location?.Trim(), request.CheckIn, request.CheckOut,
+                request.Guests, request.Adults, request.Children, request.Rooms,
                 request.TotalBudget, amenities = request.Amenities?.Take(20),
                 recommendedIds = request.RecommendedIds?.Take(10)
             }),
@@ -106,7 +110,10 @@ public sealed class RecommendationEventsController(AppDbContext db) : Controller
             searchesWithRecommendedBooking++;
             reciprocalDiscountedGain += 1d / Math.Log2(rank + 2);
         }
-        return Ok(new { days, attributionDays, searches = searches.Count, views = views.Count,
+        var weights = weightsProvider.Current;
+        return Ok(new { days, attributionDays, modelVersion = weights.Version, modelIsLearned = weights.IsLearned,
+            trainingMinimum = 100, attributedBookingSamples = searchesWithBooking,
+            searches = searches.Count, views = views.Count,
             confirmedBookings = bookings.Count,
             uniqueSessions = events.Select(e => e.SessionId).Distinct().Count(), recommendedSearches,
             searchesWithRecommendationView,

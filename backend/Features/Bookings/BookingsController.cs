@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Text.Json;
 using System.Data;
 using System.Text.RegularExpressions;
+using System.ComponentModel.DataAnnotations;
 using HomestayAuth.Api.Domain.Entities;
 using HomestayAuth.Api.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
@@ -18,6 +19,7 @@ public sealed record CreateBookingRequest(long RoomTypeId, DateOnly CheckInDate,
     bool DeclareCompanionsLater = false, bool PrivacyAccepted = false, bool PolicyAccepted = false);
 public sealed record CancelBookingRequest(string Reason);
 public sealed record UpdateGuestDeclarationsRequest(IReadOnlyList<BookingGuestInput> Guests, bool PrivacyAccepted);
+public sealed record UpdateBookingContactRequest(string ContactName, string Phone, string? Email, string? GuestName);
 
 [ApiController]
 [Route("api/bookings")]
@@ -106,7 +108,9 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
                 HomestayImage = db.HomestayImages.Where(i => i.HomestayId == x.HomestayId).OrderByDescending(i => i.IsThumbnail).ThenBy(i => i.SortOrder).Select(i => i.ImageUrl).FirstOrDefault(),
                 Address = db.Homestays.Where(h => h.Id == x.HomestayId).Select(h => h.AddressLine + ", " + h.District + ", " + h.Province).First(),
                 HostPhone = db.Homestays.Where(h => h.Id == x.HomestayId).Select(h => db.Users.Where(u => u.Id == h.HostId).Select(u => u.PhoneNumber).FirstOrDefault()).FirstOrDefault(),
-                x.CheckInDate, x.CheckOutDate, Nights = x.Details.Select(d => (int?)d.NumberOfNights).FirstOrDefault() ?? 0, x.AdultCount, x.ChildCount, x.TotalAmount,
+                City = db.Homestays.Where(h => h.Id == x.HomestayId).Select(h => h.District).First(),
+                Province = db.Homestays.Where(h => h.Id == x.HomestayId).Select(h => h.Province).First(),
+                x.CheckInDate, x.CheckOutDate, x.HoldExpiresAt, Nights = x.Details.Select(d => (int?)d.NumberOfNights).FirstOrDefault() ?? 0, x.AdultCount, x.ChildCount, x.TotalAmount,
                 Rooms = x.Details.Select(d => d.RoomId == null ? db.RoomTypes.Where(t => t.Id == d.RoomTypeId).Select(t => t.Name).First() : db.Rooms.Where(r => r.Id == d.RoomId).Select(r => r.RoomNumber).First()).ToList(),
                 Status = x.Status == BookingStatus.Hold && x.HoldExpiresAt <= DateTime.UtcNow ? "Expired" : x.Status, x.CreatedAt,
                 CanReview = x.Status == BookingStatus.CheckedOut && x.ReviewCreateUntil >= BookingRules.Today && !db.Reviews.Any(r => r.BookingId == x.Id),
@@ -127,13 +131,80 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
                 CheckInTime = db.Homestays.Where(h => h.Id == x.HomestayId).Select(h => h.CheckInTime).First(), CheckOutTime = db.Homestays.Where(h => h.Id == x.HomestayId).Select(h => h.CheckOutTime).First(),
                 HostName = db.Homestays.Where(h => h.Id == x.HomestayId).Select(h => db.Users.Where(u => u.Id == h.HostId).Select(u => u.FullName).First()).First(),
                 HostPhone = db.Homestays.Where(h => h.Id == x.HomestayId).Select(h => db.Users.Where(u => u.Id == h.HostId).Select(u => u.PhoneNumber).FirstOrDefault()).FirstOrDefault(),
-                x.CheckInDate, x.CheckOutDate, x.AdultCount, x.ChildCount, x.Subtotal, x.DiscountAmount, x.ServiceFee, x.TaxAmount, x.TotalAmount, x.Status, x.CustomerNote, x.CreatedAt,
+                HomestayImage = db.HomestayImages.Where(i => i.HomestayId == x.HomestayId).OrderByDescending(i => i.IsThumbnail).ThenBy(i => i.SortOrder).Select(i => i.ImageUrl).FirstOrDefault(),
+                Province = db.Homestays.Where(h => h.Id == x.HomestayId).Select(h => h.Province).First(),
+                x.CheckInDate, x.CheckOutDate, x.AdultCount, x.ChildCount, x.Subtotal, x.DiscountAmount, x.ServiceFee, x.TaxAmount, x.TotalAmount, x.RoomAmount, x.DepositAmount, x.PaymentStatus, x.HoldExpiresAt, x.Status, x.CustomerNote, x.CreatedAt,
+                ContactName = x.ContactName ?? db.Users.Where(u => u.Id == x.CustomerId).Select(u => u.FullName).First(),
+                ContactPhone = x.ContactPhone ?? db.Users.Where(u => u.Id == x.CustomerId).Select(u => u.PhoneNumber).FirstOrDefault(),
+                ContactEmail = x.ContactEmail ?? db.Users.Where(u => u.Id == x.CustomerId).Select(u => u.Email).First(),
+                GuestName = x.GuestName ?? x.Guests.Where(g => g.IsPrimary).Select(g => g.FullName).FirstOrDefault() ?? x.ContactName ?? db.Users.Where(u => u.Id == x.CustomerId).Select(u => u.FullName).First(),
+                x.ContactNameEditCount,
+                PaidAmount = x.Payments.Where(p => p.TransactionType != "Refund" && p.Status == "Success").Sum(p => (decimal?)p.Amount) ?? 0,
+                RefundedAmount = x.Payments.Where(p => p.TransactionType == "Refund" && p.Status == "Success").Sum(p => (decimal?)p.Amount) ?? 0,
                 Details = x.Details.Select(d => new { d.Id, d.RoomTypeId, RoomTypeName = db.RoomTypes.Where(r => r.Id == d.RoomTypeId).Select(r => r.Name).First(), d.RoomId, RoomNumber = d.RoomId == null ? null : db.Rooms.Where(r => r.Id == d.RoomId).Select(r => r.RoomNumber).FirstOrDefault(), d.Quantity, d.PricePerNight, d.NumberOfNights, d.ExtraFee, d.LineTotal, d.GuestName, d.Note }).ToList(),
                 Guests = x.Guests.OrderByDescending(g => g.IsPrimary).ThenBy(g => g.Id).Select(g => new { g.Id, g.IsPrimary, Type = g.GuestType, g.FullName, g.BirthDate, g.Gender, g.Nationality, g.DocumentType, DocumentNumber = g.DocumentNumber == null ? null : "***" + g.DocumentNumber.Substring(Math.Max(0, g.DocumentNumber.Length - 4)), g.Address, g.AccompanyingAdult, g.DeclarationStatus, g.DeclarationDueAt }).ToList(),
                 Payments = x.Payments.OrderByDescending(p => p.CreatedAt).Select(p => new { p.Id, p.PaymentMethod, p.TransactionType, p.Amount, p.Status, p.PaidAt, p.CreatedAt }).ToList(),
                 Cancellation = db.Cancellations.Where(c => c.BookingId == x.Id).Select(c => new { c.Reason, c.CancellationFee, c.RefundAmount, c.Status, c.CancelledAt }).FirstOrDefault() })
             .SingleOrDefaultAsync();
         return item is null ? NotFound(new { message = "Không tìm thấy đơn đặt phòng." }) : Ok(item);
+    }
+
+    [Authorize(Roles = "Customer,Host")]
+    [HttpPatch("{bookingId:long}/contact")]
+    public async Task<IActionResult> UpdateContact(long bookingId, UpdateBookingContactRequest request)
+    {
+        var userId = long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var booking = await db.Bookings.Include(x => x.Guests).SingleOrDefaultAsync(x => x.Id == bookingId && x.CustomerId == userId);
+        if (booking is null) return NotFound(new { message = "Không tìm thấy đơn đặt phòng." });
+
+        var fullEdit = booking.Status == BookingStatus.Hold
+            || (booking.Status == BookingStatus.Confirmed && booking.CheckInDate > BookingRules.Today);
+        var limitedEdit = booking.Status is BookingStatus.CheckedIn or BookingStatus.CheckoutPendingPayment;
+        if (!fullEdit && !limitedEdit)
+            return BadRequest(new { message = "Trạng thái hiện tại không cho phép sửa người liên hệ." });
+
+        var user = await db.Users.AsNoTracking().SingleAsync(x => x.Id == userId);
+        var oldContactName = (booking.ContactName ?? user.FullName).Trim();
+        var oldGuestName = (booking.GuestName ?? booking.Guests.FirstOrDefault(x => x.IsPrimary)?.FullName ?? oldContactName).Trim();
+        var contactName = request.ContactName?.Trim() ?? "";
+        var guestName = string.IsNullOrWhiteSpace(request.GuestName) ? contactName : request.GuestName.Trim();
+        var compactPhone = Regex.Replace(request.Phone ?? "", "[\\s.()-]", "");
+        if (contactName.Length is < 2 or > 150) return BadRequest(new { field = "contactName", message = "Họ tên người liên hệ phải có ít nhất 2 ký tự." });
+        if (!Regex.IsMatch(compactPhone, "^(0\\d{9}|\\+84\\d{9})$"))
+            return BadRequest(new { field = "phone", message = "Số điện thoại chưa đúng, vui lòng nhập 10 số bắt đầu bằng 0." });
+        if (guestName.Length is < 2 or > 150) return BadRequest(new { field = "guestName", message = "Họ tên khách nhận phòng phải có ít nhất 2 ký tự." });
+        var email = string.IsNullOrWhiteSpace(request.Email) ? null : request.Email.Trim();
+        if (email is { Length: > 255 } || (email is not null && !new EmailAddressAttribute().IsValid(email)))
+            return BadRequest(new { field = "email", message = "Email chưa đúng định dạng." });
+        if (compactPhone.StartsWith("+84")) compactPhone = "0" + compactPhone[3..];
+
+        var nameChanged = !string.Equals(contactName, oldContactName, StringComparison.Ordinal);
+        var guestChanged = !string.Equals(guestName, oldGuestName, StringComparison.Ordinal);
+        if (limitedEdit && (nameChanged || guestChanged))
+            return BadRequest(new { message = "Đơn đã nhận phòng nên không thể đổi tên người liên hệ hoặc khách nhận phòng." });
+        if ((nameChanged || guestChanged) && booking.ContactNameEditCount >= 3)
+            return BadRequest(new { message = "Đơn này đã dùng hết 3 lần chỉnh sửa họ tên khách nhận phòng." });
+
+        var changedFields = new List<string>();
+        if (nameChanged) changedFields.Add("contactName");
+        if (guestChanged) changedFields.Add("guestName");
+        if (!string.Equals(compactPhone, booking.ContactPhone ?? user.PhoneNumber, StringComparison.Ordinal)) changedFields.Add("phone");
+        if (!string.Equals(email, booking.ContactEmail ?? user.Email, StringComparison.OrdinalIgnoreCase)) changedFields.Add("email");
+        if (changedFields.Count == 0) return Ok(new { booking.Id, booking.BookingCode, booking.Status, contact = new { contactName = oldContactName, phone = compactPhone, email, guestName = oldGuestName, booking.ContactNameEditCount } });
+
+        booking.ContactName = contactName;
+        booking.ContactPhone = compactPhone;
+        booking.ContactEmail = email ?? "";
+        booking.GuestName = guestName;
+        if (nameChanged || guestChanged) booking.ContactNameEditCount++;
+        var primaryGuest = booking.Guests.FirstOrDefault(x => x.IsPrimary);
+        if (guestChanged && primaryGuest is not null) { primaryGuest.FullName = guestName; primaryGuest.UpdatedAt = DateTime.UtcNow; }
+        booking.ContactUpdatedAt = DateTime.UtcNow;
+        booking.UpdatedAt = DateTime.UtcNow;
+        db.AuditLogs.Add(new AuditLog { ActorId = userId, ActorRole = "Customer", Action = "booking.contact_updated", TargetType = "Booking", TargetId = booking.Id.ToString(), AfterJson = JsonSerializer.Serialize(new { fields = changedFields }), Ip = HttpContext.Connection.RemoteIpAddress, CreatedAt = DateTime.UtcNow });
+        db.OutboxMessages.Add(new OutboxMessage { Type = "booking.contact_updated", PayloadJson = JsonSerializer.Serialize(new { bookingId = booking.Id, bookingCode = booking.BookingCode, homestayId = booking.HomestayId }), Status = "Pending", AvailableAt = DateTime.UtcNow, CreatedAt = DateTime.UtcNow });
+        await db.SaveChangesAsync();
+        return Ok(new { booking.Id, booking.BookingCode, booking.Status, contact = new { contactName, phone = compactPhone, email, guestName, booking.ContactNameEditCount, booking.ContactUpdatedAt } });
     }
 
     [Authorize(Roles = "Customer,Host")]
@@ -281,7 +352,10 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
         booking.Guests.Add(new BookingGuest { IsPrimary = true, GuestType = request.PrimaryGuest.Type, FullName = request.PrimaryGuest.FullName.Trim(), BirthDate = request.PrimaryGuest.BirthDate, Gender = request.PrimaryGuest.Gender, Nationality = request.PrimaryGuest.Nationality, DocumentType = request.PrimaryGuest.DocumentType, DocumentNumber = request.PrimaryGuest.DocumentNumber?.Trim(), Address = request.PrimaryGuest.Address?.Trim(), DeclarationStatus = "Completed", CreatedAt = now, UpdatedAt = now });
         if (request.DeclareCompanionsLater)
         {
-            for (var index = 0; index < expectedCompanions; index++) booking.Guests.Add(new BookingGuest { IsPrimary = false, GuestType = index < Math.Max(0, request.AdultCount - 1) ? "adult" : "child", FullName = "Chưa khai báo", Gender = "Chưa khai báo", Nationality = "Chưa khai báo", DocumentType = "Chưa có giấy tờ", DeclarationDeferred = true, DeclarationStatus = "Deferred", DeclarationDueAt = request.CheckInDate.ToDateTime(TimeOnly.MinValue).AddHours(-24), CreatedAt = now, UpdatedAt = now });
+            var declarationDueAt = new DateTimeOffset(
+                request.CheckInDate.ToDateTime(TimeOnly.MinValue).AddHours(-24),
+                TimeSpan.FromHours(7)).UtcDateTime;
+            for (var index = 0; index < expectedCompanions; index++) booking.Guests.Add(new BookingGuest { IsPrimary = false, GuestType = index < Math.Max(0, request.AdultCount - 1) ? "adult" : "child", FullName = "Chưa khai báo", Gender = "Chưa khai báo", Nationality = "Chưa khai báo", DocumentType = "Chưa có giấy tờ", DeclarationDeferred = true, DeclarationStatus = "Deferred", DeclarationDueAt = declarationDueAt, CreatedAt = now, UpdatedAt = now });
         }
         else foreach (var guest in companionInputs) booking.Guests.Add(new BookingGuest { IsPrimary = false, GuestType = guest.Type, FullName = guest.FullName.Trim(), BirthDate = guest.BirthDate, Gender = guest.Gender, Nationality = guest.Nationality, DocumentType = guest.DocumentType, DocumentNumber = guest.DocumentNumber?.Trim(), Address = guest.Address?.Trim(), AccompanyingAdult = guest.AccompanyingAdult?.Trim(), DeclarationStatus = "Completed", CreatedAt = now, UpdatedAt = now });
         var perRoomExtraFee = extraFee / request.Quantity;
@@ -477,6 +551,23 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
                     await db.BookingRoomStays.Where(x => x.BookingId == payment.BookingId && x.Status == "Active").ExecuteUpdateAsync(x => x.SetProperty(s => s.Status, "Completed"));
                     var roomIds = await db.BookingRoomStays.Where(x => x.BookingId == payment.BookingId).Select(x => x.RoomId).Distinct().ToListAsync();
                     await db.Rooms.Where(x => roomIds.Contains(x.Id)).ExecuteUpdateAsync(x => x.SetProperty(r => r.Status, "Cleaning").SetProperty(r => r.UpdatedAt, now));
+                    var checkInOut = await db.CheckInOuts.SingleOrDefaultAsync(x => x.BookingId == payment.BookingId);
+                    if (checkInOut is null)
+                    {
+                        db.CheckInOuts.Add(new CheckInOut
+                        {
+                            BookingId = payment.BookingId,
+                            ActualCheckOutAt = now,
+                            Status = "CheckedOut",
+                            Note = "Hoàn tất tự động sau khi thanh toán quyết toán qua VNPay."
+                        });
+                    }
+                    else
+                    {
+                        checkInOut.ActualCheckOutAt = now;
+                        checkInOut.Status = "CheckedOut";
+                        checkInOut.Note = string.Join(" | ", new[] { checkInOut.Note, "Hoàn tất sau khi thanh toán quyết toán qua VNPay." }.Where(x => !string.IsNullOrWhiteSpace(x)));
+                    }
                 }
             }
         }

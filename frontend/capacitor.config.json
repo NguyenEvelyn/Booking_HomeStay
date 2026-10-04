@@ -1,0 +1,9 @@
+{
+  "appId": "vn.edu.huit.tripio",
+  "appName": "Tripio",
+  "webDir": "dist",
+  "backgroundColor": "#061f4e",
+  "android": {
+    "backgroundColor": "#061f4e"
+  }
+}
