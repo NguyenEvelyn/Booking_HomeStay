@@ -1,0 +1,406 @@
+/* Mobile baseline shared by the website and the Capacitor shell. */
+html,
+body,
+#root {
+  max-width: 100%;
+  min-height: 100%;
+}
+
+html {
+  overflow-x: clip;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  overflow-x: hidden;
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+}
+
+input,
+select,
+textarea,
+button {
+  max-width: 100%;
+}
+
+.customer-menu-toggle {
+  display: none;
+}
+
+@supports (padding: max(0px)) {
+  .customer-nav-header,
+  .host-content > header,
+  .admin-header {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .host-sidebar,
+  .admin-sidebar {
+    padding-bottom: max(18px, env(safe-area-inset-bottom));
+  }
+
+  .room-detail-modal,
+  .reviews-modal,
+  .customer-drawer-backdrop > aside {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+@media (max-width: 1050px) {
+  .page-section {
+    width: min(100% - 48px, 1280px);
+  }
+
+  .customer-nav {
+    grid-template-columns: auto 1fr auto;
+  }
+
+  .customer-menu-toggle {
+    display: grid;
+    width: 42px;
+    height: 42px;
+    place-content: center;
+    gap: 5px;
+    justify-self: end;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, .45);
+    border-radius: 50%;
+    color: #fff;
+    background: rgba(6, 31, 78, .25);
+  }
+
+  .customer-menu-toggle span {
+    width: 18px;
+    height: 2px;
+    border-radius: 2px;
+    background: currentColor;
+    transition: transform .2s ease, opacity .2s ease;
+  }
+
+  .customer-nav.menu-open .customer-menu-toggle span:nth-child(1) {
+    transform: translateY(7px) rotate(45deg);
+  }
+
+  .customer-nav.menu-open .customer-menu-toggle span:nth-child(2) {
+    opacity: 0;
+  }
+
+  .customer-nav.menu-open .customer-menu-toggle span:nth-child(3) {
+    transform: translateY(-7px) rotate(-45deg);
+  }
+
+  .customer-nav .customer-nav-links {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 24px;
+    left: 24px;
+    display: none;
+    max-height: calc(100dvh - 100px);
+    overflow-y: auto;
+    padding: 10px;
+    border: 1px solid rgba(255, 255, 255, .2);
+    border-radius: 16px;
+    background: rgba(6, 31, 78, .97);
+    box-shadow: 0 18px 45px rgba(2, 18, 47, .3);
+    backdrop-filter: blur(18px);
+  }
+
+  .customer-nav.menu-open .customer-nav-links {
+    display: grid;
+  }
+
+  .customer-nav .customer-nav-links button {
+    width: 100%;
+    height: 44px;
+    padding: 0 14px;
+    text-align: left;
+  }
+
+  .customer-nav-actions {
+    justify-self: end;
+  }
+
+  .customer-menu-toggle {
+    margin-left: 8px;
+  }
+
+  .host-content,
+  .admin-content {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 700px) {
+  :root {
+    --mobile-gutter: 14px;
+  }
+
+  body {
+    font-size: 14px;
+  }
+
+  .page-section,
+  .detail-content,
+  .catalog-workspace,
+  .catalog-redesign .catalog-search,
+  .my-bookings-shell,
+  .payment-shell,
+  .room-page-shell {
+    width: calc(100% - (var(--mobile-gutter) * 2));
+  }
+
+  .customer-nav {
+    height: 64px;
+    padding-right: var(--mobile-gutter);
+    padding-left: var(--mobile-gutter);
+  }
+
+  .customer-logo img {
+    width: 86px;
+  }
+
+  .customer-nav-actions {
+    gap: 5px;
+  }
+
+  .customer-nav-actions .customer-icon-btn,
+  .customer-nav-actions .customer-avatar-btn,
+  .customer-menu-toggle {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  .customer-nav-actions .customer-icon-btn[aria-label="Yêu thích"] {
+    display: none;
+  }
+
+  .customer-nav .customer-nav-links {
+    right: var(--mobile-gutter);
+    left: var(--mobile-gutter);
+  }
+
+  .return-host-portal {
+    right: var(--mobile-gutter);
+    bottom: max(var(--mobile-gutter), env(safe-area-inset-bottom));
+    padding: 10px 14px;
+    font-size: 12px;
+  }
+
+  .host-content,
+  .admin-content {
+    padding-right: var(--mobile-gutter);
+    padding-left: var(--mobile-gutter);
+  }
+
+  .host-panel,
+  .host-manage-card,
+  .room-management,
+  .admin-card,
+  .payment-card,
+  .payment-summary,
+  .detail-box,
+  .redesigned-intro {
+    padding: 16px;
+    border-radius: 12px;
+  }
+
+  .host-content > header,
+  .admin-header {
+    min-width: 0;
+  }
+
+  .host-content > header h1,
+  .admin-header h1 {
+    overflow-wrap: anywhere;
+  }
+
+  .property-heading,
+  .host-manage-card > header,
+  .room-type-card > header,
+  .inline-room-detail > header,
+  .rooms-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .property-form,
+  .inline-form,
+  .room-type-form,
+  .room-form-grid,
+  .payment-form-grid,
+  .profile-edit-form,
+  .guest-room-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .property-form .wide,
+  .room-form-grid .wide,
+  .profile-edit-form .wide,
+  .review-form textarea {
+    grid-column: auto;
+  }
+
+  .amenity-checks,
+  .host-image-grid,
+  .admin-gallery {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .room-modal,
+  .host-modal,
+  .cancel-modal-backdrop,
+  .booking-modal {
+    align-items: end;
+    padding: 0;
+  }
+
+  .room-modal > form,
+  .host-modal > div,
+  .cancel-modal,
+  .booking-modal > section {
+    width: 100%;
+    max-height: calc(100dvh - env(safe-area-inset-top));
+    margin: 0;
+    overflow-y: auto;
+    border-radius: 18px 18px 0 0;
+  }
+
+  .form-actions,
+  .room-modal footer {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .form-actions button,
+  .room-modal footer button,
+  .bo-actions button {
+    min-height: 44px;
+  }
+
+  .profile-identity {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .profile-identity > button {
+    width: 100%;
+  }
+
+  .profile-commercial-grid,
+  .profile-edit-form {
+    padding: 16px;
+  }
+
+  .price-period-list span,
+  .seasonal-pricing form {
+    grid-template-columns: 1fr;
+  }
+
+  .room-modal-booking > div {
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  /* The desktop selector is more specific than the original mobile rule. */
+  .inline-room-detail .room-page-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+  }
+
+  .inline-room-detail .room-page-info,
+  .inline-room-detail .room-page-booking {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .room-page-facts {
+    gap: 12px 18px;
+  }
+
+  .room-page-facts span,
+  .room-page-info p,
+  .room-page-amenities li,
+  .room-page-booking p {
+    overflow-wrap: anywhere;
+  }
+
+  .room-page-booking > div:first-of-type {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+  }
+
+  .room-page-booking > div:first-of-type strong {
+    white-space: nowrap;
+  }
+
+  .room-page-booking > div:first-of-type span {
+    margin-left: 0;
+  }
+
+  .room-page-booking input,
+  .room-page-booking select {
+    width: 100%;
+  }
+
+  .payment-result-toast {
+    right: var(--mobile-gutter);
+    bottom: max(var(--mobile-gutter), env(safe-area-inset-bottom));
+    left: var(--mobile-gutter);
+    width: auto;
+  }
+}
+
+@media (max-width: 420px) {
+  .customer-nav-actions .customer-icon-btn[aria-label="Phòng đã đặt"] {
+    display: none;
+  }
+
+  .customer-logo img {
+    width: 78px;
+  }
+
+  .amenity-checks,
+  .host-image-grid,
+  .admin-gallery,
+  .featured-amenities > div {
+    grid-template-columns: 1fr;
+  }
+
+  .host-stats,
+  .room-kpis,
+  .booking-kpis,
+  .calendar-summary,
+  .review-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .room-page-facts {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  button,
+  [role="button"],
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button:not(.stepper-btn),
+  input,
+  select {
+    min-height: 44px;
+  }
+}

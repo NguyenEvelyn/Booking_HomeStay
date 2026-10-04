@@ -12,6 +12,7 @@ export default function CustomerNav({
   transparentAtTop = false,
 }) {
   const [scrolled, setScrolled] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     if (!transparentAtTop) return;
@@ -22,6 +23,7 @@ export default function CustomerNav({
   }, [transparentAtTop]);
 
   const goHomeSection = (section) => {
+    setMenuOpen(false);
     onHome();
     window.setTimeout(() => {
       const element = document.getElementById(section);
@@ -29,21 +31,39 @@ export default function CustomerNav({
     }, 100);
   };
 
+  const navigate = (handler) => {
+    setMenuOpen(false);
+    handler?.();
+  };
+
   return (
     <header className={`customer-nav-header${transparentAtTop ? ' has-transparent' : ''}${scrolled ? ' is-scrolled' : ''}`}>
-      <nav className="customer-nav">
-        <button className="customer-logo" type="button" onClick={onHome} aria-label="Tripio Trang chủ">
+      <nav className={`customer-nav${menuOpen ? ' menu-open' : ''}`}>
+        <button className="customer-logo" type="button" onClick={() => navigate(onHome)} aria-label="Tripio Trang chủ">
           <img src={logoWhite} alt="tripio" />
         </button>
 
-        <div className="customer-nav-links">
-          <button type="button" className={active === 'home' ? 'active' : ''} onClick={onHome}>Trang chủ</button>
+        <div className="customer-nav-links" id="customer-mobile-menu">
+          <button type="button" className={active === 'home' ? 'active' : ''} onClick={() => navigate(onHome)}>Trang chủ</button>
           <button type="button" onClick={() => goHomeSection('about')}>Giới thiệu</button>
           <button type="button" onClick={() => goHomeSection('stays')}>Địa điểm</button>
-          <button type="button" className={active === 'homestays' ? 'active' : ''} onClick={onHomestays}>Homestay</button>
+          <button type="button" className={active === 'homestays' ? 'active' : ''} onClick={() => navigate(onHomestays)}>Homestay</button>
           <button type="button" onClick={() => goHomeSection('offers')}>Ưu đãi</button>
           <button type="button" onClick={() => goHomeSection('news')}>Tin tức</button>
         </div>
+
+        <button
+          className="customer-menu-toggle"
+          type="button"
+          aria-label={menuOpen ? 'Đóng menu' : 'Mở menu'}
+          aria-expanded={menuOpen}
+          aria-controls="customer-mobile-menu"
+          onClick={() => setMenuOpen((open) => !open)}
+        >
+          <span />
+          <span />
+          <span />
+        </button>
 
         <div className="customer-nav-actions">
           {user ? (

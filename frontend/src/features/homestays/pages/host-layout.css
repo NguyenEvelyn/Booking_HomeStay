@@ -3488,6 +3488,64 @@
   }
 }
 
+@media (max-width: 700px) {
+  .host-content {
+    min-width: 0;
+    padding: 0 14px 32px;
+  }
+
+  .host-header {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr);
+    align-items: center;
+    height: auto;
+    min-height: 80px;
+    gap: 8px 10px;
+    margin: 0 -14px 18px;
+    padding: 10px 14px;
+  }
+
+  .host-header-titles {
+    min-width: 0;
+  }
+
+  .host-greeting-tag small {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .host-header-titles h1 {
+    font-size: 18px;
+    line-height: 1.2;
+    overflow-wrap: normal;
+  }
+
+  .host-account {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) 38px;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .quick-create,
+  .host-header-btn {
+    width: 100%;
+    min-width: 0;
+    min-height: 38px;
+    justify-content: center;
+    padding: 7px 8px;
+    font-size: 10px;
+    white-space: nowrap;
+  }
+
+  .quick-create svg,
+  .host-header-btn svg {
+    flex: 0 0 auto;
+  }
+}
+
 /* ==========================================================================
    POLICY 1: CHECK-IN / CHECK-OUT ADJUSTMENT IN BOOKING DETAIL
    ========================================================================== */
