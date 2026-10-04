@@ -14,6 +14,8 @@ const labels = {
   Expired: 'Hết hạn'
 };
 const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const calendarDayWidth = 66;
+const calendarLabelWidth = 240;
 
 function Stat({ name, value, detail, icon, iconColor = '#0b4ae6' }) {
   return (
@@ -82,9 +84,20 @@ export function CalendarBoard({ items, homestays, rooms = [], run }) {
   ), 0);
   const capacity = Math.max(1, rooms.filter(r => homes.some(h => h.id === r.homestayId)).length) * days;
 
-  const toToday = () => setAt(new Date(now.getFullYear(), now.getMonth(), 1));
   const move = n => setAt(new Date(y, m + n, 1));
-  const scrollToday = () => current && scroll.current?.scrollTo({ left: Math.max(0, (now.getDate() - 3) * 48), behavior: 'smooth' });
+  const scrollToday = () => {
+    if (!current) {
+      setAt(new Date(now.getFullYear(), now.getMonth(), 1));
+      return;
+    }
+
+    const viewportWidth = scroll.current?.clientWidth || 0;
+    const todayCenter = calendarLabelWidth + (now.getDate() - 0.5) * calendarDayWidth;
+    scroll.current?.scrollTo({
+      left: Math.max(0, todayCenter - viewportWidth / 2),
+      behavior: 'smooth'
+    });
+  };
 
   useEffect(() => {
     const id = setTimeout(scrollToday, 80);
@@ -168,7 +181,7 @@ export function CalendarBoard({ items, homestays, rooms = [], run }) {
             <button onClick={() => move(1)} aria-label="Tháng sau">
               <HostIcon name="chevronRight" size={16} />
             </button>
-            <button className="today" onClick={toToday}>Hôm nay</button>
+            <button className="today" onClick={scrollToday}>Hôm nay</button>
           </div>
         </header>
 
@@ -196,7 +209,7 @@ export function CalendarBoard({ items, homestays, rooms = [], run }) {
         </div>
 
         <div className="calendar-scroll" ref={scroll}>
-          <div className="calendar-grid calendar-days" style={{ '--days': days }}>
+          <div className="calendar-grid host-calendar-days" style={{ '--days': days }}>
             <b>HOMESTAY / PHÒNG</b>
             {Array.from({ length: days }, (_, i) => {
               const d = new Date(y, m, i + 1);
@@ -254,10 +267,10 @@ export function CalendarBoard({ items, homestays, rooms = [], run }) {
 
         <div className="calendar-scroll-tools">
           <span>Kéo ngang để xem toàn bộ ngày trong tháng</span>
-          <button onClick={() => scroll.current?.scrollBy({ left: -500, behavior: 'smooth' })}>
+          <button onClick={() => scroll.current?.scrollBy({ left: -400, behavior: 'smooth' })}>
             <HostIcon name="chevronLeft" size={14} /> Cuộn trái
           </button>
-          <button onClick={() => scroll.current?.scrollBy({ left: 500, behavior: 'smooth' })}>
+          <button onClick={() => scroll.current?.scrollBy({ left: 400, behavior: 'smooth' })}>
             Cuộn phải <HostIcon name="chevronRight" size={14} />
           </button>
         </div>

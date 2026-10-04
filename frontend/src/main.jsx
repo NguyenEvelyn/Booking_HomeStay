@@ -4,6 +4,8 @@ import './legacy-features.css';
 import App from './app/App.jsx';
 import './styles.css';
 import './shared/styles/portal.css';
+import './shared/styles/mobile-responsive.css';
+import './features/homestays/pages/host-layout.css';
 import FeedbackProvider from './shared/feedback/FeedbackProvider.jsx';
 
 createRoot(document.getElementById('root')).render(<StrictMode><FeedbackProvider><App /></FeedbackProvider></StrictMode>);

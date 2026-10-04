@@ -75,6 +75,9 @@ export default function App() {
       .me()
       .then(({ user: currentUser }) => {
         setUser(currentUser);
+        if (currentUser.role === 'Host' && params.has('homestay')) {
+          setView('host');
+        }
         if (params.has('auth')) {
           window.history.replaceState({}, '', window.location.pathname);
         }
