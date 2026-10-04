@@ -112,6 +112,18 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      setUser(null);
+      setView('home');
+      setShowHome(false);
+      setMode('login');
+      setNotice({ type: 'error', text: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại để tiếp tục.' });
+    };
+    window.addEventListener('tripio:unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('tripio:unauthorized', handleUnauthorized);
+  }, []);
+
   const markCatalogChanged = () => {
     localStorage.setItem('tripio-catalog-version', String(Date.now()));
     setCatalogVersion((current) => current + 1);

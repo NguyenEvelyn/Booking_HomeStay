@@ -87,6 +87,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         recommendationEvent.HasIndex(x => x.BookingId).IsUnique();
         recommendationEvent.Property(x => x.QueryData).HasColumnName("query_data").HasColumnType("jsonb");
         recommendationEvent.Property(x => x.Source).HasColumnName("source").HasMaxLength(20);
+        recommendationEvent.HasIndex(x => new { x.SessionId, x.EventType, x.OccurredAt });
         var user = modelBuilder.Entity<User>();
         // PostgreSQL folds unquoted identifiers to lowercase.
         user.ToTable("users");
@@ -289,6 +290,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         booking.Property(x => x.RecommendationSessionId).HasColumnName("recommendation_session_id").HasMaxLength(100);
         booking.Property(x => x.HostNote).HasColumnName("host_note").HasMaxLength(1000);
         booking.Property(x => x.HostViewedAt).HasColumnName("host_viewed_at");
+        booking.Property(x => x.ContactName).HasColumnName("contact_name").HasMaxLength(150);
+        booking.Property(x => x.ContactPhone).HasColumnName("contact_phone").HasMaxLength(20);
+        booking.Property(x => x.ContactEmail).HasColumnName("contact_email").HasMaxLength(255);
+        booking.Property(x => x.GuestName).HasColumnName("guest_name").HasMaxLength(150);
+        booking.Property(x => x.ContactNameEditCount).HasColumnName("contact_name_edit_count").HasDefaultValue(0);
+        booking.Property(x => x.ContactUpdatedAt).HasColumnName("contact_updated_at");
         booking.Property(x => x.CreatedAt).HasColumnName("created_at");
         booking.Property(x => x.UpdatedAt).HasColumnName("updated_at");
         booking.HasOne(x => x.Homestay).WithMany().HasForeignKey(x => x.HomestayId).OnDelete(DeleteBehavior.Restrict);
