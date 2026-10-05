@@ -197,10 +197,16 @@ builder.Services.AddAuthorization(options =>
 });
 builder.Services.AddControllers();
 var configuredClientUrl = Environment.GetEnvironmentVariable("CLIENT_URL") ?? "http://localhost:5173";
+var additionalClientUrls = (Environment.GetEnvironmentVariable("CLIENT_URLS") ?? string.Empty)
+    .Split([',', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+var allowedClientUrls = new HashSet<string>(additionalClientUrls, StringComparer.OrdinalIgnoreCase)
+{
+    configuredClientUrl.TrimEnd('/')
+};
 builder.Services.AddCors(options => options.AddPolicy("Frontend", policy =>
     policy.SetIsOriginAllowed(origin =>
     {
-        if (string.Equals(origin, configuredClientUrl, StringComparison.OrdinalIgnoreCase)) return true;
+        if (allowedClientUrls.Contains(origin.TrimEnd('/'))) return true;
         if (Uri.TryCreate(origin, UriKind.Absolute, out var uri))
         {
             return uri.Host == "localhost" || uri.Host == "127.0.0.1";
