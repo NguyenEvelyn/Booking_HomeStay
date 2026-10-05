@@ -143,7 +143,12 @@ var authentication = builder.Services.AddAuthentication(JwtBearerDefaults.Authen
         {
             OnMessageReceived = context =>
             {
-                context.Token = context.Request.Cookies["token"];
+                // Safari/iOS can block the authentication cookie when the frontend
+                // and API are hosted on different sites. Prefer an explicit Bearer
+                // token in that case and keep the cookie as a backwards-compatible
+                // fallback for same-site/local clients.
+                if (!context.Request.Headers.ContainsKey("Authorization"))
+                    context.Token = context.Request.Cookies["token"];
                 return Task.CompletedTask;
             },
             OnTokenValidated = async context =>
