@@ -112,6 +112,7 @@ export default function HostBookings({ items, homestays, run, sort = 'checkin_as
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState(null);
   const [selectedTab, setSelectedTab] = useState('overview');
+  const [filterOpen, setFilterOpen] = useState(false);
 
   const perPage = 8;
   const now = today();
@@ -286,7 +287,10 @@ export default function HostBookings({ items, homestays, run, sort = 'checkin_as
           ))}
         </nav>
 
-        <div className="booking-filters">
+        <button hidden type="button" className="mobile-filter-trigger" onClick={() => setFilterOpen(true)} aria-expanded={filterOpen} aria-controls="booking-mobile-filters"><HostIcon name="filter" size={17}/><span>Bộ lọc</span></button>
+        {filterOpen && <button hidden type="button" className="mobile-filter-scrim" aria-label="Đóng bộ lọc" onClick={() => setFilterOpen(false)}/>}
+        <div id="booking-mobile-filters" className={`booking-filters mobile-filter-sheet ${filterOpen ? 'mobile-open' : ''}`}>
+          <div hidden className="mobile-filter-heading"><div><small>BỘ LỌC</small><b>Lọc đơn đặt phòng</b></div><button type="button" onClick={() => setFilterOpen(false)} aria-label="Đóng bộ lọc"><HostIcon name="close" size={18}/></button></div>
           <label className="booking-search">
             <span>Tìm kiếm</span>
             <input

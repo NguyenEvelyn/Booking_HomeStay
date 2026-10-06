@@ -21,6 +21,7 @@ export default function HomestayInventory({ items, open, run, onCreate }) {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [view, setView] = useState('table');
+  const [filterOpen, setFilterOpen] = useState(false);
   const list = useMemo(() => items.filter(item => {
     const haystack = `${item.name} ${item.address} ${item.district} ${item.province}`.toLowerCase();
     return (!status || item.status === status) && haystack.includes(search.trim().toLowerCase());
@@ -39,7 +40,10 @@ export default function HomestayInventory({ items, open, run, onCreate }) {
   return <section className="inventory-section" aria-labelledby="inventory-title">
     <header className="inventory-header">
       <div className="inventory-heading"><span className="inventory-eyebrow">QUẢN LÝ KINH DOANH</span><h2 id="inventory-title">Danh sách Homestay</h2><p>Theo dõi tình trạng phê duyệt, số phòng và mức độ sẵn sàng của từng cơ sở.</p></div>
-      <div className="inventory-toolbar" role="search" aria-label="Tìm và lọc Homestay">
+      <button hidden type="button" className="mobile-filter-trigger" onClick={() => setFilterOpen(true)} aria-expanded={filterOpen} aria-controls="inventory-mobile-filters"><HostIcon name="filter" size={17}/><span>Bộ lọc</span></button>
+      {filterOpen && <button hidden type="button" className="mobile-filter-scrim" aria-label="Đóng bộ lọc" onClick={() => setFilterOpen(false)}/>}
+      <div id="inventory-mobile-filters" className={`inventory-toolbar mobile-filter-sheet ${filterOpen ? 'mobile-open' : ''}`} role="search" aria-label="Tìm và lọc Homestay">
+        <div hidden className="mobile-filter-heading"><div><small>BỘ LỌC</small><b>Tìm và lọc Homestay</b></div><button type="button" onClick={() => setFilterOpen(false)} aria-label="Đóng bộ lọc"><HostIcon name="close" size={18}/></button></div>
         <label className="inventory-search-field">
           <span className="sr-only">Tìm Homestay</span>
           <HostIcon name="search" size={17}/>

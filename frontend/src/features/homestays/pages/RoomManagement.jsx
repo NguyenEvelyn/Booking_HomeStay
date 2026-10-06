@@ -30,6 +30,7 @@ export default function RoomManagement({ data, run }) {
   const [search, setSearch] = useState('');
   const [stay, setStay] = useState('');
   const [view, setView] = useState('table');
+  const [filterOpen, setFilterOpen] = useState(false);
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState(empty);
   const [files, setFiles] = useState([]);
@@ -170,7 +171,10 @@ export default function RoomManagement({ data, run }) {
           <h2 id="room-management-title">{activeHomestay ? `Phòng tại ${activeHomestay.name}` : 'Danh sách phòng'}</h2>
           <p>Hiển thị các phòng thuộc cơ sở đang chọn. Mỗi phòng có số hiệu và bộ ảnh riêng biệt.</p>
         </div>
-        <div className="room-toolbar" role="search" aria-label="Công cụ quản lý phòng">
+        <button hidden type="button" className="mobile-filter-trigger" onClick={() => setFilterOpen(true)} aria-expanded={filterOpen} aria-controls="room-mobile-filters"><HostIcon name="filter" size={17}/><span>Bộ lọc</span></button>
+        {filterOpen && <button hidden type="button" className="mobile-filter-scrim" aria-label="Đóng bộ lọc" onClick={() => setFilterOpen(false)}/>}
+        <div id="room-mobile-filters" className={`room-toolbar mobile-filter-sheet ${filterOpen ? 'mobile-open' : ''}`} role="search" aria-label="Công cụ quản lý phòng">
+          <div hidden className="mobile-filter-heading"><div><small>BỘ LỌC</small><b>Công cụ quản lý phòng</b></div><button type="button" onClick={() => setFilterOpen(false)} aria-label="Đóng bộ lọc"><HostIcon name="close" size={18}/></button></div>
           <label className="room-search-field">
             <span className="sr-only">Tìm phòng</span>
             <HostIcon name="search" size={18} />

@@ -78,6 +78,7 @@ export default function RevenueReport({ homestays = [], onOpenBookings }) {
   const [summary, setSummary] = useState(null); const [transactions, setTransactions] = useState(null);
   const [loading, setLoading] = useState(true); const [error, setError] = useState(''); const [updated, setUpdated] = useState('');
   const [grain, setGrain] = useState('day'); const [expanded, setExpanded] = useState(null); const [exporting, setExporting] = useState('');
+  const [filterOpen, setFilterOpen] = useState(false);
   const [table, setTable] = useState({ page: 1, page_size: 10, q: '', sort: 'date_desc' });
 
   const load = useCallback(async () => {
@@ -101,7 +102,10 @@ export default function RevenueReport({ homestays = [], onOpenBookings }) {
 
   return <div className="finance-page revenue-dashboard">
     <div className="revenue-toolbar"><div><small>PHÂN TÍCH VẬN HÀNH</small><h2>Tổng quan tài chính</h2><p>Theo dõi doanh thu, hiệu suất lưu trú và đối soát giao dịch trong một báo cáo.</p></div><div className="revenue-toolbar-actions"><span className="updated-at">Cập nhật lúc {updated || '—'}</span><button className="refresh-button" onClick={load} disabled={loading}><HostIcon name="clock" size={16}/> Làm mới</button><details className="export-menu"><summary><HostIcon name="download" size={16}/>{exporting ? 'Đang xuất…' : 'Xuất báo cáo'}</summary><div>{['csv', 'xlsx', 'pdf'].map(x => <button key={x} disabled={!!exporting} onClick={() => exportReport(x)}>{x === 'csv' ? 'CSV' : x === 'xlsx' ? 'Excel (.xlsx)' : 'PDF'}</button>)}</div></details></div></div>
-    <section className="revenue-filter-card">
+    <button hidden type="button" className="mobile-filter-trigger" onClick={() => setFilterOpen(true)} aria-expanded={filterOpen} aria-controls="revenue-mobile-filters"><HostIcon name="filter" size={17}/><span>Bộ lọc</span></button>
+    {filterOpen && <button hidden type="button" className="mobile-filter-scrim" aria-label="Đóng bộ lọc" onClick={() => setFilterOpen(false)}/>}
+    <section id="revenue-mobile-filters" className={`revenue-filter-card mobile-filter-sheet ${filterOpen ? 'mobile-open' : ''}`}>
+      <div hidden className="mobile-filter-heading"><div><small>BỘ LỌC</small><b>Khoảng thời gian và phạm vi</b></div><button type="button" onClick={() => setFilterOpen(false)} aria-label="Đóng bộ lọc"><HostIcon name="close" size={18}/></button></div>
       <div className="preset-control" role="group" aria-label="Khoảng thời gian">{presets.map(([key, label]) => <button key={key} className={preset === key ? 'active' : ''} aria-pressed={preset === key} onClick={() => choosePreset(key)}>{label}</button>)}</div>
       <div className="revenue-filter-fields">{preset === 'custom' && <><label><span>Từ ngày</span><input type="date" value={filters.from} max={filters.to} onChange={e => setFilters(old => ({ ...old, from: e.target.value }))}/></label><label><span>Đến ngày</span><input type="date" value={filters.to} min={filters.from} onChange={e => setFilters(old => ({ ...old, to: e.target.value }))}/></label></>}<label><span>Homestay</span><select value={filters.homestay_id} onChange={e => setFilters(old => ({ ...old, homestay_id: e.target.value }))}><option value="">Tất cả homestay</option>{homestays.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select></label><label><span>Phương thức</span><select value={filters.payment_method} onChange={e => setFilters(old => ({ ...old, payment_method: e.target.value }))}><option value="">Tất cả</option><option value="Deposit">Cọc</option><option value="FullPayment">Thanh toán đủ</option></select></label><button className="reset-filter" onClick={reset}>Đặt lại</button></div>
       <p>Dữ liệu từ <b>{viDate(filters.from)}</b> đến <b>{viDate(filters.to)}</b></p>
