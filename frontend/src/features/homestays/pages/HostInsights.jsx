@@ -188,16 +188,16 @@ export function CalendarBoard({ items, homestays, rooms = [], run }) {
         </header>
 
         <div className="calendar-filters">
-          <input value={q} onChange={e => setQ(e.target.value)} placeholder="Tìm mã đơn hoặc tên khách…" />
-          <select value={home} onChange={e => setHome(e.target.value)}>
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder="Tìm mã đơn hoặc tên khách…" aria-label="Tìm mã đơn hoặc tên khách" />
+          <select value={home} onChange={e => setHome(e.target.value)} aria-label="Lọc theo Homestay">
             <option value="">Tất cả homestay</option>
             {homestays.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
           </select>
-          <select value={city} onChange={e => setCity(e.target.value)}>
+          <select value={city} onChange={e => setCity(e.target.value)} aria-label="Lọc theo thành phố">
             <option value="">Tất cả thành phố</option>
             {cities.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
-          <select value={status} onChange={e => setStatus(e.target.value)}>
+          <select value={status} onChange={e => setStatus(e.target.value)} aria-label="Lọc theo trạng thái">
             <option value="">Tất cả trạng thái</option>
             {Object.entries(labels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
@@ -209,6 +209,16 @@ export function CalendarBoard({ items, homestays, rooms = [], run }) {
             <span key={k} className={k.toLowerCase()}>{v}</span>
           ))}
         </div>
+
+        <section hidden className="mobile-calendar-list" aria-label="Danh sách đặt phòng trong tháng">
+          <header><div><small>LỊCH ĐẶT PHÒNG</small><h3>{active.length} booking trong tháng {m + 1}</h3></div><span>Sắp theo ngày nhận phòng</span></header>
+          <div>{[...active].sort((a, b) => String(a.checkInDate).localeCompare(String(b.checkInDate))).map(x => {
+            const roomsText = x.details?.map(d => `${d.roomTypeName || 'Phòng'}${d.roomNumber ? ` · ${d.roomNumber}` : ''}`).join(', ') || 'Chưa xếp phòng';
+            const checkIn = new Date(`${x.checkInDate}T00:00:00`);
+            const checkOut = new Date(`${x.checkOutDate}T00:00:00`);
+            return <button type="button" key={x.id} className={`mobile-calendar-booking is-${String(x.status).toLowerCase()}`} onClick={() => setSelected(x)}><span className="mobile-booking-date"><small>{checkIn.toLocaleDateString('vi-VN', { weekday: 'short' })}</small><b>{String(checkIn.getDate()).padStart(2, '0')}</b><em>Tháng {checkIn.getMonth() + 1}</em></span><span className="mobile-booking-main"><span className="mobile-booking-top"><b>{x.customerName}</b><em>{labels[x.status] || x.status}</em></span><strong><HostIcon name="home" size={15}/>{x.homestayName}</strong><small><HostIcon name="bed" size={14}/>{roomsText}</small><span className="mobile-booking-stay"><HostIcon name="calendar" size={14}/><b>{checkIn.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}</b><i>→</i><b>{checkOut.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}</b><em>{x.nights} đêm</em></span><span className="mobile-booking-code">{x.bookingCode}<HostIcon name="chevronRight" size={15}/></span></span></button>;
+          })}{!active.length && <div className="mobile-calendar-empty"><HostIcon name="calendar" size={28}/><b>Chưa có booking phù hợp</b><span>Thử đổi tháng hoặc bộ lọc để xem lịch đặt phòng.</span></div>}</div>
+        </section>
 
         <div className="calendar-scroll" ref={scroll}>
           <div className="calendar-grid host-calendar-days" style={{ '--days': days }}>

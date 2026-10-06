@@ -1355,6 +1355,294 @@ button {
     overflow-wrap: anywhere;
   }
 
+  .booking-calendar .calendar-shell {
+    padding: 14px !important;
+    border-radius: 20px;
+  }
+
+  .booking-calendar .calendar-main-head {
+    align-items: stretch !important;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .booking-calendar .calendar-main-head > div:first-child p {
+    display: none;
+  }
+
+  .booking-calendar .calendar-main-head > div:first-child h2 {
+    margin-bottom: 0;
+    font-size: 19px;
+  }
+
+  .booking-calendar .calendar-nav {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+    gap: 8px;
+  }
+
+  .booking-calendar .calendar-nav > button,
+  .booking-calendar .calendar-nav > input {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+  }
+
+  .booking-calendar .calendar-nav .today {
+    grid-column: 1 / -1;
+  }
+
+  .booking-calendar .calendar-filters {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px !important;
+    padding: 12px !important;
+  }
+
+  .booking-calendar .calendar-filters input,
+  .booking-calendar .calendar-filters select,
+  .booking-calendar .calendar-filters button {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 44px;
+  }
+
+  .booking-calendar .calendar-filters input,
+  .booking-calendar .calendar-filters select:first-of-type,
+  .booking-calendar .calendar-filters .btn-jump-today {
+    grid-column: 1 / -1;
+  }
+
+  .booking-calendar .calendar-legend {
+    justify-content: flex-start;
+    gap: 7px 12px;
+    padding: 2px 0;
+  }
+
+  .booking-calendar .calendar-legend span {
+    font-size: 9px;
+  }
+
+  .booking-calendar .calendar-scroll,
+  .booking-calendar .calendar-scroll-tools {
+    display: none !important;
+  }
+
+  .mobile-calendar-list[hidden] {
+    display: block !important;
+    margin-top: 4px;
+  }
+
+  .mobile-calendar-list > header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+
+  .mobile-calendar-list > header small {
+    color: #0b4ae6;
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: .1em;
+  }
+
+  .mobile-calendar-list > header h3 {
+    margin: 3px 0 0;
+    color: #092b61;
+    font-size: 16px;
+  }
+
+  .mobile-calendar-list > header > span {
+    color: #718096;
+    font-size: 9px;
+    text-align: right;
+  }
+
+  .mobile-calendar-list > div {
+    display: grid;
+    gap: 10px;
+  }
+
+  .mobile-calendar-booking {
+    width: 100%;
+    min-height: 148px;
+    display: grid;
+    grid-template-columns: 60px minmax(0, 1fr);
+    gap: 12px;
+    padding: 12px;
+    border: 1px solid #e1e8f2;
+    border-left: 4px solid #64748b;
+    border-radius: 16px;
+    color: #263954;
+    background: #fff;
+    box-shadow: 0 5px 16px rgba(15, 23, 42, .05);
+    text-align: left;
+    touch-action: manipulation;
+  }
+
+  .mobile-calendar-booking:active {
+    background: #f6f9fd;
+  }
+
+  .mobile-calendar-booking.is-confirmed { border-left-color: #10b981; }
+  .mobile-calendar-booking.is-checkedin { border-left-color: #0284c7; }
+  .mobile-calendar-booking.is-completed { border-left-color: #64748b; }
+  .mobile-calendar-booking.is-pendingpayment { border-left-color: #f59e0b; }
+  .mobile-calendar-booking.is-cancelled { border-left-color: #ef4444; }
+  .mobile-calendar-booking.is-expired { border-left-color: #1f2937; }
+
+  .mobile-booking-date {
+    min-height: 76px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    align-self: start;
+    padding: 8px 4px;
+    border-radius: 14px;
+    color: #0b4ae6;
+    background: #edf4ff;
+  }
+
+  .mobile-booking-date small {
+    font-size: 9px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+
+  .mobile-booking-date b {
+    font-size: 25px;
+    line-height: 1.05;
+  }
+
+  .mobile-booking-date em {
+    font-size: 9px;
+    font-style: normal;
+    font-weight: 700;
+  }
+
+  .mobile-booking-main {
+    min-width: 0;
+    display: grid;
+    align-content: start;
+    gap: 7px;
+  }
+
+  .mobile-booking-top {
+    min-width: 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .mobile-booking-top > b {
+    min-width: 0;
+    color: #092b61;
+    font-size: 14px;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  .mobile-booking-top > em {
+    flex: 0 0 auto;
+    padding: 4px 7px;
+    border-radius: 999px;
+    color: #475569;
+    background: #eef2f7;
+    font-size: 8px;
+    font-style: normal;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+
+  .is-confirmed .mobile-booking-top > em { color: #08734f; background: #e6f8ef; }
+  .is-checkedin .mobile-booking-top > em { color: #076b9f; background: #e4f5fd; }
+  .is-pendingpayment .mobile-booking-top > em { color: #985900; background: #fff2d8; }
+  .is-cancelled .mobile-booking-top > em { color: #b42323; background: #feeaea; }
+
+  .mobile-booking-main > strong,
+  .mobile-booking-main > small {
+    min-width: 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+  }
+
+  .mobile-booking-main > strong {
+    color: #173e76;
+    font-size: 11px;
+  }
+
+  .mobile-booking-main > small {
+    color: #65758c;
+    font-size: 10px;
+  }
+
+  .mobile-booking-main > strong svg,
+  .mobile-booking-main > small svg {
+    flex: 0 0 auto;
+    margin-top: 1px;
+  }
+
+  .mobile-booking-stay {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: #43546d;
+    font-size: 10px;
+  }
+
+  .mobile-booking-stay i {
+    font-style: normal;
+  }
+
+  .mobile-booking-stay em {
+    margin-left: auto;
+    color: #718096;
+    font-size: 9px;
+    font-style: normal;
+  }
+
+  .mobile-booking-code {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 6px;
+    border-top: 1px solid #edf1f6;
+    color: #7a8799;
+    font-size: 9px;
+    font-weight: 750;
+  }
+
+  .mobile-calendar-empty {
+    min-height: 170px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 6px;
+    padding: 20px;
+    border: 1px dashed #cbd5e1;
+    border-radius: 16px;
+    color: #8290a3;
+    text-align: center;
+  }
+
+  .mobile-calendar-empty b {
+    color: #40516a;
+    font-size: 13px;
+  }
+
+  .mobile-calendar-empty span {
+    font-size: 11px;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .mobile-filter-sheet,
     .host-mobile-quick-grid button {
