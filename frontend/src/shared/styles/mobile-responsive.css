@@ -1643,6 +1643,289 @@ button {
     font-size: 11px;
   }
 
+  /* Mobile overview: dense 2x3 KPI bento and a clean single-column flow. */
+  .host-overview {
+    gap: 14px;
+  }
+
+  .host-overview .overview-range {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    padding: 12px;
+    border-radius: 18px;
+  }
+
+  .host-overview .overview-range-segmented {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 3px;
+  }
+
+  .host-overview .overview-range-btn {
+    min-width: 0;
+    min-height: 48px;
+    padding: 5px 4px;
+    font-size: 10px;
+    line-height: 1.2;
+    white-space: normal;
+  }
+
+  .host-overview .overview-range-inputs {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .host-overview .overview-range-inputs input {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    padding: 5px 7px;
+    font-size: 10px;
+  }
+
+  .host-overview .overview-range-badge {
+    width: 100%;
+    min-height: 40px;
+    justify-content: center;
+    padding: 7px 10px;
+    font-size: 11px;
+  }
+
+  .host-overview .overview-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  .host-overview .overview-kpi-card {
+    min-width: 0;
+    min-height: 138px;
+    aspect-ratio: 1.14 / 1;
+    justify-content: flex-start;
+    padding: 13px !important;
+    overflow: hidden;
+    border-radius: 17px;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, .055);
+  }
+
+  .host-overview .overview-kpi-card:hover {
+    transform: none;
+  }
+
+  .host-overview .kpi-top {
+    min-width: 0;
+    align-items: flex-start;
+    gap: 7px;
+    margin-bottom: 5px;
+  }
+
+  .host-overview .kpi-name {
+    min-width: 0;
+    padding-top: 3px;
+    font-size: 9px;
+    line-height: 1.25;
+    letter-spacing: .045em;
+    overflow-wrap: anywhere;
+  }
+
+  .host-overview .kpi-icon-bubble {
+    width: 36px;
+    height: 36px;
+    flex: 0 0 36px;
+    border-radius: 11px;
+  }
+
+  .host-overview .kpi-value {
+    max-width: 100%;
+    margin: 5px 0 8px;
+    font-size: clamp(19px, 5.8vw, 24px);
+    line-height: 1.08;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+  }
+
+  .host-overview .kpi-bottom {
+    min-width: 0;
+    margin-top: auto;
+    gap: 5px;
+  }
+
+  .host-overview .overview-delta {
+    position: static !important;
+    max-width: 100%;
+    min-height: 26px;
+    gap: 3px;
+    padding: 4px 7px;
+    overflow: hidden;
+    font-size: 9px;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .host-overview .overview-delta > span {
+    display: inline !important;
+    font-size: inherit;
+  }
+
+  .host-overview .overview-delta small {
+    display: none;
+  }
+
+  .host-overview .kpi-detail {
+    width: 100%;
+    font-size: 9px;
+    line-height: 1.2;
+  }
+
+  .host-overview .overview-actions-card,
+  .host-overview .chart-card,
+  .host-overview .list-card {
+    border-radius: 18px;
+    box-shadow: 0 6px 20px rgba(15, 23, 42, .05);
+  }
+
+  .host-overview .overview-actions-head {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 9px;
+    padding: 15px;
+  }
+
+  .host-overview .overview-actions-head h2 {
+    font-size: 16px;
+    line-height: 1.25;
+  }
+
+  .host-overview .overview-actions-count {
+    padding: 5px 9px;
+    font-size: 10px;
+  }
+
+  .host-overview .overview-todo-item {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    gap: 9px;
+    padding: 13px 15px;
+  }
+
+  .host-overview .todo-type-pill {
+    grid-column: 1;
+    width: max-content;
+    max-width: 100%;
+    padding: 5px 8px;
+    font-size: 9px;
+  }
+
+  .host-overview .todo-content {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .host-overview .todo-title {
+    font-size: 12px;
+  }
+
+  .host-overview .todo-desc {
+    font-size: 10px;
+    white-space: normal;
+  }
+
+  .host-overview .todo-action-wrap {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .host-overview .todo-btn {
+    min-height: 36px;
+    padding: 5px 9px;
+    font-size: 9px;
+  }
+
+  .host-overview .overview-todo-empty {
+    align-items: flex-start;
+    padding: 18px 15px;
+  }
+
+  .host-overview .overview-charts-grid,
+  .host-overview .overview-lists-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  .host-overview .chart-header,
+  .host-overview .list-header {
+    gap: 10px;
+    padding: 13px 14px;
+  }
+
+  .host-overview .chart-header h3,
+  .host-overview .list-header h3 {
+    font-size: 13px;
+  }
+
+  .host-overview .revenue-total-badge {
+    max-width: 52%;
+    font-size: 11px;
+    overflow-wrap: anywhere;
+    text-align: right;
+  }
+
+  .host-overview .revenue-bar-chart {
+    min-height: 190px;
+    padding: 18px 10px 12px;
+    overflow: hidden;
+  }
+
+  .host-overview .bar-label {
+    font-size: 8px;
+  }
+
+  .host-overview .status-chart-body,
+  .host-overview .top-stays-list {
+    padding: 13px 14px;
+  }
+
+  .host-overview .top-stay-row {
+    gap: 8px;
+  }
+
+  .host-overview .stay-name,
+  .host-overview .stay-revenue {
+    font-size: 11px;
+  }
+
+  .host-overview .list-body {
+    padding: 5px 14px;
+  }
+
+  .host-overview .compact-booking-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .host-overview .row-sub {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .host-overview .mini-week-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 7px;
+    padding: 12px;
+  }
+
+  .host-overview .week-day-box {
+    min-height: 82px;
+    align-content: center;
+    padding: 8px 3px;
+  }
+
+  .host-overview .overview-shortcuts-grid {
+    display: none !important;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .mobile-filter-sheet,
     .host-mobile-quick-grid button {
