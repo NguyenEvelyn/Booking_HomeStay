@@ -2456,6 +2456,195 @@ button {
     min-height: 44px;
   }
 
+  /* Homestay inventory uses compact visual cards instead of a clipped table. */
+  .inventory-section > .inventory-table-wrap,
+  .inventory-section > .inventory-grid {
+    display: none !important;
+  }
+
+  .mobile-inventory-list[hidden] {
+    display: grid !important;
+    gap: 10px;
+    padding: 12px;
+    background: #f5f8fc;
+  }
+
+  .mobile-inventory-card {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: 94px minmax(0, 1fr);
+    gap: 12px;
+    padding: 12px;
+    border: 1px solid #dfe7f1;
+    border-radius: 17px;
+    background: #fff;
+    box-shadow: 0 5px 16px rgba(9, 39, 95, .05);
+  }
+
+  .mobile-inventory-media {
+    position: relative;
+    min-width: 0;
+  }
+
+  .mobile-inventory-media > .inventory-image {
+    width: 94px;
+    height: 88px;
+    border-radius: 13px;
+  }
+
+  .mobile-inventory-media > b {
+    position: absolute;
+    right: 6px;
+    top: 6px;
+    padding: 3px 6px;
+    border-radius: 7px;
+    color: #fff;
+    background: rgba(7, 32, 73, .82);
+    font-size: 8px;
+    letter-spacing: .03em;
+  }
+
+  .mobile-inventory-body {
+    min-width: 0;
+  }
+
+  .mobile-inventory-body > header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+  }
+
+  .mobile-inventory-body .inventory-status {
+    padding: 4px 7px;
+    font-size: 8px;
+  }
+
+  .mobile-inventory-body > header > small {
+    color: #8290a3;
+    font-size: 7px;
+    text-align: right;
+  }
+
+  .mobile-inventory-body h3 {
+    display: -webkit-box;
+    margin: 7px 0 5px;
+    overflow: hidden;
+    color: #092b61;
+    font-size: 14px;
+    line-height: 1.25;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .mobile-inventory-body > p {
+    min-width: 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 5px;
+    margin: 0;
+    color: #65758c;
+    font-size: 9px;
+    line-height: 1.35;
+  }
+
+  .mobile-inventory-body > p svg {
+    flex: 0 0 auto;
+    margin-top: 1px;
+  }
+
+  .mobile-inventory-body > p > span {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .mobile-inventory-body .mobile-inventory-reason {
+    margin-top: 5px;
+    color: #b42318;
+    font-weight: 700;
+  }
+
+  .mobile-inventory-metrics {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+    margin-top: 9px;
+  }
+
+  .mobile-inventory-metrics > span {
+    min-width: 0;
+    display: grid;
+    gap: 1px;
+    padding: 6px 4px;
+    border-radius: 9px;
+    color: #63738a;
+    background: #f3f6fa;
+    font-size: 7px;
+    line-height: 1.2;
+    text-align: center;
+  }
+
+  .mobile-inventory-metrics b {
+    color: #153969;
+    font-size: 12px;
+  }
+
+  .mobile-inventory-metrics .is-available {
+    color: #08734f;
+    background: #e9f8f1;
+  }
+
+  .mobile-inventory-metrics .is-available b {
+    color: #08734f;
+  }
+
+  .mobile-inventory-card > footer {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #e8edf4;
+  }
+
+  .mobile-inventory-card > footer > span {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+  }
+
+  .mobile-inventory-card > footer > span small {
+    color: #718096;
+    font-size: 7px;
+    font-weight: 800;
+    letter-spacing: .05em;
+  }
+
+  .mobile-inventory-card > footer > span b {
+    color: #0b4ae6;
+    font-size: 14px;
+    overflow-wrap: anywhere;
+  }
+
+  .mobile-inventory-card .inventory-actions {
+    flex: 0 0 auto;
+  }
+
+  .mobile-inventory-card .inventory-actions button {
+    min-width: 44px;
+    min-height: 44px;
+    justify-content: center;
+    padding: 0 10px;
+  }
+
+  .mobile-inventory-card .inventory-actions button span {
+    font-size: 9px;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .mobile-filter-sheet,
     .host-mobile-quick-grid button {
