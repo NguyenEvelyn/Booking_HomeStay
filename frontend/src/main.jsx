@@ -9,3 +9,11 @@ import './shared/styles/mobile-responsive.css';
 import FeedbackProvider from './shared/feedback/FeedbackProvider.jsx';
 
 createRoot(document.getElementById('root')).render(<StrictMode><FeedbackProvider><App /></FeedbackProvider></StrictMode>);
+
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/service-worker.js').catch((error) => {
+      console.warn('Không thể đăng ký chế độ PWA:', error);
+    });
+  });
+}

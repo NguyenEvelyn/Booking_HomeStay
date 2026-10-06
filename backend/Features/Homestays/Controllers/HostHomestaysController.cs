@@ -490,11 +490,28 @@ public sealed class HostHomestaysController(IHomestayQueryService service, AppDb
     }
 
     [HttpGet("bookings")]
-    public async Task<IActionResult> Bookings()
+    public async Task<IActionResult> Bookings([FromQuery] string sort = "checkin_asc")
     {
         var hostId = long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var rawItems = await db.Bookings.AsNoTracking().Where(b => db.Homestays.Any(h => h.Id == b.HomestayId && h.HostId == hostId))
-            .OrderByDescending(b => b.CreatedAt).Select(b => new {
+        var today = BookingRules.Today;
+        var upcomingStatuses = new[] { "Confirmed", "PendingPayment", "Pending", "Hold" };
+        var query = db.Bookings.AsNoTracking().Where(b => db.Homestays.Any(h => h.Id == b.HomestayId && h.HostId == hostId));
+        query = sort switch
+        {
+            "created_desc" => query.OrderByDescending(b => b.CreatedAt),
+            "checkout_asc" => query.OrderBy(b => b.CheckOutDate).ThenBy(b => b.CheckInDate),
+            "amount_desc" => query.OrderByDescending(b => b.TotalAmount).ThenBy(b => b.CheckInDate),
+            _ => query
+                .OrderBy(b => upcomingStatuses.Contains(b.Status) && b.CheckInDate < today ? 0
+                    : (b.Status == "CheckedIn" || b.Status == "CheckoutPendingPayment") ? 1
+                    : upcomingStatuses.Contains(b.Status) && b.CheckInDate >= today ? 2
+                    : (b.Status == "Completed" || b.Status == "CheckedOut") ? 3
+                    : (b.Status == "Cancelled" || b.Status == "NoShow" || b.Status == "Expired") ? 4 : 3)
+                .ThenBy(b => upcomingStatuses.Contains(b.Status) && b.CheckInDate < today ? b.CheckInDate
+                    : (b.Status == "CheckedIn" || b.Status == "CheckoutPendingPayment") ? b.CheckOutDate : b.CheckInDate)
+                .ThenByDescending(b => b.CreatedAt)
+        };
+        var rawItems = await query.Select(b => new {
                 b.Id, b.BookingCode, b.HomestayId,
                 HomestayName = db.Homestays.Where(h => h.Id == b.HomestayId).Select(h => h.Name).First(),
                 CustomerName = b.ContactName ?? db.Users.Where(u => u.Id == b.CustomerId).Select(u => u.FullName).First(),
@@ -586,6 +603,13 @@ public sealed class HostHomestaysController(IHomestayQueryService service, AppDb
                 b.ChildCount,
                 policy);
 
+            var daysUntilCheckIn = b.CheckInDate.DayNumber - today.DayNumber;
+            var urgencyLevel = !upcomingStatuses.Contains(b.Status) ? "normal"
+                : daysUntilCheckIn < 0 ? "overdue"
+                : daysUntilCheckIn == 0 ? "today"
+                : daysUntilCheckIn == 1 ? "tomorrow"
+                : daysUntilCheckIn <= 7 ? "soon" : "normal";
+
             return new {
                 b.Id, b.BookingCode, b.HomestayId, b.HomestayName, b.CustomerName, b.CustomerEmail, b.CustomerPhone, b.GuestName, b.ContactIsNew,
                 CustomerCountry = "Việt Nam",
@@ -594,6 +618,8 @@ public sealed class HostHomestaysController(IHomestayQueryService service, AppDb
                 b.HostNote, b.HostViewedAt, b.CreatedAt, b.UpdatedAt, b.IsNew, b.CheckInOut, b.Details, b.Rooms,
                 b.AdditionalCharges, b.PaidAmount, b.Payments, b.Cancellation,
                 b.RoomChangeLogs, b.DateChanges, b.Extensions,
+                DaysUntilCheckin = daysUntilCheckIn,
+                UrgencyLevel = urgencyLevel,
                 Policy = policy,
                 PricingSnapshot = pricingSnapshot,
                 AuditLogs = auditLogs.Where(a => a.TargetId == b.Id.ToString()).Select(a => new {

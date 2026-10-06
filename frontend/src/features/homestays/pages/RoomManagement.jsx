@@ -13,7 +13,7 @@ function RoomImage({ room, large = false }) {
   if (room.thumbnailUrl) {
     return (
       <div className={`room-table-image ${large ? 'large' : ''}`}>
-        <img src={room.thumbnailUrl} alt={`Phòng ${room.roomNumber}`} />
+        <img src={room.thumbnailUrl} alt={`Ảnh phòng ${room.roomNumber}`} loading="lazy" />
         <small>{room.images.length} ảnh</small>
       </div>
     );
@@ -53,6 +53,18 @@ export default function RoomManagement({ data, run }) {
   const list = useMemo(() => roomsOfStay.filter(x => (`${x.roomNumber} ${x.roomTypeName}`).toLowerCase().includes(search.toLowerCase())), [roomsOfStay, search]);
   const formStay = data.homestays.find(x => String(x.id) === String(form.homestayId));
   const types = formStay?.roomTypes || [];
+  const availableCount = roomsOfStay.filter(x => x.status === 'Available').length;
+  const occupiedCount = roomsOfStay.filter(x => x.status === 'Occupied').length;
+  const attentionCount = roomsOfStay.filter(x => ['Cleaning', 'Maintenance'].includes(x.status)).length;
+
+  const EmptyState = ({ short = false }) => (
+    <div className="room-empty" role="status">
+      <span className="room-empty-icon"><HostIcon name="bed" size={24} /></span>
+      <b>{search ? 'Không tìm thấy phòng phù hợp' : 'Cơ sở này chưa có phòng'}</b>
+      <p>{search ? `Thử đổi từ khóa “${search}” hoặc xóa bộ lọc tìm kiếm.` : (short ? 'Thêm phòng đầu tiên để bắt đầu quản lý.' : 'Hãy thêm phòng đầu tiên cùng bộ ảnh và trạng thái vận hành.')}</p>
+      {!search && <button type="button" onClick={openAdd}><HostIcon name="plus" size={15} /> Thêm phòng</button>}
+    </div>
+  );
 
   const choose = selected => {
     const picked = [...selected];
@@ -125,18 +137,21 @@ export default function RoomManagement({ data, run }) {
   };
 
   return (
-    <section className="room-management">
+    <section className="room-management" aria-labelledby="room-management-title">
       <div className="room-property-picker">
         <div className="room-property-picker-head">
           <small>CHỌN CƠ SỞ HOMESTAY</small>
           <h3>Phòng được quản lý riêng theo từng cơ sở</h3>
         </div>
-        <div className="room-property-tabs">
+        <div className="room-property-tabs" role="tablist" aria-label="Chọn cơ sở Homestay">
           {data.homestays.map(x => {
             const rooms = data.items.filter(r => r.homestayId === x.id);
             const availableCount = rooms.filter(r => r.status === 'Available').length;
             return (
               <button
+                type="button"
+                role="tab"
+                aria-selected={stay === String(x.id)}
                 key={x.id}
                 className={stay === String(x.id) ? 'active' : ''}
                 onClick={() => { setStay(String(x.id)); setSearch(''); }}
@@ -150,28 +165,33 @@ export default function RoomManagement({ data, run }) {
       </div>
 
       <header className="room-management-header">
-        <div>
-          <small>QUẢN LÝ VẬN HÀNH</small>
-          <h2>{activeHomestay ? `Phòng tại ${activeHomestay.name}` : 'Danh sách phòng'}</h2>
+        <div className="room-heading">
+          <small className="room-eyebrow">QUẢN LÝ VẬN HÀNH</small>
+          <h2 id="room-management-title">{activeHomestay ? `Phòng tại ${activeHomestay.name}` : 'Danh sách phòng'}</h2>
           <p>Hiển thị các phòng thuộc cơ sở đang chọn. Mỗi phòng có số hiệu và bộ ảnh riêng biệt.</p>
         </div>
-        <div className="room-toolbar">
-          <input
-            placeholder="Tìm mã phòng, loại phòng..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
-          <div className="room-view-toggle">
-            <button className={view === 'table' ? 'active' : ''} onClick={() => setView('table')}>
+        <div className="room-toolbar" role="search" aria-label="Công cụ quản lý phòng">
+          <label className="room-search-field">
+            <span className="sr-only">Tìm phòng</span>
+            <HostIcon name="search" size={18} />
+            <input
+              placeholder="Tìm mã phòng, loại phòng..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+            {search && <button type="button" onClick={() => setSearch('')} aria-label="Xóa từ khóa tìm kiếm"><HostIcon name="close" size={15} /></button>}
+          </label>
+          <div className="room-view-toggle" role="group" aria-label="Kiểu hiển thị">
+            <button type="button" aria-pressed={view === 'table'} className={view === 'table' ? 'active' : ''} onClick={() => setView('table')}>
               <HostIcon name="list" size={14} />
               <span>Bảng</span>
             </button>
-            <button className={view === 'grid' ? 'active' : ''} onClick={() => setView('grid')}>
+            <button type="button" aria-pressed={view === 'grid'} className={view === 'grid' ? 'active' : ''} onClick={() => setView('grid')}>
               <HostIcon name="grid" size={14} />
               <span>Lưới</span>
             </button>
           </div>
-          <button className="room-add-button" onClick={openAdd}>
+          <button type="button" className="room-add-button" onClick={openAdd}>
             <HostIcon name="plus" size={15} />
             <span>Thêm phòng</span>
           </button>
@@ -180,37 +200,43 @@ export default function RoomManagement({ data, run }) {
 
       <div className="room-kpis">
         <article>
-          <small>TỔNG PHÒNG</small>
-          <b>{roomsOfStay.length}</b>
+          <span className="room-kpi-icon"><HostIcon name="bed" size={20} /></span>
+          <div><small>TỔNG PHÒNG</small><b>{roomsOfStay.length}</b><p>Trong cơ sở đang chọn</p></div>
         </article>
         <article>
-          <small>CÒN TRỐNG</small>
-          <b>{roomsOfStay.filter(x => x.status === 'Available').length}</b>
+          <span className="room-kpi-icon available"><HostIcon name="checkCircle" size={20} /></span>
+          <div><small>CÒN TRỐNG</small><b>{availableCount}</b><p>Sẵn sàng nhận khách</p></div>
         </article>
         <article>
-          <small>ĐANG SỬ DỤNG</small>
-          <b>{roomsOfStay.filter(x => x.status === 'Occupied').length}</b>
+          <span className="room-kpi-icon occupied"><HostIcon name="users" size={20} /></span>
+          <div><small>ĐANG SỬ DỤNG</small><b>{occupiedCount}</b><p>Phòng đang có khách</p></div>
         </article>
         <article>
-          <small>CẦN XỬ LÝ (DỌN/BẢO TRÌ)</small>
-          <b>{roomsOfStay.filter(x => ['Cleaning', 'Maintenance'].includes(x.status)).length}</b>
+          <span className="room-kpi-icon attention"><HostIcon name="alertCircle" size={20} /></span>
+          <div><small>CẦN XỬ LÝ</small><b>{attentionCount}</b><p>Dọn phòng hoặc bảo trì</p></div>
         </article>
+      </div>
+
+      <div className="room-results-bar" aria-live="polite">
+        <p><b>{list.length}</b> phòng {search ? `phù hợp với “${search}”` : `tại ${activeHomestay?.name || 'cơ sở đang chọn'}`}</p>
+        <span>{view === 'table' ? 'Chế độ bảng' : 'Chế độ lưới'}</span>
       </div>
 
       {view === 'table' ? (
         <div className="rooms-table-wrap">
           <table className="rooms-table">
+            <caption className="sr-only">Danh sách phòng tại {activeHomestay?.name || 'Homestay'}</caption>
             <thead>
               <tr>
-                <th>MÃ PHÒNG</th>
-                <th>ẢNH RIÊNG</th>
-                <th>LOẠI PHÒNG</th>
-                <th>TẦNG/KHU</th>
-                <th>SỨC CHỨA</th>
-                <th>GIÁ TIÊU CHUẨN</th>
-                <th>TRẠNG THÁI</th>
-                <th>VỆ SINH</th>
-                <th>THAO TÁC</th>
+                <th scope="col">MÃ PHÒNG</th>
+                <th scope="col">ẢNH RIÊNG</th>
+                <th scope="col">LOẠI PHÒNG</th>
+                <th scope="col">TẦNG/KHU</th>
+                <th scope="col">SỨC CHỨA</th>
+                <th scope="col">GIÁ TIÊU CHUẨN</th>
+                <th scope="col">TRẠNG THÁI</th>
+                <th scope="col">VỆ SINH</th>
+                <th scope="col">THAO TÁC</th>
               </tr>
             </thead>
             <tbody>
@@ -222,15 +248,17 @@ export default function RoomManagement({ data, run }) {
                   <td>{x.floorNumber ? `Tầng ${x.floorNumber}` : '—'}</td>
                   <td>{x.maxAdults + x.maxChildren} khách</td>
                   <td><b>{money(x.basePrice)}</b></td>
-                  <td><span className={`room-status status-${x.status.toLowerCase()}`}>{statusLabel[x.status] || x.status}</span></td>
+                  <td><span className={`room-status status-${x.status.toLowerCase()}`}><i aria-hidden="true" />{statusLabel[x.status] || x.status}</span></td>
                   <td><span className={`clean-status clean-${x.status.toLowerCase()}`}>{cleanLabel[x.status] || '—'}</span></td>
                   <td>
                     <div className="room-actions">
-                      <button title="Sửa phòng và ảnh" onClick={() => openEdit(x)}>
+                      <button type="button" aria-label={`Sửa phòng ${x.roomNumber}`} onClick={() => openEdit(x)}>
                         <HostIcon name="edit" size={14} />
+                        <span>Sửa</span>
                       </button>
-                      <button className="delete" title="Xóa phòng" onClick={() => remove(x)}>
+                      <button type="button" className="delete" aria-label={`Xóa phòng ${x.roomNumber}`} onClick={() => remove(x)}>
                         <HostIcon name="trash" size={14} />
+                        <span>Xóa</span>
                       </button>
                     </div>
                   </td>
@@ -238,7 +266,7 @@ export default function RoomManagement({ data, run }) {
               ))}
             </tbody>
           </table>
-          {!list.length && <p className="room-empty">Homestay này chưa có phòng hoặc không tìm thấy phòng phù hợp với từ khóa.</p>}
+          {!list.length && <EmptyState />}
         </div>
       ) : (
         <div className="room-card-grid">
@@ -247,36 +275,38 @@ export default function RoomManagement({ data, run }) {
               <RoomImage room={x} large />
               <div className="room-card-body">
                 <div>
-                  <span className={`room-status status-${x.status.toLowerCase()}`}>{statusLabel[x.status] || x.status}</span>
-                  <small>{activeHomestay?.name}</small>
+                  <span className={`room-status status-${x.status.toLowerCase()}`}><i aria-hidden="true" />{statusLabel[x.status] || x.status}</span>
+                  <small title={activeHomestay?.name}>{activeHomestay?.name}</small>
                 </div>
                 <h3>{x.roomNumber} · {x.roomTypeName}</h3>
                 <p>{x.floorNumber ? `Tầng ${x.floorNumber}` : 'Chưa đặt tầng'} · Tối đa {x.maxAdults + x.maxChildren} khách</p>
                 <footer>
                   <b>{money(x.basePrice)}<small>/đêm</small></b>
                   <div className="room-actions">
-                    <button title="Sửa phòng" onClick={() => openEdit(x)}>
+                    <button type="button" aria-label={`Sửa phòng ${x.roomNumber}`} onClick={() => openEdit(x)}>
                       <HostIcon name="edit" size={14} />
+                      <span>Sửa</span>
                     </button>
-                    <button className="delete" title="Xóa phòng" onClick={() => remove(x)}>
+                    <button type="button" className="delete" aria-label={`Xóa phòng ${x.roomNumber}`} onClick={() => remove(x)}>
                       <HostIcon name="trash" size={14} />
+                      <span>Xóa</span>
                     </button>
                   </div>
                 </footer>
               </div>
             </article>
           ))}
-          {!list.length && <p className="room-empty">Homestay này chưa có phòng hoặc không tìm thấy phòng phù hợp.</p>}
+          {!list.length && <EmptyState short />}
         </div>
       )}
 
       {modal && (
-        <div className="room-modal" onMouseDown={e => e.target === e.currentTarget && setModal(null)}>
+        <div className="room-modal" role="dialog" aria-modal="true" aria-labelledby="room-modal-title" onMouseDown={e => e.target === e.currentTarget && setModal(null)}>
           <form onSubmit={save}>
             <header>
               <div>
                 <small>{modal === 'add' ? 'TẠO PHÒNG MỚI' : 'CẬP NHẬT PHÒNG'}</small>
-                <h2>{modal === 'add' ? 'Thêm phòng mới' : `Sửa phòng ${form.roomNumber}`}</h2>
+                <h2 id="room-modal-title">{modal === 'add' ? 'Thêm phòng mới' : `Sửa phòng ${form.roomNumber}`}</h2>
               </div>
               <button type="button" className="room-modal-close" onClick={() => setModal(null)} aria-label="Đóng">
                 <HostIcon name="close" size={20} />
@@ -365,7 +395,7 @@ export default function RoomManagement({ data, run }) {
               <div className="room-image-list">
                 {(form.images || []).map(x => (
                   <figure key={x.id}>
-                    <img src={x.url} alt="" />
+                    <img src={x.url} alt={`Ảnh phòng ${form.roomNumber || 'mới'}`} />
                     <button type="button" onClick={() => removeSavedImage(x)} aria-label="Xóa ảnh">
                       <HostIcon name="close" size={14} />
                     </button>
@@ -374,7 +404,7 @@ export default function RoomManagement({ data, run }) {
                 ))}
                 {files.map((x, i) => (
                   <figure key={x.preview}>
-                    <img src={x.preview} alt="" />
+                    <img src={x.preview} alt={`Ảnh mới ${i + 1} của phòng ${form.roomNumber || 'mới'}`} />
                     <button type="button" onClick={() => setFiles(files.filter((_, n) => n !== i))} aria-label="Xóa ảnh">
                       <HostIcon name="close" size={14} />
                     </button>

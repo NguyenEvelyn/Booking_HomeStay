@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { homestayApi } from '../api/homestayApi.js';
 import HostIcon from './HostIcon.jsx';
 import { confirmDialog, toast } from '../../../shared/feedback/feedback.js';
+import RevenueReport from './RevenueReport.jsx';
 
 const money = v => `${new Intl.NumberFormat('vi-VN').format(Number(v) || 0)}đ`;
 const ms = 86400000;
@@ -321,49 +322,6 @@ function BookingPopup({ item, close, action }) {
   );
 }
 
-export function FinanceReport({ bookings, homestays }) {
-  const valid = bookings.filter(x => ['Confirmed', 'Completed'].includes(x.status));
-  const total = valid.reduce((s, x) => s + Number(x.totalAmount || 0), 0);
-  const byStay = homestays.map(h => ({
-    name: h.name,
-    value: valid.filter(x => x.homestayName === h.name).reduce((s, x) => s + Number(x.totalAmount || 0), 0)
-  })).sort((a, b) => b.value - a.value);
-  const max = Math.max(...byStay.map(x => x.value), 1);
-
-  return (
-    <div className="finance-page">
-      <div className="host-stats">
-        <Stat name="DOANH THU XÁC NHẬN" value={money(total)} icon="wallet" iconColor="#0b4ae6" />
-        <Stat name="ĐƠN CÓ DOANH THU" value={valid.length} icon="bookings" iconColor="#0d8244" />
-        <Stat name="GIÁ TRỊ TRUNG BÌNH" value={money(valid.length ? total / valid.length : 0)} icon="dollar" iconColor="#0b4ae6" />
-        <Stat name="HOMESTAY HOẠT ĐỘNG" value={homestays.filter(x => x.status === 'Approved').length} icon="home" iconColor="#b25e00" />
-      </div>
-
-      <div className="finance-layout">
-        <Panel title="Tổng hợp doanh thu theo Homestay">
-          <div className="revenue-table">
-            {byStay.map((x, i) => (
-              <div key={x.name}>
-                <span>#{i + 1}</span>
-                <b>{x.name}</b>
-                <i><em style={{ width: `${x.value / max * 100}%` }} /></i>
-                <strong>{money(x.value)}</strong>
-              </div>
-            ))}
-          </div>
-        </Panel>
-
-        <Panel title="Cơ cấu trạng thái đơn">
-          <div className="status-breakdown">
-            {Object.keys(labels).map(s => (
-              <div key={s}>
-                <span className={`status status-${s.toLowerCase()}`}>{labels[s]}</span>
-                <b>{bookings.filter(x => x.status === s).length}</b>
-              </div>
-            ))}
-          </div>
-        </Panel>
-      </div>
-    </div>
-  );
+export function FinanceReport({ homestays, onOpenBookings }) {
+  return <RevenueReport homestays={homestays} onOpenBookings={onOpenBookings}/>;
 }

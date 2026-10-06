@@ -298,6 +298,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         booking.Property(x => x.ContactUpdatedAt).HasColumnName("contact_updated_at");
         booking.Property(x => x.CreatedAt).HasColumnName("created_at");
         booking.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+        booking.HasIndex(x => new { x.HomestayId, x.Status, x.CheckInDate }).HasDatabaseName("ix_bookings_homestay_status_check_in");
         booking.HasOne(x => x.Homestay).WithMany().HasForeignKey(x => x.HomestayId).OnDelete(DeleteBehavior.Restrict);
 
         var bookingGuest = modelBuilder.Entity<BookingGuest>();

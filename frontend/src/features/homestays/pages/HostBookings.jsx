@@ -9,8 +9,52 @@ const dateTime = value => value ? new Intl.DateTimeFormat('vi-VN', { dateStyle: 
 const day = value => date(value);
 const plainDate = value => date(value);
 const today = () => {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+  const value = Object.fromEntries(parts.map(part => [part.type, part.value]));
+  return `${value.year}-${value.month}-${value.day}`;
+};
+const dayDiff = (value, base) => Math.round((Date.parse(`${String(value).slice(0, 10)}T00:00:00Z`) - Date.parse(`${base}T00:00:00Z`)) / 86400000);
+const upcomingStatuses = ['Confirmed', 'PendingPayment', 'Pending', 'Hold'];
+const ongoingStatuses = ['CheckedIn', 'CheckoutPendingPayment'];
+const closedStatuses = ['Completed', 'CheckedOut', 'Cancelled', 'NoShow', 'Expired'];
+const isUpcoming = (item, now) => upcomingStatuses.includes(item.status) && item.checkInDate >= now;
+
+const urgencyFor = (item, now) => {
+  if (ongoingStatuses.includes(item.status)) {
+    const days = dayDiff(item.checkOutDate, now);
+    return { level: 'staying', label: days <= 0 ? 'Check-out hôm nay' : `Đang ở · Check-out sau ${days} ngày`, urgent: days <= 0 };
+  }
+  if (!upcomingStatuses.includes(item.status)) return null;
+  const days = Number.isFinite(Number(item.daysUntilCheckin)) ? Number(item.daysUntilCheckin) : dayDiff(item.checkInDate, now);
+  if (days < 0) return { level: 'overdue', label: `Trễ ${Math.abs(days)} ngày`, urgent: true };
+  if (days === 0) return { level: 'today', label: 'Check-in hôm nay', urgent: true };
+  if (days === 1) return { level: 'tomorrow', label: 'Ngày mai', urgent: true };
+  if (days <= 3) return { level: 'soon', label: `Còn ${days} ngày`, urgent: false };
+  if (days <= 7) return { level: 'week', label: `Còn ${days} ngày`, urgent: false };
+  return { level: 'normal', label: `Còn ${days} ngày`, urgent: false };
+};
+
+const bookingGroup = (item, now) => {
+  if (ongoingStatuses.includes(item.status)) return 'staying';
+  if (closedStatuses.includes(item.status)) return 'closed';
+  const days = Number.isFinite(Number(item.daysUntilCheckin)) ? Number(item.daysUntilCheckin) : dayDiff(item.checkInDate, now);
+  if (days < 0) return 'overdue';
+  if (days === 0) return 'today';
+  if (days === 1) return 'tomorrow';
+  if (days <= 7) return 'this-week';
+  if (days <= 14) return 'next-week';
+  return 'later';
+};
+
+const groupLabels = {
+  overdue: 'Cần xử lý ngay',
+  staying: 'Đang ở',
+  today: 'Hôm nay',
+  tomorrow: 'Ngày mai',
+  'this-week': 'Tuần này',
+  'next-week': 'Tuần sau',
+  later: 'Sau đó',
+  closed: 'Đã hoàn thành / Đã hủy'
 };
 
 const labels = {
@@ -56,7 +100,7 @@ const paymentLabel = {
 
 const csvCell = value => `"${String(value ?? '').replaceAll('"', '""')}"`;
 
-export default function HostBookings({ items, homestays, run }) {
+export default function HostBookings({ items, homestays, run, sort = 'checkin_asc', onSortChange }) {
   const [status, setStatus] = useState('all');
   const [query, setQuery] = useState('');
   const [home, setHome] = useState('');
@@ -64,41 +108,42 @@ export default function HostBookings({ items, homestays, run }) {
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [payment, setPayment] = useState('');
-  const [sort, setSort] = useState('created-desc');
+  const [quickFilter, setQuickFilter] = useState('');
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState(null);
   const [selectedTab, setSelectedTab] = useState('overview');
 
   const perPage = 8;
   const now = today();
+  const month = now.slice(0, 7);
 
   const filtered = useMemo(() => items.filter(x => {
     const hay = `${x.bookingCode} ${x.customerName} ${x.customerPhone || ''}`.toLocaleLowerCase('vi');
     const statusOk = status === 'all'
-      || (status === 'upcoming' ? x.status === 'Confirmed' && x.checkInDate >= now : x.status === status)
+      || (status === 'upcoming' ? isUpcoming(x, now) : x.status === status)
       || (status === 'Cancelled' && x.status === 'CancellationRequested');
     const dateValue = dateType === 'checkin' ? x.checkInDate : String(x.createdAt).slice(0, 10);
     return statusOk
+      && (!quickFilter || (quickFilter === 'new' && x.isNew)
+        || (quickFilter === 'today' && upcomingStatuses.includes(x.status) && x.checkInDate === now)
+        || (quickFilter === 'pending' && paymentState(x) === 'pending' && ['PendingPayment', 'PaymentFailed'].includes(x.status))
+        || (quickFilter === 'revenue' && String(x.createdAt).slice(0, 7) === month && Number(x.paidAmount || 0) > 0))
       && (!query.trim() || hay.includes(query.trim().toLocaleLowerCase('vi')))
       && (!home || String(x.homestayId) === home)
       && (!payment || paymentState(x) === payment)
       && (!from || dateValue >= from)
       && (!to || dateValue <= to);
-  }).sort((a, b) => {
-    if (sort === 'created-asc') return new Date(a.createdAt) - new Date(b.createdAt);
-    if (sort === 'checkin-asc') return String(a.checkInDate).localeCompare(String(a.checkInDate));
-    if (sort === 'checkin-desc') return String(b.checkInDate).localeCompare(String(a.checkInDate));
-    if (sort === 'amount-desc') return b.totalAmount - a.totalAmount;
-    if (sort === 'amount-asc') return a.totalAmount - b.totalAmount;
-    return new Date(b.createdAt) - new Date(a.createdAt);
-  }), [items, status, query, home, dateType, from, to, payment, sort, now]);
+  }), [items, status, query, home, dateType, from, to, payment, quickFilter, now, month]);
 
   const pages = Math.max(1, Math.ceil(filtered.length / perPage));
   const visible = filtered.slice((Math.min(page, pages) - 1) * perPage, Math.min(page, pages) * perPage);
-  const month = new Date().toISOString().slice(0, 7);
+  const tomorrow = new Date(`${now}T00:00:00Z`);
+  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+  const tomorrowKey = tomorrow.toISOString().slice(0, 10);
   const stats = {
     new: items.filter(x => x.isNew).length,
-    today: items.filter(x => x.status === 'Confirmed' && x.checkInDate === now).length,
+    today: items.filter(x => upcomingStatuses.includes(x.status) && x.checkInDate === now).length,
+    tomorrow: items.filter(x => upcomingStatuses.includes(x.status) && x.checkInDate === tomorrowKey).length,
     pending: items.filter(x => paymentState(x) === 'pending' && ['PendingPayment', 'PaymentFailed'].includes(x.status)).length,
     revenue: items.filter(x => String(x.createdAt).slice(0, 7) === month).reduce((sum, x) => sum + Number(x.paidAmount || 0), 0)
   };
@@ -115,9 +160,22 @@ export default function HostBookings({ items, homestays, run }) {
     setFrom('');
     setTo('');
     setPayment('');
-    setSort('created-desc');
+    setQuickFilter('');
+    onSortChange?.('checkin_asc');
     setPage(1);
   };
+
+  const applyQuickFilter = value => {
+    setQuickFilter(current => current === value ? '' : value);
+    setStatus('all');
+    setPage(1);
+  };
+
+  const groupCounts = sort === 'checkin_asc' ? filtered.reduce((counts, item) => {
+    const key = bookingGroup(item, now);
+    counts[key] = (counts[key] || 0) + 1;
+    return counts;
+  }, {}) : {};
 
   const exportCsv = () => {
     const rows = [
@@ -161,38 +219,38 @@ export default function HostBookings({ items, homestays, run }) {
   return (
     <section className="booking-manager">
       <div className="booking-kpis">
-        <article>
+        <button type="button" className={quickFilter === 'new' ? 'active' : ''} onClick={() => applyQuickFilter('new')} aria-pressed={quickFilter === 'new'}>
           <div className="booking-kpi-icon"><HostIcon name="bell" size={20} color="#0b4ae6" /></div>
           <div>
             <small>ĐƠN MỚI</small>
             <strong>{stats.new}</strong>
             <span>Chưa được mở</span>
           </div>
-        </article>
-        <article>
+        </button>
+        <button type="button" className={quickFilter === 'today' ? 'active' : ''} onClick={() => applyQuickFilter('today')} aria-pressed={quickFilter === 'today'}>
           <div className="booking-kpi-icon"><HostIcon name="checkCircle" size={20} color="#0d8244" /></div>
           <div>
             <small>CHECK-IN HÔM NAY</small>
             <strong>{stats.today}</strong>
-            <span>Cần chuẩn bị phòng</span>
+            <span>Ngày mai: {stats.tomorrow} đơn</span>
           </div>
-        </article>
-        <article>
+        </button>
+        <button type="button" className={quickFilter === 'pending' ? 'active' : ''} onClick={() => applyQuickFilter('pending')} aria-pressed={quickFilter === 'pending'}>
           <div className="booking-kpi-icon"><HostIcon name="clock" size={20} color="#b25e00" /></div>
           <div>
             <small>CHỜ THANH TOÁN</small>
             <strong>{stats.pending}</strong>
             <span>Cần theo dõi</span>
           </div>
-        </article>
-        <article>
+        </button>
+        <button type="button" className={quickFilter === 'revenue' ? 'active' : ''} onClick={() => applyQuickFilter('revenue')} aria-pressed={quickFilter === 'revenue'}>
           <div className="booking-kpi-icon"><HostIcon name="wallet" size={20} color="#0b4ae6" /></div>
           <div>
             <small>DOANH THU THÁNG</small>
             <strong>{money(stats.revenue)}</strong>
             <span>Giao dịch thành công</span>
           </div>
-        </article>
+        </button>
       </div>
 
       {items.some(x => x.status === 'PendingPayment' && new Date(x.updatedAt) <= new Date(Date.now() - 15 * 60000)) && (
@@ -220,10 +278,10 @@ export default function HostBookings({ items, homestays, run }) {
             <button
               key={key}
               className={status === key ? 'active' : ''}
-              onClick={() => { setStatus(key); setPage(1); }}
+              onClick={() => { setStatus(key); setQuickFilter(''); setPage(1); }}
             >
               <span>{label}</span>
-              <b>{items.filter(x => key === 'all' || (key === 'upcoming' ? x.status === 'Confirmed' && x.checkInDate >= now : x.status === key)).length}</b>
+              <b>{items.filter(x => key === 'all' || (key === 'upcoming' ? isUpcoming(x, now) : x.status === key)).length}</b>
             </button>
           ))}
         </nav>
@@ -270,33 +328,47 @@ export default function HostBookings({ items, homestays, run }) {
           </label>
           <label>
             <span>Sắp xếp</span>
-            <select value={sort} onChange={e => setSort(e.target.value)}>
-              <option value="created-desc">Ngày đặt mới nhất</option>
-              <option value="created-asc">Ngày đặt cũ nhất</option>
-              <option value="checkin-asc">Check-in gần nhất</option>
-              <option value="checkin-desc">Check-in xa nhất</option>
-              <option value="amount-desc">Giá trị cao nhất</option>
-              <option value="amount-asc">Giá trị thấp nhất</option>
+            <select value={sort} onChange={e => { onSortChange?.(e.target.value); setPage(1); }}>
+              <option value="checkin_asc">Sắp check-in nhất</option>
+              <option value="created_desc">Mới đặt nhất</option>
+              <option value="checkout_asc">Check-out sớm nhất</option>
+              <option value="amount_desc">Giá trị cao nhất</option>
             </select>
           </label>
           <button className="booking-reset" onClick={reset}>Đặt lại</button>
         </div>
 
         <div className="booking-list">
-          {visible.map(x => (
-            <article key={x.id} className={x.isNew ? 'is-new' : ''} onClick={() => open(x)}>
+          {visible.map((x, index) => {
+            const urgency = urgencyFor(x, now);
+            const group = bookingGroup(x, now);
+            const previousGroup = index > 0 ? bookingGroup(visible[index - 1], now) : null;
+            const showGroup = sort === 'checkin_asc' && group !== previousGroup;
+            const checkInReady = x.status === 'Confirmed' && dayDiff(x.checkInDate, now) <= 1;
+            return <React.Fragment key={x.id}>
+            {showGroup && (
+              <div className={`booking-time-group group-${group}`}>
+                <span>{groupLabels[group]}</span>
+                <b>{groupCounts[group] || 0}</b>
+              </div>
+            )}
+            <article className={`${x.isNew ? 'is-new ' : ''}${urgency?.urgent ? `is-urgent urgency-${urgency.level}` : ''}`} onClick={() => open(x)}>
               <div className="booking-primary">
                 <span>{x.isNew && <b>Mới</b>}{x.contactIsNew && <b className="contact-updated-chip">Mới cập nhật</b>}{x.bookingCode}</span>
                 <h3>{x.customerName}</h3>
                 <small>{x.customerPhone || 'Chưa có SĐT'} · Đặt lúc {dateTime(x.createdAt)}</small>
+                {urgency && <span className={`booking-urgency booking-urgency-mobile urgency-${urgency.level}`}>{urgency.label}</span>}
               </div>
               <div>
                 <small>HOMESTAY / PHÒNG</small>
                 <strong>{x.homestayName}</strong>
                 <span>{x.details?.map(d => `${d.roomTypeName}${d.roomNumber ? ` · ${d.roomNumber}` : ''}`).join(', ') || 'Chưa xếp phòng'}</span>
               </div>
-              <div>
-                <small>LƯU TRÚ</small>
+              <div className="booking-stay">
+                <div className="booking-stay-heading">
+                  <small>LƯU TRÚ</small>
+                  {urgency && <span className={`booking-urgency urgency-${urgency.level}`}>{urgency.label}</span>}
+                </div>
                 <strong>{date(x.checkInDate)} → {date(x.checkOutDate)}</strong>
                 <span>{x.nights} đêm · {x.adultCount + x.childCount} khách</span>
               </div>
@@ -319,7 +391,7 @@ export default function HostBookings({ items, homestays, run }) {
                   }}>Đã nhận tiền</button>
                 )}
                 {x.status === 'Confirmed' && (
-                  <button className="btn-action-highlight" onClick={() => open(x, 'checkin')}>Check-in</button>
+                  <button className={checkInReady ? 'btn-action-highlight' : 'btn-action-secondary'} onClick={() => open(x, 'checkin')}>Check-in</button>
                 )}
                 {x.status === 'CheckedIn' && (
                   <button className="btn-action-highlight" onClick={() => open(x, 'checkout')}>Trả phòng</button>
@@ -330,7 +402,8 @@ export default function HostBookings({ items, homestays, run }) {
                 <button className="btn-detail" onClick={() => open(x, 'overview')}>Chi tiết</button>
               </div>
             </article>
-          ))}
+            </React.Fragment>;
+          })}
           {!visible.length && <p className="booking-empty">Không có đơn phù hợp với bộ lọc hiện tại.</p>}
         </div>
 
