@@ -226,6 +226,8 @@ export default function RoomManagement({ data, run }) {
         <span>{view === 'table' ? 'Chế độ bảng' : 'Chế độ lưới'}</span>
       </div>
 
+      <div hidden className="mobile-room-list" aria-label={`Danh sách phòng tại ${activeHomestay?.name || 'Homestay'}`}>{list.map(x => <article key={x.id} className={`mobile-room-card is-${x.status.toLowerCase()}`}><RoomImage room={x}/><div className="mobile-room-body"><header><span className={`room-status status-${x.status.toLowerCase()}`}><i aria-hidden="true"/>{statusLabel[x.status] || x.status}</span><span className={`clean-status clean-${x.status.toLowerCase()}`}>{cleanLabel[x.status] || '—'}</span></header><h3>{x.roomNumber}</h3><strong>{x.roomTypeName}</strong><p><span>{x.floorNumber ? `Tầng ${x.floorNumber}` : 'Chưa đặt tầng'}</span><i>·</i><span>Tối đa {x.maxAdults + x.maxChildren} khách</span></p></div><footer><span><small>GIÁ TIÊU CHUẨN</small><b>{money(x.basePrice)}<em>/đêm</em></b></span><div className="room-actions"><button type="button" aria-label={`Sửa phòng ${x.roomNumber}`} onClick={() => openEdit(x)}><HostIcon name="edit" size={15}/><span>Sửa</span></button><button type="button" className="delete" aria-label={`Xóa phòng ${x.roomNumber}`} onClick={() => remove(x)}><HostIcon name="trash" size={15}/><span>Xóa</span></button></div></footer></article>)}{!list.length && <EmptyState short/>}</div>
+
       {view === 'table' ? (
         <div className="rooms-table-wrap">
           <table className="rooms-table">
