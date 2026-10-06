@@ -2314,18 +2314,18 @@ button {
 
   .finance-page .transaction-table tbody {
     display: grid;
-    gap: 10px;
+    gap: 8px;
   }
 
   .finance-page .transaction-table tbody tr {
     min-width: 0;
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    gap: 10px 12px;
-    padding: 14px;
+    gap: 6px 10px;
+    padding: 11px 12px;
     border: 1px solid #e1e8f2;
-    border-left: 4px solid #0b4ae6;
-    border-radius: 16px;
+    border-left: 3px solid #0b4ae6;
+    border-radius: 13px;
     background: #fff;
     box-shadow: 0 5px 16px rgba(15, 23, 42, .045);
   }
@@ -2334,18 +2334,18 @@ button {
     min-width: 0;
     display: grid;
     align-content: start;
-    gap: 3px;
+    gap: 2px;
     padding: 0;
     border: 0;
     color: #33445e;
-    font-size: 11px;
-    line-height: 1.35;
+    font-size: 10px;
+    line-height: 1.25;
     overflow-wrap: anywhere;
   }
 
   .finance-page .transaction-table td::before {
     color: #7a899d;
-    font-size: 8px;
+    font-size: 7px;
     font-weight: 850;
     letter-spacing: .06em;
   }
@@ -2354,7 +2354,10 @@ button {
     grid-column: 1;
     grid-row: 1;
     color: #092b61;
-    font-size: 11px;
+    overflow: hidden;
+    font-size: 10px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .finance-page .transaction-table td:nth-child(1)::before { content: 'MÃ ĐƠN'; }
@@ -2368,17 +2371,25 @@ button {
   .finance-page .transaction-table td:nth-child(2),
   .finance-page .transaction-table td:nth-child(3) {
     grid-column: 1 / -1;
-    padding: 9px 10px;
-    border-radius: 11px;
-    background: #f7f9fc;
+    display: block;
+    padding: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .finance-page .transaction-table td:nth-child(2)::before { content: 'KHÁCH LƯU TRÚ'; }
   .finance-page .transaction-table td:nth-child(3)::before { content: 'HOMESTAY / PHÒNG'; }
 
+  .finance-page .transaction-table td:nth-child(2)::before,
+  .finance-page .transaction-table td:nth-child(3)::before {
+    display: inline;
+    margin-right: 6px;
+  }
+
   .finance-page .transaction-table td:nth-child(3) {
     color: #163e76;
-    font-weight: 700;
+    font-weight: 650;
   }
 
   .finance-page .transaction-table td:nth-child(4)::before { content: 'NGÀY THANH TOÁN'; }
@@ -2386,8 +2397,8 @@ button {
 
   .finance-page .transaction-table td:nth-child(4),
   .finance-page .transaction-table td:nth-child(5) {
-    padding-bottom: 9px;
-    border-bottom: 1px solid #e8edf4;
+    padding: 5px 0 7px;
+    border-bottom: 1px solid #edf1f6;
   }
 
   .finance-page .transaction-table td:nth-child(5) {
@@ -2401,15 +2412,13 @@ button {
   .finance-page .transaction-table td:nth-child(6),
   .finance-page .transaction-table td:nth-child(8) {
     color: #092b61;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 800;
     font-variant-numeric: tabular-nums;
   }
 
   .finance-page .transaction-table td:nth-child(7) {
-    grid-column: 1 / -1;
-    color: #718096;
-    font-size: 10px;
+    display: none;
   }
 
   .finance-page .transaction-table td:nth-child(8) {
@@ -2421,8 +2430,8 @@ button {
   }
 
   .finance-page .transaction-status {
-    padding: 5px 8px;
-    font-size: 9px;
+    padding: 4px 7px;
+    font-size: 8px;
   }
 
   .finance-page .transaction-actions {
