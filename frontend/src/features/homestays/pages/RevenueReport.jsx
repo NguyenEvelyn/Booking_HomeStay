@@ -21,7 +21,7 @@ function rangeFor(preset) {
 }
 
 const presets = [['today', 'Hôm nay'], ['7d', '7 ngày'], ['30d', '30 ngày'], ['month', 'Tháng này'], ['quarter', 'Quý này'], ['year', 'Năm nay'], ['custom', 'Tùy chọn']];
-const statusLabels = { Confirmed: 'Đã xác nhận', CheckedIn: 'Đang lưu trú', Completed: 'Hoàn thành', PendingPayment: 'Chờ thanh toán', CancellationRequested: 'Chờ duyệt hủy', Cancelled: 'Đã hủy', Expired: 'Hết hạn', PaymentFailed: 'Thanh toán lỗi' };
+const statusLabels = { Confirmed: 'Đã xác nhận', CheckedIn: 'Đang lưu trú', CheckedOut: 'Đã trả phòng', Completed: 'Hoàn thành', PendingPayment: 'Chờ thanh toán', CancellationRequested: 'Chờ duyệt hủy', Cancelled: 'Đã hủy', Expired: 'Hết hạn', PaymentFailed: 'Thanh toán lỗi' };
 const statusColors = { Confirmed: '#2563eb', CheckedIn: '#0f766e', Completed: '#16a34a', PendingPayment: '#f59e0b', CancellationRequested: '#ea580c', Cancelled: '#dc2626', Expired: '#64748b', PaymentFailed: '#be123c' };
 
 function Change({ data, inverse = false }) {

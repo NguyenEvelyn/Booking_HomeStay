@@ -2296,6 +2296,157 @@ button {
     min-height: 44px;
   }
 
+  /* Revenue reconciliation becomes readable transaction cards on phones. */
+  .finance-page .transaction-table-wrap {
+    overflow: visible;
+  }
+
+  .finance-page .transaction-table {
+    width: 100%;
+    min-width: 0 !important;
+    display: block;
+  }
+
+  .finance-page .transaction-table thead,
+  .finance-page .transaction-table tfoot {
+    display: none;
+  }
+
+  .finance-page .transaction-table tbody {
+    display: grid;
+    gap: 10px;
+  }
+
+  .finance-page .transaction-table tbody tr {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px 12px;
+    padding: 14px;
+    border: 1px solid #e1e8f2;
+    border-left: 4px solid #0b4ae6;
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0 5px 16px rgba(15, 23, 42, .045);
+  }
+
+  .finance-page .transaction-table td {
+    min-width: 0;
+    display: grid;
+    align-content: start;
+    gap: 3px;
+    padding: 0;
+    border: 0;
+    color: #33445e;
+    font-size: 11px;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+
+  .finance-page .transaction-table td::before {
+    color: #7a899d;
+    font-size: 8px;
+    font-weight: 850;
+    letter-spacing: .06em;
+  }
+
+  .finance-page .transaction-table td:nth-child(1) {
+    grid-column: 1;
+    grid-row: 1;
+    color: #092b61;
+    font-size: 11px;
+  }
+
+  .finance-page .transaction-table td:nth-child(1)::before { content: 'MÃ ĐƠN'; }
+
+  .finance-page .transaction-table td:nth-child(9) {
+    grid-column: 2;
+    grid-row: 1;
+    justify-items: end;
+  }
+
+  .finance-page .transaction-table td:nth-child(2),
+  .finance-page .transaction-table td:nth-child(3) {
+    grid-column: 1 / -1;
+    padding: 9px 10px;
+    border-radius: 11px;
+    background: #f7f9fc;
+  }
+
+  .finance-page .transaction-table td:nth-child(2)::before { content: 'KHÁCH LƯU TRÚ'; }
+  .finance-page .transaction-table td:nth-child(3)::before { content: 'HOMESTAY / PHÒNG'; }
+
+  .finance-page .transaction-table td:nth-child(3) {
+    color: #163e76;
+    font-weight: 700;
+  }
+
+  .finance-page .transaction-table td:nth-child(4)::before { content: 'NGÀY THANH TOÁN'; }
+  .finance-page .transaction-table td:nth-child(5)::before { content: 'PHƯƠNG THỨC'; }
+
+  .finance-page .transaction-table td:nth-child(4),
+  .finance-page .transaction-table td:nth-child(5) {
+    padding-bottom: 9px;
+    border-bottom: 1px solid #e8edf4;
+  }
+
+  .finance-page .transaction-table td:nth-child(5) {
+    text-align: right;
+  }
+
+  .finance-page .transaction-table td:nth-child(6)::before { content: 'SỐ TIỀN'; }
+  .finance-page .transaction-table td:nth-child(7)::before { content: 'PHÍ NỀN TẢNG'; }
+  .finance-page .transaction-table td:nth-child(8)::before { content: 'THỰC NHẬN'; }
+
+  .finance-page .transaction-table td:nth-child(6),
+  .finance-page .transaction-table td:nth-child(8) {
+    color: #092b61;
+    font-size: 13px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .finance-page .transaction-table td:nth-child(7) {
+    grid-column: 1 / -1;
+    color: #718096;
+    font-size: 10px;
+  }
+
+  .finance-page .transaction-table td:nth-child(8) {
+    text-align: right;
+  }
+
+  .finance-page .transaction-table td:nth-child(9)::before {
+    display: none;
+  }
+
+  .finance-page .transaction-status {
+    padding: 5px 8px;
+    font-size: 9px;
+  }
+
+  .finance-page .transaction-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 110px;
+    gap: 8px;
+  }
+
+  .finance-page .transaction-actions label,
+  .finance-page .transaction-actions select {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+  }
+
+  .finance-page .table-pagination {
+    justify-content: space-between;
+  }
+
+  .finance-page .table-pagination button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .mobile-filter-sheet,
     .host-mobile-quick-grid button {
