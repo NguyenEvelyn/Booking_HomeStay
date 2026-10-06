@@ -1284,6 +1284,77 @@ button {
     min-height: 48px;
   }
 
+  /* Six calendar KPIs: two readable columns instead of one long stack. */
+  .booking-calendar .calendar-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  .booking-calendar .calendar-summary article {
+    min-width: 0;
+    min-height: 132px;
+    aspect-ratio: 1.18 / 1;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px !important;
+    border-radius: 17px;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, .055);
+  }
+
+  .booking-calendar .stat-card-icon {
+    width: 38px;
+    height: 38px;
+    display: grid;
+    place-items: center;
+    border-radius: 12px;
+    background: #f1f5ff;
+  }
+
+  .booking-calendar .calendar-summary article:nth-child(2) .stat-card-icon {
+    background: #e8f8f0;
+  }
+
+  .booking-calendar .calendar-summary article:nth-child(4) .stat-card-icon {
+    background: #eef2f7;
+  }
+
+  .booking-calendar .calendar-summary article:nth-child(5) .stat-card-icon {
+    background: #fff3df;
+  }
+
+  .booking-calendar .calendar-summary article:nth-child(6) .stat-card-icon {
+    background: #f1eaff;
+  }
+
+  .booking-calendar .calendar-summary article > div:last-child {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .booking-calendar .calendar-summary small {
+    min-height: 24px;
+    font-size: 9px;
+    line-height: 1.3;
+    letter-spacing: .045em;
+  }
+
+  .booking-calendar .calendar-summary strong {
+    margin: 4px 0 1px;
+    font-size: clamp(19px, 5.5vw, 23px);
+    line-height: 1.12;
+    overflow-wrap: anywhere;
+  }
+
+  .booking-calendar .calendar-summary span {
+    display: block;
+    font-size: 9px;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .mobile-filter-sheet,
     .host-mobile-quick-grid button {

@@ -158,6 +158,7 @@ export function CalendarBoard({ items, homestays, rooms = [], run }) {
         <Stat name="CHECK-IN HÔM NAY" value={items.filter(x => x.checkInDate === today && !['Cancelled', 'Expired'].includes(x.status)).length} icon="userCheck" iconColor="#0b4ae6" />
         <Stat name="CHECK-OUT HÔM NAY" value={items.filter(x => x.checkOutDate === today && !['Cancelled', 'Expired'].includes(x.status)).length} icon="clock" iconColor="#64748b" />
         <Stat name="CHỜ THANH TOÁN" value={items.filter(x => x.status === 'PendingPayment').length} icon="wallet" iconColor="#b25e00" />
+        <Stat name="ĐANG LƯU TRÚ" value={items.filter(x => x.status === 'CheckedIn').length} icon="bed" iconColor="#7c3aed" />
       </div>
 
       <section className="calendar-shell">
