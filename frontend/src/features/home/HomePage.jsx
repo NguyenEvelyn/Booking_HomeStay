@@ -206,6 +206,8 @@ export default function HomePage({
   onBookings,
   onHostPortal,
   onAdminPortal,
+  onRegisterHomestay,
+  onRegisterHost,
 }) {
   const [menuScrolled, setMenuScrolled] = useState(false);
   const [activeNav, setActiveNav] = useState('home');
@@ -610,14 +612,27 @@ export default function HomePage({
                 }}
               >
                 <div style={{ padding: '10px 16px', borderBottom: '1px solid #edf0f4' }}>
-                  <div style={{ fontWeight: '700', fontSize: '14px' }}>{user.fullName}</div>
+                  <div style={{ fontWeight: '700', fontSize: '14px', color: '#0f172a' }}>{user.fullName}</div>
                   <div style={{ color: '#6b7b93', fontSize: '11px', marginTop: '2px' }}>{user.email || user.role}</div>
                 </div>
 
                 {user.role === 'Host' && (
                   <button
                     type="button"
-                    style={{ width: '100%', textAlign: 'left', padding: '10px 16px', background: 'transparent', border: 0, fontSize: '13px', fontWeight: '600', color: '#0b4ae6', cursor: 'pointer' }}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '10px 16px',
+                      background: 'transparent',
+                      border: 0,
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      color: '#0b4ae6',
+                      cursor: 'pointer',
+                      transition: 'background 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                     onClick={() => {
                       setUserMenuOpen(false);
                       onHostPortal?.();
@@ -630,7 +645,20 @@ export default function HomePage({
                 {user.role === 'Admin' && (
                   <button
                     type="button"
-                    style={{ width: '100%', textAlign: 'left', padding: '10px 16px', background: 'transparent', border: 0, fontSize: '13px', fontWeight: '600', color: '#0b4ae6', cursor: 'pointer' }}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '10px 16px',
+                      background: 'transparent',
+                      border: 0,
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      color: '#0b4ae6',
+                      cursor: 'pointer',
+                      transition: 'background 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                     onClick={() => {
                       setUserMenuOpen(false);
                       onAdminPortal?.();
@@ -642,18 +670,42 @@ export default function HomePage({
 
                 <button
                   type="button"
-                  style={{ width: '100%', textAlign: 'left', padding: '10px 16px', background: 'transparent', border: 0, fontSize: '13px', color: '#1a2744', cursor: 'pointer' }}
+                  style={{
+                    width: '100%',
+                    textAlign: 'left',
+                    padding: '10px 16px',
+                    background: 'transparent',
+                    border: 0,
+                    fontSize: '13px',
+                    color: '#1a2744',
+                    cursor: 'pointer',
+                    transition: 'background 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                   onClick={() => {
                     setUserMenuOpen(false);
                     onBookings?.();
                   }}
                 >
-                  📅 Phòng đã đặt
+                  🗓️ Phòng đã đặt
                 </button>
 
                 <button
                   type="button"
-                  style={{ width: '100%', textAlign: 'left', padding: '10px 16px', background: 'transparent', border: 0, fontSize: '13px', color: '#1a2744', cursor: 'pointer' }}
+                  style={{
+                    width: '100%',
+                    textAlign: 'left',
+                    padding: '10px 16px',
+                    background: 'transparent',
+                    border: 0,
+                    fontSize: '13px',
+                    color: '#1a2744',
+                    cursor: 'pointer',
+                    transition: 'background 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                   onClick={() => {
                     setUserMenuOpen(false);
                     onChangePassword?.();
@@ -662,11 +714,53 @@ export default function HomePage({
                   🔒 Đổi mật khẩu
                 </button>
 
+                {user.role !== 'Host' && user.role !== 'Admin' && (
+                  <button
+                    type="button"
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '10px 16px',
+                      background: 'transparent',
+                      border: 0,
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      color: '#0b4ae6',
+                      cursor: 'pointer',
+                      transition: 'background 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                    onClick={() => {
+                      setUserMenuOpen(false);
+                      if (onRegisterHomestay) {
+                        onRegisterHomestay();
+                      } else if (onRegisterHost) {
+                        onRegisterHost();
+                      }
+                    }}
+                  >
+                    🏠 Đăng kí Homestay
+                  </button>
+                )}
+
                 <div style={{ borderTop: '1px solid #edf0f4', margin: '4px 0' }} />
 
                 <button
                   type="button"
-                  style={{ width: '100%', textAlign: 'left', padding: '10px 16px', background: 'transparent', border: 0, fontSize: '13px', color: '#b42318', cursor: 'pointer' }}
+                  style={{
+                    width: '100%',
+                    textAlign: 'left',
+                    padding: '10px 16px',
+                    background: 'transparent',
+                    border: 0,
+                    fontSize: '13px',
+                    color: '#b42318',
+                    cursor: 'pointer',
+                    transition: 'background 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = '#fef2f2')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                   onClick={() => {
                     setUserMenuOpen(false);
                     onLogout();
