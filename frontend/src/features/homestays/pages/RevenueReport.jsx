@@ -3,6 +3,7 @@ import { API_URL, getAccessToken } from '../../../shared/api/apiClient.js';
 import { homestayApi } from '../api/homestayApi.js';
 import { toast } from '../../../shared/feedback/feedback.js';
 import HostIcon from './HostIcon.jsx';
+import { calculateTaxSimulation, readTaxSimulation } from '../../../shared/utils/taxSimulation.js';
 
 const money = value => `${new Intl.NumberFormat('vi-VN').format(Math.round(Number(value) || 0))} đ`;
 const number = value => new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 1 }).format(Number(value) || 0);
@@ -57,9 +58,9 @@ function TrendChart({ items }) {
     <div className="chart-legend"><span><i className="revenue-dot"/>Doanh thu</span><span><i className="booking-line"/>Số đơn</span></div>
     <svg className="trend-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Biểu đồ doanh thu và số đơn theo thời gian" preserveAspectRatio="none">
       {[0, .25, .5, .75, 1].map(x => <line key={x} x1={pad} x2={width - pad} y1={pad + x * (height - pad * 2)} y2={pad + x * (height - pad * 2)} className="chart-gridline"/>)}
-      {items.map((item, index) => { const barHeight = Number(item.revenue) / maxRevenue * (height - pad * 2); return <g key={item.label} className="chart-point"><title>{item.label}: {money(item.revenue)} · {item.bookings} đơn</title><rect x={pad + step * index + step * .18} y={height - pad - barHeight} width={Math.max(4, step * .64)} height={barHeight} rx="4"/><text x={pad + step * index + step / 2} y={height - 13} textAnchor="middle">{items.length > 16 && index % Math.ceil(items.length / 10) ? '' : item.label.slice(5)}</text></g>; })}
+      {items.map((item, index) => { const barHeight = Number(item.revenue) / maxRevenue * (height - pad * 2); return <g key={`revenue-${item.label}-${index}`} className="chart-point"><title>{item.label}: {money(item.revenue)} · {item.bookings} đơn</title><rect x={pad + step * index + step * .18} y={height - pad - barHeight} width={Math.max(4, step * .64)} height={barHeight} rx="4"/><text x={pad + step * index + step / 2} y={height - 13} textAnchor="middle">{items.length > 16 && index % Math.ceil(items.length / 10) ? '' : item.label.slice(5)}</text></g>; })}
       <polyline points={points} className="booking-polyline"/>
-      {items.map((item, index) => <circle key={item.label} cx={pad + step * index + step / 2} cy={height - pad - Number(item.bookings) / maxBookings * (height - pad * 2)} r="4" className="booking-point"><title>{item.label}: {item.bookings} đơn</title></circle>)}
+      {items.map((item, index) => <circle key={`booking-${item.label}-${index}`} cx={pad + step * index + step / 2} cy={height - pad - Number(item.bookings) / maxBookings * (height - pad * 2)} r="4" className="booking-point"><title>{item.label}: {item.bookings} đơn</title></circle>)}
     </svg>
   </div>;
 }
@@ -79,6 +80,7 @@ export default function RevenueReport({ homestays = [], onOpenBookings }) {
   const [loading, setLoading] = useState(true); const [error, setError] = useState(''); const [updated, setUpdated] = useState('');
   const [grain, setGrain] = useState('day'); const [expanded, setExpanded] = useState(null); const [exporting, setExporting] = useState('');
   const [filterOpen, setFilterOpen] = useState(false);
+  const [taxRule, setTaxRule] = useState(readTaxSimulation);
   const [table, setTable] = useState({ page: 1, page_size: 10, q: '', sort: 'date_desc' });
 
   const load = useCallback(async () => {
@@ -89,6 +91,7 @@ export default function RevenueReport({ homestays = [], onOpenBookings }) {
     } catch (e) { setError(e.message); } finally { setLoading(false); }
   }, [filters, grain, table]);
   useEffect(() => { const timer = setTimeout(load, table.q ? 300 : 0); return () => clearTimeout(timer); }, [load, table.q]);
+  useEffect(() => { const refreshTaxRule = () => setTaxRule(readTaxSimulation()); window.addEventListener('storage', refreshTaxRule); window.addEventListener('tripio:tax-simulation-changed', refreshTaxRule); return () => { window.removeEventListener('storage', refreshTaxRule); window.removeEventListener('tripio:tax-simulation-changed', refreshTaxRule); }; }, []);
   useEffect(() => { const url = new URL(window.location.href); url.searchParams.set('from', filters.from); url.searchParams.set('to', filters.to); filters.homestay_id ? url.searchParams.set('homestay', filters.homestay_id) : url.searchParams.delete('homestay'); filters.payment_method ? url.searchParams.set('payment_method', filters.payment_method) : url.searchParams.delete('payment_method'); window.history.replaceState({}, '', url); }, [filters]);
 
   const choosePreset = key => { setPreset(key); if (key !== 'custom') { const [from, to] = rangeFor(key); setFilters(old => ({ ...old, from: iso(from), to: iso(to) })); setTable(old => ({ ...old, page: 1 })); } };
@@ -99,6 +102,7 @@ export default function RevenueReport({ homestays = [], onOpenBookings }) {
   };
   const openStatus = status => { const url = new URL(window.location.href); url.searchParams.set('booking_status', status); url.searchParams.set('booking_from', filters.from); url.searchParams.set('booking_to', filters.to); window.history.replaceState({}, '', url); onOpenBookings?.(); };
   const k = summary?.kpis || {};
+  const taxPreview = calculateTaxSimulation(k.confirmedRevenue?.value, taxRule);
 
   return <div className="finance-page revenue-dashboard">
     <div className="revenue-toolbar"><div><small>PHÂN TÍCH VẬN HÀNH</small><h2>Tổng quan tài chính</h2><p>Theo dõi doanh thu, hiệu suất lưu trú và đối soát giao dịch trong một báo cáo.</p></div><div className="revenue-toolbar-actions"><span className="updated-at">Cập nhật lúc {updated || '—'}</span><button className="refresh-button" onClick={load} disabled={loading}><HostIcon name="clock" size={16}/> Làm mới</button><details className="export-menu"><summary><HostIcon name="download" size={16}/>{exporting ? 'Đang xuất…' : 'Xuất báo cáo'}</summary><div>{['csv', 'xlsx', 'pdf'].map(x => <button key={x} disabled={!!exporting} onClick={() => exportReport(x)}>{x === 'csv' ? 'CSV' : x === 'xlsx' ? 'Excel (.xlsx)' : 'PDF'}</button>)}</div></details></div></div>
@@ -120,6 +124,16 @@ export default function RevenueReport({ homestays = [], onOpenBookings }) {
         <footer><span>Cập nhật lúc {updated || '—'}</span><button type="button" onClick={load} disabled={loading}><HostIcon name="clock" size={16}/>Làm mới</button><details className="mobile-finance-export"><summary><HostIcon name="download" size={16}/>Xuất</summary><div>{['csv', 'xlsx', 'pdf'].map(x => <button key={x} disabled={!!exporting} onClick={() => exportReport(x)}>{x === 'csv' ? 'CSV' : x === 'xlsx' ? 'Excel' : 'PDF'}</button>)}</div></details></footer>
       </section>
       <div className="revenue-kpi-grid"><Kpi label="DOANH THU XÁC NHẬN" data={k.confirmedRevenue} icon="wallet"/><Kpi label="ĐƠN CÓ DOANH THU" data={k.revenueBookings} icon="bookings" moneyValue={false}/><Kpi label="GIÁ TRỊ TRUNG BÌNH" data={k.averageValue} icon="dollar"/><Kpi label="HOMESTAY HOẠT ĐỘNG" data={k.activeHomestays} icon="home" moneyValue={false}/><Kpi label="DOANH THU DỰ KIẾN" data={k.expectedRevenue} icon="trendingUp"/><Kpi label="CỌC ĐÃ THU / CÒN THU" data={{ ...k.depositCollected, value: k.depositCollected?.value }} icon="checkCircle" hint={`Còn phải thu: ${money(k.depositOutstanding?.value)}`}/><Kpi label="TIỀN HOÀN DO HỦY" data={k.refunds} icon="trendingDown" inverse/><Kpi label="DOANH THU RÒNG" data={k.netRevenue} icon="finance" hint="Doanh thu ròng = tiền thực thu − tiền hoàn − phí nền tảng."/></div>
+      <Card eyebrow="ĐỐI SOÁT THUẾ MÔ PHỎNG" title="Ước tính khấu trừ cho Host cá nhân" className="revenue-wide tax-host-summary" action={<span className="tax-host-version">{taxRule.version}</span>}>
+        <div className="tax-host-note" role="note"><HostIcon name="checkCircle" size={17}/><span>Số liệu minh họa theo cấu hình Admin, không phải chứng từ kê khai thuế thực tế.</span></div>
+        <div className="tax-host-grid">
+          <article><small>DOANH THU GỘP</small><strong>{money(taxPreview.grossRevenue)}</strong><span>Trước phí và khấu trừ</span></article>
+          <article><small>PHÍ TRIPIO + VAT</small><strong>− {money(taxPreview.platformFeeGross)}</strong><span>{taxRule.platformFeeRate}% phí + VAT phí</span></article>
+          <article><small>VAT HOST</small><strong>− {money(taxPreview.hostVatWithheld)}</strong><span>Mô phỏng {taxRule.residentIndividualVatRate}%</span></article>
+          <article><small>TNCN HOST</small><strong>− {money(taxPreview.hostPitWithheld)}</strong><span>Mô phỏng {taxRule.residentIndividualPitRate}%</span></article>
+          <article className="tax-host-net"><small>THỰC NHẬN ƯỚC TÍNH</small><strong>{money(taxPreview.hostNetPayout)}</strong><span>Sau phí và thuế mô phỏng</span></article>
+        </div>
+      </Card>
       <Card title="Xu hướng doanh thu" className="revenue-wide" action={<div className="grain-toggle">{[['day','Ngày'],['week','Tuần'],['month','Tháng']].map(([x,l]) => <button key={x} className={grain === x ? 'active' : ''} onClick={() => setGrain(x)}>{l}</button>)}</div>}><TrendChart items={summary?.timeseries || []}/></Card>
       <Card title="Chỉ số vận hành lưu trú" className="revenue-wide"><div className="operation-metrics">{[['Tỷ lệ lấp đầy', `${number(summary?.occupancyMetrics?.occupancyRate)}%`, 'Số đêm đã bán chia cho tổng số đêm phòng khả dụng.'], ['ADR', money(summary?.occupancyMetrics?.adr), 'Doanh thu phòng trung bình trên mỗi đêm đã bán.'], ['RevPAR', money(summary?.occupancyMetrics?.revpar), 'Doanh thu phòng trung bình trên mỗi đêm phòng khả dụng.'], ['LOS trung bình', `${number(summary?.occupancyMetrics?.averageLos)} đêm`, 'Số đêm lưu trú trung bình của mỗi đơn.'], ['Lead time', `${number(summary?.occupancyMetrics?.averageLeadTime)} ngày`, 'Số ngày trung bình từ lúc đặt đến ngày nhận phòng.']].map(([label,value,hint]) => <article key={label}><span>{label}<button className="metric-help" title={hint} aria-label={`Giải thích ${label}`}>?</button></span><strong>{value}</strong></article>)}</div></Card>
       <div className="revenue-two-column"><Card title="Xếp hạng doanh thu theo Homestay"><div className="ranking-table"><div className="ranking-head"><span>Homestay</span><span>Số đơn</span><span>Lấp đầy</span><span>ADR</span><span>Doanh thu</span></div>{summary?.homestayRanking?.map((x, i) => <React.Fragment key={x.id}><button className={`ranking-row ${!x.revenue ? 'zero' : ''}`} onClick={() => setExpanded(expanded === x.id ? null : x.id)} aria-expanded={expanded === x.id}><span><b>#{i + 1} {x.name}</b><i><em style={{ width: `${x.relative}%` }}/></i><small>{x.revenue ? `${number(x.contribution)}% đóng góp` : 'Chưa có đơn'}</small></span><span>{x.bookings}</span><span>{number(x.occupancyRate)}%</span><span>{money(x.adr)}</span><strong>{x.revenue ? money(x.revenue) : 'Chưa có đơn'}</strong></button>{expanded === x.id && <div className="room-drilldown">{x.rooms?.length ? x.rooms.map(room => <div key={room.room}><span>{room.room}</span><small>{room.bookings} đơn</small><b>{money(room.revenue)}</b></div>) : <span>Chưa có doanh thu theo phòng.</span>}</div>}</React.Fragment>)}{!summary?.homestayRanking?.length && <Empty/>}</div></Card>

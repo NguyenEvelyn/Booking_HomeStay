@@ -271,6 +271,11 @@ if (!string.Equals(Environment.GetEnvironmentVariable("SKIP_SCHEMA_SYNC"), "true
         ALTER TABLE room_types ADD COLUMN IF NOT EXISTS extra_child_fee NUMERIC(18,2) NOT NULL DEFAULT 0;
         ALTER TABLE room_types ADD COLUMN IF NOT EXISTS child_max_age INTEGER NOT NULL DEFAULT 11;
         ALTER TABLE room_types ADD COLUMN IF NOT EXISTS deposit_percent NUMERIC(5,4) NOT NULL DEFAULT .30;
+        ALTER TABLE rooms ADD COLUMN IF NOT EXISTS cleaning_status VARCHAR(30) NOT NULL DEFAULT 'Clean';
+        ALTER TABLE rooms ADD COLUMN IF NOT EXISTS cleaning_started_at TIMESTAMPTZ;
+        ALTER TABLE rooms ADD COLUMN IF NOT EXISTS cleaning_completed_at TIMESTAMPTZ;
+        ALTER TABLE rooms ADD COLUMN IF NOT EXISTS cleaning_checklist JSONB;
+        UPDATE rooms SET cleaning_status = 'NeedCleaning' WHERE status = 'Cleaning' AND cleaning_status = 'Clean';
         ALTER TABLE homestays ADD COLUMN IF NOT EXISTS time_zone_id VARCHAR(100) NOT NULL DEFAULT 'Asia/Ho_Chi_Minh';
         ALTER TABLE homestays ADD COLUMN IF NOT EXISTS cleaning_buffer_minutes INTEGER NOT NULL DEFAULT 120;
         ALTER TABLE homestays ADD COLUMN IF NOT EXISTS late_checkout_1_3h_fee NUMERIC(18,2) NOT NULL DEFAULT 200000;

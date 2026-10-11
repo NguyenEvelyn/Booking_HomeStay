@@ -65,7 +65,7 @@ const labels = {
   Expired: 'Hết hạn',
   Confirmed: 'Đã xác nhận',
   CheckedIn: 'Đang ở',
-  CheckoutPendingPayment: 'Chờ xác nhận trả phòng',
+  CheckoutPendingPayment: 'Chờ thanh toán trả phòng',
   CheckedOut: 'Đã trả phòng',
   Completed: 'Hoàn thành',
   CancellationRequested: 'Chờ duyệt hủy',
@@ -401,7 +401,10 @@ export default function HostBookings({ items, homestays, run, sort = 'checkin_as
                   <button className={checkInReady ? 'btn-action-highlight' : 'btn-action-secondary'} onClick={() => open(x, 'checkin')}>{urgency?.level === 'overdue' ? 'Check-in trễ' : 'Check-in'}</button>
                 )}
                 {x.status === 'CheckedIn' && (
-                  <button className="btn-action-highlight" onClick={() => open(x, 'checkout')}>Trả phòng</button>
+                  <button className="btn-action-highlight" onClick={() => open(x, 'checkout')}>Kiểm tra & trả phòng</button>
+                )}
+                {x.status === 'CheckoutPendingPayment' && (
+                  <button className="btn-action-highlight" onClick={() => open(x, 'checkout')}>Thanh toán & hoàn tất</button>
                 )}
                 {x.status === 'CancellationRequested' && (
                   <button onClick={() => decide(x, true)}>Duyệt hủy</button>
@@ -719,7 +722,7 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
   const [cancelMessage, setCancelMessage] = useState('');
 
   // 6. State Trả phòng & Bồi thường tài sản (Module VIII & IX)
-  const [inspectionStatus, setInspectionStatus] = useState('intact'); // 'intact' | 'damaged'
+  const [inspectionStatus, setInspectionStatus] = useState(''); // '' | 'intact' | 'damaged'
   const [damageItemsList, setDamageItemsList] = useState([]);
   const [damageItemName, setDamageItemName] = useState('');
   const [damageItemQty, setDamageItemQty] = useState(1);
@@ -1146,6 +1149,14 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
 
   // 6. Thao tác Trả phòng & Quyết toán (Module VIII & IX & Checkout)
   const handleCheckOut = async () => {
+    if (!inspectionStatus) {
+      setCheckoutMessage('Vui lòng kiểm tra và xác nhận tình trạng phòng trước khi quyết toán.');
+      return;
+    }
+    if (inspectionStatus === 'damaged' && damageItemsList.length === 0 && recordedDamageTotal <= 0) {
+      setCheckoutMessage('Bạn đã chọn có hư hỏng. Vui lòng ghi nhận ít nhất một khoản bồi thường.');
+      return;
+    }
     const balance = liveRemainingDue;
     const paymentAmount = balance > 0 ? balance : 0;
     const refundAmount = balance < 0 ? Math.abs(balance) : 0;
@@ -2941,6 +2952,8 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
                     <span>
                       {checkoutSaving
                         ? 'Đang xử lý trả phòng...'
+                        : checkoutPaymentMethod === 'BankTransfer' && liveRemainingDue > 0
+                          ? `Thanh toán ${money(liveRemainingDue)} qua VNPay`
                         : liveRemainingDue > 0
                           ? `Xác nhận thu đủ ${money(liveRemainingDue)} & Hoàn tất Check-out`
                           : liveRemainingDue < 0

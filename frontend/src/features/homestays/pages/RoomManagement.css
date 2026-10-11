@@ -1618,3 +1618,145 @@
     flex: 1;
   }
 }
+
+/* Housekeeping workflow */
+.room-cleaning-state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  min-width: 118px;
+}
+
+.room-cleaning-state small {
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.clean-status.clean-clean {
+  color: #087a50;
+  background: #e8f8ef;
+}
+
+.clean-status.clean-needcleaning {
+  color: #b53b2f;
+  background: #fff0ee;
+}
+
+.clean-status.clean-inprogress {
+  color: #a55b00;
+  background: #fff3dc;
+}
+
+.clean-status.clean-occupied {
+  color: #53657d;
+  background: #eef2f7;
+}
+
+.room-actions button.cleaning-primary {
+  border-color: #174b9b;
+  color: #fff;
+  background: #174b9b;
+}
+
+.room-actions button.cleaning-primary:hover {
+  border-color: #103d82;
+  color: #fff;
+  background: #103d82;
+}
+
+.room-actions button.cleaning-primary.finish {
+  border-color: #087a50;
+  background: #087a50;
+}
+
+.cleaning-modal > form {
+  width: min(560px, calc(100vw - 32px));
+}
+
+.cleaning-modal header p {
+  margin: 7px 0 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.cleaning-checklist {
+  display: grid;
+  gap: 10px;
+  padding: 22px 26px;
+}
+
+.cleaning-checklist > label:not(.cleaning-note) {
+  position: relative;
+  cursor: pointer;
+}
+
+.cleaning-checklist input[type='checkbox'] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.cleaning-checklist > label > span {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 11px 14px;
+  border: 1px solid #dbe3ec;
+  border-radius: 12px;
+  color: #263958;
+  background: #fff;
+  font-weight: 700;
+  transition: border-color .18s ease, background .18s ease, color .18s ease;
+}
+
+.cleaning-checklist input:checked + span {
+  border-color: #82d3ae;
+  color: #087a50;
+  background: #eefbf5;
+}
+
+.cleaning-checklist input:focus-visible + span {
+  outline: 3px solid rgba(23, 75, 155, .2);
+  outline-offset: 2px;
+}
+
+.cleaning-note {
+  display: grid;
+  gap: 7px;
+  margin-top: 5px;
+  color: #263958;
+  font-weight: 700;
+}
+
+.cleaning-note textarea {
+  width: 100%;
+  resize: vertical;
+}
+
+.cleaning-modal footer .secondary {
+  color: #425570;
+  background: #eef2f7;
+}
+
+.cleaning-modal footer button[type='submit'] {
+  color: #fff;
+  background: #087a50;
+}
+
+@media (max-width: 767px) {
+  .cleaning-modal > form {
+    width: 100%;
+  }
+
+  .cleaning-checklist {
+    padding: 18px;
+  }
+
+  .room-cleaning-state small {
+    white-space: normal;
+  }
+}

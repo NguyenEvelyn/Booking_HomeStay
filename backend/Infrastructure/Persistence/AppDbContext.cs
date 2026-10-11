@@ -183,6 +183,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         room.Property(x => x.FloorNumber).HasColumnName("floor_number");
         room.Property(x => x.Status).HasColumnName("status").HasMaxLength(30).IsRequired();
         room.Property(x => x.Note).HasColumnName("note").HasMaxLength(500);
+        room.Property(x => x.CleaningStatus).HasColumnName("cleaning_status").HasMaxLength(30).HasDefaultValue("Clean");
+        room.Property(x => x.CleaningStartedAt).HasColumnName("cleaning_started_at");
+        room.Property(x => x.CleaningCompletedAt).HasColumnName("cleaning_completed_at");
+        room.Property(x => x.CleaningChecklistJson).HasColumnName("cleaning_checklist").HasColumnType("jsonb");
         room.Property(x => x.CreatedAt).HasColumnName("created_at");
         room.Property(x => x.UpdatedAt).HasColumnName("updated_at");
         room.HasOne(x => x.RoomType).WithMany(x => x.Rooms).HasForeignKey(x => x.RoomTypeId);

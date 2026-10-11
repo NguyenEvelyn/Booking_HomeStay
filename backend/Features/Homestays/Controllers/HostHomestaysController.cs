@@ -15,6 +15,8 @@ public sealed record HostBookingStatusRequest(string Status);
 public sealed record HostCancellationDecisionRequest(bool Approve);
 public sealed record HostBookingNoteRequest(string? Note);
 public sealed record HostOfflinePaymentRequest(string Method);
+public sealed record RoomCleaningRequest(string Action, bool LinenChanged = false, bool BathroomCleaned = false,
+    bool AmenitiesRestocked = false, bool EquipmentChecked = false, string? Note = null);
 public sealed record HostTimingAdjustmentRequest(string? CheckInTime, string? CheckOutTime, decimal? EarlyCheckInFee, decimal? LateCheckoutFee, string? Note);
 
 public sealed record HostActualGuestsRequest(
@@ -89,9 +91,11 @@ public sealed class HostHomestaysController(IHomestayQueryService service, AppDb
         var homestays = await db.Homestays.AsNoTracking().Where(h => h.HostId == HostId).OrderBy(h => h.Name)
             .Select(h => new { h.Id, h.Name, h.Status, RoomTypes = h.RoomTypes.OrderBy(r => r.Name).Select(r => new { r.Id, r.Name }).ToList() }).ToListAsync();
         var items = await db.Rooms.AsNoTracking().Where(r => r.RoomType.Homestay.HostId == HostId).OrderBy(r => r.RoomType.Homestay.Name).ThenBy(r => r.RoomNumber)
-            .Select(r => new { r.Id, r.RoomNumber, r.FloorNumber, r.Status, r.Note, RoomTypeId = r.RoomTypeId, RoomTypeName = r.RoomType.Name,
+            .Select(r => new { r.Id, r.RoomNumber, r.FloorNumber, r.Status, r.Note, r.CleaningStatus, r.CleaningStartedAt, r.CleaningCompletedAt, RoomTypeId = r.RoomTypeId, RoomTypeName = r.RoomType.Name,
                 HomestayId = r.RoomType.HomestayId, HomestayName = r.RoomType.Homestay.Name, r.RoomType.MaxAdults, r.RoomType.MaxChildren,
                 r.RoomType.BaseCapacity, r.RoomType.MaxCapacity, r.RoomType.ExtraGuestAllowed,
+                NextBooking = db.BookingRoomStays.Where(s => s.RoomId == r.Id && s.Status == "Active" && s.StartDate >= BookingRules.Today)
+                    .OrderBy(s => s.StartDate).Select(s => new { s.BookingId, s.Booking.BookingCode, CheckInDate = s.StartDate }).FirstOrDefault(),
                 r.RoomType.BasePrice, ThumbnailUrl = r.Images.OrderByDescending(i => i.IsThumbnail).ThenBy(i => i.SortOrder).Select(i => i.ImageUrl).FirstOrDefault(),
                 Images = r.Images.OrderByDescending(i => i.IsThumbnail).ThenBy(i => i.SortOrder).Select(i => new { i.Id, Url = i.ImageUrl, i.Caption, i.IsThumbnail }).ToList() }).ToListAsync();
         return Ok(new { items, homestays });
@@ -245,7 +249,7 @@ public sealed class HostHomestaysController(IHomestayQueryService service, AppDb
         var allowedStatuses = new[] { "Available", "Occupied", "Cleaning", "Maintenance", "Inactive" };
         if (!allowedStatuses.Contains(request.Status)) return BadRequest(new { message = "Trạng thái phòng không hợp lệ." });
         if (await db.Rooms.AnyAsync(r => r.RoomTypeId == roomTypeId && r.RoomNumber.ToLower() == request.RoomNumber.Trim().ToLower())) return Conflict(new { message = "Mã phòng đã tồn tại trong loại phòng này." });
-        var now = DateTime.UtcNow; var room = new Room { RoomTypeId = roomTypeId, RoomNumber = request.RoomNumber.Trim(), FloorNumber = request.FloorNumber, Status = request.Status, Note = request.Note?.Trim(), CreatedAt = now, UpdatedAt = now }; db.Rooms.Add(room);
+        var now = DateTime.UtcNow; var room = new Room { RoomTypeId = roomTypeId, RoomNumber = request.RoomNumber.Trim(), FloorNumber = request.FloorNumber, Status = request.Status, CleaningStatus = request.Status == "Cleaning" ? "NeedCleaning" : "Clean", Note = request.Note?.Trim(), CreatedAt = now, UpdatedAt = now }; db.Rooms.Add(room);
         await db.SaveChangesAsync(); return Ok(new { room.Id, message = "Đã thêm phòng." });
     }
 
@@ -260,8 +264,40 @@ public sealed class HostHomestaysController(IHomestayQueryService service, AppDb
         if (await db.Rooms.AnyAsync(r => r.Id != roomId && r.RoomTypeId == room.RoomTypeId && r.RoomNumber.ToLower() == request.RoomNumber.Trim().ToLower())) return Conflict(new { message = "Mã phòng đã tồn tại trong loại phòng này." });
         if (request.Status is "Maintenance" or "Inactive" && await db.BookingDetails.AnyAsync(x => x.RoomId == roomId && x.Booking.CheckOutDate > BookingRules.Today && ((x.Booking.Status == BookingStatus.Hold && x.Booking.HoldExpiresAt > DateTime.UtcNow) || BookingRules.ReservedStatuses.Contains(x.Booking.Status))))
             return Conflict(new { message = "Phòng có booking hiệu lực; hãy xử lý booking trước khi bảo trì hoặc ngưng phòng." });
+        var oldStatus = room.Status;
         room.RoomNumber = request.RoomNumber.Trim(); room.FloorNumber = request.FloorNumber; room.Status = request.Status; room.Note = request.Note?.Trim(); room.UpdatedAt = DateTime.UtcNow;
+        if (request.Status == "Cleaning" && oldStatus != "Cleaning")
+        {
+            room.CleaningStatus = "NeedCleaning"; room.CleaningStartedAt = null; room.CleaningCompletedAt = null; room.CleaningChecklistJson = null;
+        }
+        else if (request.Status == "Available") room.CleaningStatus = "Clean";
         await db.SaveChangesAsync(); return Ok(new { message = "Đã cập nhật trạng thái phòng." });
+    }
+
+    [HttpPost("{id:long}/rooms/{roomId:long}/cleaning")]
+    public async Task<IActionResult> UpdateRoomCleaning(long id, long roomId, RoomCleaningRequest request)
+    {
+        var room = await db.Rooms.SingleOrDefaultAsync(r => r.Id == roomId && r.RoomType.HomestayId == id && r.RoomType.Homestay.HostId == HostId);
+        if (room is null) return NotFound(new { message = "Không tìm thấy phòng." });
+        var now = DateTime.UtcNow;
+        if (request.Action == "start")
+        {
+            if (room.Status != "Cleaning") return Conflict(new { message = "Chỉ có thể bắt đầu dọn khi phòng đang chờ vệ sinh." });
+            room.CleaningStatus = "InProgress"; room.CleaningStartedAt = now; room.CleaningCompletedAt = null;
+            room.CleaningChecklistJson = null; room.UpdatedAt = now;
+        }
+        else if (request.Action == "complete")
+        {
+            if (room.CleaningStatus != "InProgress") return Conflict(new { message = "Hãy bắt đầu dọn phòng trước khi xác nhận hoàn tất." });
+            if (!request.LinenChanged || !request.BathroomCleaned || !request.AmenitiesRestocked || !request.EquipmentChecked)
+                return BadRequest(new { message = "Vui lòng hoàn tất toàn bộ checklist vệ sinh." });
+            room.CleaningStatus = "Clean"; room.CleaningCompletedAt = now; room.Status = "Available";
+            room.CleaningChecklistJson = JsonSerializer.Serialize(new { request.LinenChanged, request.BathroomCleaned, request.AmenitiesRestocked, request.EquipmentChecked, note = request.Note?.Trim(), completedBy = HostId });
+            room.UpdatedAt = now;
+        }
+        else return BadRequest(new { message = "Thao tác vệ sinh không hợp lệ." });
+        await db.SaveChangesAsync();
+        return Ok(new { message = request.Action == "start" ? $"Đã bắt đầu dọn phòng {room.RoomNumber}." : $"Phòng {room.RoomNumber} đã sạch và sẵn sàng đón khách." });
     }
 
     [HttpDelete("{id:long}/rooms/{roomId:long}")]
@@ -1554,7 +1590,7 @@ public sealed class HostHomestaysController(IHomestayQueryService service, AppDb
         if (booking.Status == BookingStatus.CheckedIn && oldRoomId.HasValue)
         {
             await db.Rooms.Where(r => r.Id == oldRoomId.Value)
-                .ExecuteUpdateAsync(s => s.SetProperty(r => r.Status, "Cleaning").SetProperty(r => r.UpdatedAt, now));
+                .ExecuteUpdateAsync(s => s.SetProperty(r => r.Status, "Cleaning").SetProperty(r => r.CleaningStatus, "NeedCleaning").SetProperty(r => r.CleaningStartedAt, (DateTime?)null).SetProperty(r => r.CleaningCompletedAt, (DateTime?)null).SetProperty(r => r.UpdatedAt, now));
         }
 
         // Chuyển phòng mới sang Occupied nếu booking đang ở
@@ -2329,7 +2365,7 @@ public sealed class HostHomestaysController(IHomestayQueryService service, AppDb
         }
 
         // 2. Xử lý bồi thường thiệt hại tài sản (Module VIII)
-        if (request.DamageItems != null && request.DamageItems.Count > 0)
+        if (booking.Status != BookingStatus.CheckoutPendingPayment && request.DamageItems != null && request.DamageItems.Count > 0)
         {
             foreach (var item in request.DamageItems)
             {
@@ -2343,8 +2379,8 @@ public sealed class HostHomestaysController(IHomestayQueryService service, AppDb
                         Quantity = item.Quantity,
                         UnitPrice = item.UnitPrice,
                         TotalPrice = item.Quantity * item.UnitPrice,
-                        Status = "Paid",
-                        IsPaid = true,
+                        Status = "Approved",
+                        IsPaid = false,
                         RecordedBy = HostId,
                         CreatedAt = now
                     });
@@ -2461,7 +2497,7 @@ public sealed class HostHomestaysController(IHomestayQueryService service, AppDb
         if (roomIds.Count > 0)
         {
             await db.Rooms.Where(x => roomIds.Contains(x.Id))
-                .ExecuteUpdateAsync(s => s.SetProperty(x => x.Status, "Cleaning").SetProperty(x => x.UpdatedAt, now));
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.Status, "Cleaning").SetProperty(x => x.CleaningStatus, "NeedCleaning").SetProperty(x => x.CleaningStartedAt, (DateTime?)null).SetProperty(x => x.CleaningCompletedAt, (DateTime?)null).SetProperty(x => x.UpdatedAt, now));
         }
 
         // Cập nhật check_in_outs & quyết toán cọc tài sản (Module IX)

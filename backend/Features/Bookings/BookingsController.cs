@@ -93,7 +93,8 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
             extraGuestFee = price.ExtraAdultFee + price.ChildSurcharge, extraFee = price.ExtraAdultFee + price.ChildSurcharge,
             total = price.TotalAmount, availableRooms = available, price.BaseRoomAmount, price.SeasonalSurchargeAmount,
             price.RoomAmountBeforeDiscount, price.PromotionCode, price.PromotionPercent, price.DiscountAmount,
-            price.DepositPercent, price.DepositAmount, price.AmountDueNow, price.PaymentOption, price.NightsBreakdown,
+            price.DepositPercent, price.DepositAmount, price.AmountDueNow, price.PaymentOption,
+            price.MinNightlyPrice, price.MaxNightlyPrice, price.NightlyRoomTotal, price.NightsBreakdown,
             price.ChildrenBreakdown, isDayUse, dayUseHours = isDayUse ? request.DayUseHours : null, policyVersion = policy.Version });
     }
 

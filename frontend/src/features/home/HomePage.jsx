@@ -28,6 +28,10 @@ const honSon = '/assets/figma/destination-honson.jpg';
 const canTho = '/assets/figma/destination-cantho.jpg';
 const phuQuy = '/assets/figma/destination-phuquy.png';
 const logoWhite = '/assets/figma/tripio-logo-white.png';
+const localIsoDate = (date = new Date()) => {
+  const offset = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 10);
+};
 
 function Icon({ name }) {
   const icons = {
@@ -503,13 +507,13 @@ export default function HomePage({
       scrollLeft: el.scrollLeft,
       moved: false,
     };
-    el.classList.add('is-dragging');
 
     const onMouseMove = (moveEvent) => {
       if (!destDrag.current.active) return;
       const dx = moveEvent.clientX - destDrag.current.startX;
       if (Math.abs(dx) > 4) {
         destDrag.current.moved = true;
+        el.classList.add('is-dragging');
       }
       el.scrollLeft = destDrag.current.scrollLeft - dx;
       checkDestScroll();
@@ -932,46 +936,31 @@ export default function HomePage({
         <label>
           Ngày nhận
 
-          <span className="search-control">
+          <span className="search-control date-control">
             <input
-              type="text"
-              placeholder="Chọn ngày nhận"
+              type="date"
+              aria-label="Ngày nhận phòng"
+              min={localIsoDate()}
               value={searchCheckIn}
-              onChange={(e) => setSearchCheckIn(e.target.value)}
-              onFocus={(event) => {
-                event.currentTarget.type = 'date';
-              }}
-              onBlur={(event) => {
-                if (!event.currentTarget.value) {
-                  event.currentTarget.type = 'text';
-                }
+              onChange={(e) => {
+                setSearchCheckIn(e.target.value);
+                if (searchCheckOut && searchCheckOut < e.target.value) setSearchCheckOut('');
               }}
             />
-
-            <i><Icon name="calendar" /></i>
           </span>
         </label>
 
         <label>
           Ngày trả
 
-          <span className="search-control">
+          <span className="search-control date-control">
             <input
-              type="text"
-              placeholder="Chọn ngày trả"
+              type="date"
+              aria-label="Ngày trả phòng"
+              min={searchCheckIn || localIsoDate()}
               value={searchCheckOut}
               onChange={(e) => setSearchCheckOut(e.target.value)}
-              onFocus={(event) => {
-                event.currentTarget.type = 'date';
-              }}
-              onBlur={(event) => {
-                if (!event.currentTarget.value) {
-                  event.currentTarget.type = 'text';
-                }
-              }}
             />
-
-            <i><Icon name="calendar" /></i>
           </span>
         </label>
 

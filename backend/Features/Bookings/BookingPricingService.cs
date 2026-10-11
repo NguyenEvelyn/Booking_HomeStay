@@ -20,10 +20,23 @@ public sealed record BookingPricingResult(
     decimal AmountDueNow,
     string PaymentOption,
     bool HasHolidayDepositRule,
+    decimal MinNightlyPrice,
+    decimal MaxNightlyPrice,
+    decimal NightlyRoomTotal,
     IReadOnlyList<NightlyPriceBreakdown> NightsBreakdown,
     IReadOnlyList<ChildPriceBreakdown> ChildrenBreakdown);
 
-public sealed record NightlyPriceBreakdown(DateOnly Date, decimal BasePrice, string? SurchargeCode, decimal SurchargePercent, decimal FinalPrice);
+public sealed record NightlyPriceBreakdown(
+    DateOnly Date,
+    decimal BasePrice,
+    decimal DefaultPrice,
+    decimal Price,
+    bool IsSpecial,
+    bool IsHigherThanDefault,
+    string? Label,
+    string? SurchargeCode,
+    decimal SurchargePercent,
+    decimal FinalPrice);
 public sealed record ChildPriceBreakdown(int Age, decimal Percent, decimal Amount);
 
 public sealed class BookingPricingService
@@ -53,11 +66,11 @@ public sealed class BookingPricingService
 
         for (var date = checkIn; date < pricingEnd; date = date.AddDays(1))
         {
-            var basePrice = pricePeriods
+            var pricePeriod = pricePeriods
                 .Where(x => x.StartDate <= date && x.EndDate >= date)
                 .OrderByDescending(x => x.CreatedAt)
-                .Select(x => (decimal?)x.PricePerNight)
-                .FirstOrDefault() ?? roomType.BasePrice;
+                .FirstOrDefault();
+            var basePrice = pricePeriod?.PricePerNight ?? roomType.BasePrice;
             var surcharge = document.SeasonalSurcharges
                 .Where(x => Applies(x, date))
                 .OrderByDescending(x => x.Percent)
@@ -68,7 +81,14 @@ public sealed class BookingPricingService
             baseRoomAmount += basePrice * quantity;
             seasonalSurcharge += surchargeValue * quantity;
             holidayDeposit |= surcharge?.RequiresHolidayDeposit == true;
-            nightLines.Add(new(date, basePrice, surcharge?.Code, surchargePercent, finalPrice));
+            var isSpecial = finalPrice != roomType.BasePrice;
+            var specialName = pricePeriod?.Name ?? surcharge?.Name;
+            var label = isSpecial
+                ? string.IsNullOrWhiteSpace(specialName) ? "Giá đặc biệt"
+                    : specialName.StartsWith("Giá ", StringComparison.OrdinalIgnoreCase) ? specialName : $"Giá {specialName.ToLowerInvariant()}"
+                : null;
+            nightLines.Add(new(date, basePrice, roomType.BasePrice, finalPrice, isSpecial,
+                finalPrice > roomType.BasePrice, label, surcharge?.Code, surchargePercent, finalPrice));
         }
 
         var dayUsePercent = isDayUse
@@ -120,9 +140,13 @@ public sealed class BookingPricingService
         var normalizedPaymentOption = string.Equals(paymentOption, "Full", StringComparison.OrdinalIgnoreCase) ? "Full" : "Deposit";
         var dueNow = normalizedPaymentOption == "Full" ? total : deposit;
 
+        var minNightlyPrice = nightLines.Count > 0 ? nightLines.Min(x => x.Price) : roomType.BasePrice;
+        var maxNightlyPrice = nightLines.Count > 0 ? nightLines.Max(x => x.Price) : roomType.BasePrice;
+        var nightlyRoomTotal = nightLines.Sum(x => x.Price) * quantity;
+
         return new(nights, baseRoomAmount, seasonalSurcharge, roomBeforeDiscount, promotion.Code, promotion.Percent,
             discount, roomAmount, extraAdults, extraAdultFee, childSurcharge, total, depositPercent, deposit, dueNow,
-            normalizedPaymentOption, holidayDeposit, nightLines, childBreakdown);
+            normalizedPaymentOption, holidayDeposit, minNightlyPrice, maxNightlyPrice, nightlyRoomTotal, nightLines, childBreakdown);
     }
 
     public static string? ValidateChildAges(int childCount, IReadOnlyList<int>? ages)

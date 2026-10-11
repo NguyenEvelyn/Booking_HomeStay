@@ -6477,3 +6477,79 @@
 
 
 
+.tax-host-summary{font-variant-numeric:tabular-nums}.tax-host-version{padding:7px 10px;border-radius:999px;background:#eef4ff;color:#0b4ae6;font-size:12px;font-weight:800}.tax-host-note{display:flex;align-items:center;gap:8px;margin-bottom:16px;padding:11px 13px;border:1px solid #f3d68b;border-radius:10px;background:#fff9e8;color:#675c43;font-size:13px}.tax-host-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}.tax-host-grid article{display:grid;gap:6px;padding:16px;border:1px solid #e1e7f0;border-radius:12px;background:#fff}.tax-host-grid small{color:#68758a;font-size:11px;font-weight:800;letter-spacing:.07em}.tax-host-grid strong{color:#102f68;font-size:21px}.tax-host-grid span{color:#758197;font-size:12px}.tax-host-grid .tax-host-net{border-color:#b9e9cf;background:#effbf5}.tax-host-grid .tax-host-net strong{color:#087348}@media(max-width:1100px){.tax-host-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.tax-host-grid .tax-host-net{grid-column:1/-1}}@media(max-width:560px){.tax-host-grid{grid-template-columns:1fr}.tax-host-grid .tax-host-net{grid-column:auto}}
+.host-account > .host-header-btn:nth-child(2) span {
+  font-size: 0;
+}
+
+.host-account > .host-header-btn:nth-child(2) span::after {
+  content: 'Đặt phòng cho khách';
+  font-size: 14px;
+}
+
+.manual-booking-modal {
+  position: fixed;
+  z-index: 1200;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(5, 21, 49, .58);
+  backdrop-filter: blur(4px);
+}
+
+.manual-booking-modal > form {
+  width: min(680px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 28px 80px rgba(4, 26, 66, .24);
+}
+
+.manual-booking-modal > form > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 24px 26px 18px;
+  border-bottom: 1px solid #e5eaf1;
+}
+
+.manual-booking-modal header small { color: #0b4ae6; font-weight: 800; letter-spacing: .1em; }
+.manual-booking-modal header h2 { margin: 5px 0; color: #09275f; font-size: 24px; }
+.manual-booking-modal header p { margin: 0; color: #64748b; font-size: 14px; }
+.manual-booking-modal header > button { min-width: 44px; min-height: 44px; border: 0; border-radius: 12px; background: #f1f5f9; }
+
+.manual-booking-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  padding: 22px 26px;
+}
+
+.manual-booking-grid label { display: grid; gap: 7px; color: #263958; font-weight: 700; }
+.manual-booking-grid label.wide { grid-column: 1 / -1; }
+.manual-booking-grid input,
+.manual-booking-grid select,
+.manual-booking-grid textarea { width: 100%; min-height: 46px; padding: 11px 13px; border: 1px solid #d5deea; border-radius: 11px; color: #17233d; background: #fff; font: inherit; }
+.manual-booking-grid textarea { resize: vertical; }
+.manual-booking-grid input:focus,
+.manual-booking-grid select:focus,
+.manual-booking-grid textarea:focus { border-color: #0b4ae6; outline: 3px solid rgba(11, 74, 230, .12); }
+.manual-booking-grid label > small { color: #c2410c; font-weight: 600; }
+
+.manual-booking-modal footer { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 26px 24px; }
+.manual-booking-modal footer button { min-height: 44px; padding: 10px 18px; border: 0; border-radius: 11px; font-weight: 800; cursor: pointer; }
+.manual-booking-modal .btn-cancel { color: #425570; background: #eef2f7; }
+.manual-booking-modal .btn-save { color: #fff; background: #0b4ae6; }
+.manual-booking-modal .btn-save:disabled { cursor: not-allowed; opacity: .55; }
+
+@media (max-width: 700px) {
+  .manual-booking-modal { align-items: end; padding: 0; }
+  .manual-booking-modal > form { max-height: 94vh; border-radius: 20px 20px 0 0; }
+  .manual-booking-grid { grid-template-columns: 1fr; padding: 18px; }
+  .manual-booking-grid label.wide { grid-column: auto; }
+  .manual-booking-modal > form > header { padding: 20px 18px 15px; }
+  .manual-booking-modal footer { padding: 14px 18px 20px; }
+}

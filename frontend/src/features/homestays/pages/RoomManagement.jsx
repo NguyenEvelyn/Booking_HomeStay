@@ -7,7 +7,8 @@ import { confirmDialog, toast } from '../../../shared/feedback/feedback.js';
 const money = v => `${new Intl.NumberFormat('vi-VN').format(v || 0)}đ`;
 const empty = { homestayId: '', roomTypeId: '', roomNumber: '', floorNumber: '', status: 'Available', note: '', images: [] };
 const statusLabel = { Available: 'Còn trống', Occupied: 'Đang sử dụng', Cleaning: 'Đang dọn', Maintenance: 'Bảo trì', Inactive: 'Ngưng hoạt động' };
-const cleanLabel = { Available: 'Sạch sẽ', Occupied: 'Đang ở', Cleaning: 'Cần dọn', Maintenance: 'Bảo trì', Inactive: '—' };
+const cleanLabel = { Clean: 'Sạch sẵn sàng', NeedCleaning: 'Cần dọn', InProgress: 'Đang dọn', Inspection: 'Chờ kiểm tra' };
+const emptyChecklist = { linenChanged: false, bathroomCleaned: false, amenitiesRestocked: false, equipmentChecked: false, note: '' };
 
 function RoomImage({ room, large = false }) {
   if (room.thumbnailUrl) {
@@ -36,6 +37,8 @@ export default function RoomManagement({ data, run }) {
   const [files, setFiles] = useState([]);
   const [busy, setBusy] = useState(false);
   const [imageError, setImageError] = useState('');
+  const [cleaningRoom, setCleaningRoom] = useState(null);
+  const [checklist, setChecklist] = useState(emptyChecklist);
 
   useEffect(() => {
     if (!stay && data.homestays.length) {
@@ -137,6 +140,38 @@ export default function RoomManagement({ data, run }) {
     if (ok) await run(() => homestayApi.deleteRoom(x.homestayId, x.id), false);
   };
 
+  const startCleaning = async room => {
+    setBusy(true);
+    const result = await run(() => homestayApi.updateRoomCleaning(room.homestayId, room.id, { action: 'start' }), false);
+    setBusy(false);
+    if (result) toast.success(result.message);
+  };
+
+  const openCleaningChecklist = room => { setCleaningRoom(room); setChecklist(emptyChecklist); };
+  const completeCleaning = async event => {
+    event.preventDefault();
+    if (!checklist.linenChanged || !checklist.bathroomCleaned || !checklist.amenitiesRestocked || !checklist.equipmentChecked) {
+      toast.error('Vui lòng hoàn tất đủ 4 mục kiểm tra trước khi bàn giao phòng.'); return;
+    }
+    setBusy(true);
+    const result = await run(() => homestayApi.updateRoomCleaning(cleaningRoom.homestayId, cleaningRoom.id, { action: 'complete', ...checklist }), false);
+    setBusy(false);
+    if (result) { setCleaningRoom(null); toast.success(result.message); }
+  };
+
+  const CleaningStatus = ({ room }) => {
+    const state = room.cleaningStatus || (room.status === 'Cleaning' ? 'NeedCleaning' : room.status === 'Occupied' ? 'Occupied' : 'Clean');
+    const next = room.nextBooking;
+    return <div className="room-cleaning-state"><span className={`clean-status clean-${String(state).toLowerCase()}`}>{state === 'Occupied' ? 'Đang ở' : cleanLabel[state] || '—'}</span>{next&&<small>Khách tiếp theo: {new Date(`${next.checkInDate}T00:00:00`).toLocaleDateString('vi-VN')}</small>}</div>;
+  };
+
+  const CleaningActions = ({ room }) => {
+    const state = room.cleaningStatus || (room.status === 'Cleaning' ? 'NeedCleaning' : 'Clean');
+    if (room.status === 'Cleaning' && state === 'NeedCleaning') return <button type="button" className="cleaning-primary" disabled={busy} onClick={() => startCleaning(room)}><HostIcon name="clock" size={14}/><span>Bắt đầu dọn</span></button>;
+    if (room.status === 'Cleaning' && state === 'InProgress') return <button type="button" className="cleaning-primary finish" onClick={() => openCleaningChecklist(room)}><HostIcon name="checkCircle" size={14}/><span>Hoàn tất dọn</span></button>;
+    return <button type="button" aria-label={`Sửa phòng ${room.roomNumber}`} onClick={() => openEdit(room)}><HostIcon name="edit" size={14}/><span>Sửa</span></button>;
+  };
+
   return (
     <section className="room-management" aria-labelledby="room-management-title">
       <div className="room-property-picker">
@@ -226,7 +261,21 @@ export default function RoomManagement({ data, run }) {
         <span>{view === 'table' ? 'Chế độ bảng' : 'Chế độ lưới'}</span>
       </div>
 
-      <div hidden className="mobile-room-list" aria-label={`Danh sách phòng tại ${activeHomestay?.name || 'Homestay'}`}>{list.map(x => <article key={x.id} className={`mobile-room-card is-${x.status.toLowerCase()}`}><RoomImage room={x}/><div className="mobile-room-body"><header><span className={`room-status status-${x.status.toLowerCase()}`}><i aria-hidden="true"/>{statusLabel[x.status] || x.status}</span><span className={`clean-status clean-${x.status.toLowerCase()}`}>{cleanLabel[x.status] || '—'}</span></header><h3>{x.roomNumber}</h3><strong>{x.roomTypeName}</strong><p><span>{x.floorNumber ? `Tầng ${x.floorNumber}` : 'Chưa đặt tầng'}</span><i>·</i><span>Tối đa {x.maxAdults + x.maxChildren} khách</span></p></div><footer><span><small>GIÁ TIÊU CHUẨN</small><b>{money(x.basePrice)}<em>/đêm</em></b></span><div className="room-actions"><button type="button" aria-label={`Sửa phòng ${x.roomNumber}`} onClick={() => openEdit(x)}><HostIcon name="edit" size={15}/><span>Sửa</span></button><button type="button" className="delete" aria-label={`Xóa phòng ${x.roomNumber}`} onClick={() => remove(x)}><HostIcon name="trash" size={15}/><span>Xóa</span></button></div></footer></article>)}{!list.length && <EmptyState short/>}</div>
+      <div hidden className="mobile-room-list" aria-label={`Danh sách phòng tại ${activeHomestay?.name || 'Homestay'}`}>
+        {list.map(x => (
+          <article key={x.id} className={`mobile-room-card is-${x.status.toLowerCase()}`}>
+            <RoomImage room={x}/>
+            <div className="mobile-room-body">
+              <header><span className={`room-status status-${x.status.toLowerCase()}`}><i aria-hidden="true"/>{statusLabel[x.status] || x.status}</span></header>
+              <h3>{x.roomNumber}</h3><strong>{x.roomTypeName}</strong>
+              <p><span>{x.floorNumber ? `Tầng ${x.floorNumber}` : 'Chưa đặt tầng'}</span><i>·</i><span>Tối đa {x.maxAdults + x.maxChildren} khách</span></p>
+              <CleaningStatus room={x}/>
+            </div>
+            <footer><span><small>GIÁ TIÊU CHUẨN</small><b>{money(x.basePrice)}<em>/đêm</em></b></span><div className="room-actions"><CleaningActions room={x}/><button type="button" className="delete" aria-label={`Xóa phòng ${x.roomNumber}`} onClick={() => remove(x)}><HostIcon name="trash" size={15}/><span>Xóa</span></button></div></footer>
+          </article>
+        ))}
+        {!list.length && <EmptyState short/>}
+      </div>
 
       {view === 'table' ? (
         <div className="rooms-table-wrap">
@@ -255,13 +304,10 @@ export default function RoomManagement({ data, run }) {
                   <td>{x.maxAdults + x.maxChildren} khách</td>
                   <td><b>{money(x.basePrice)}</b></td>
                   <td><span className={`room-status status-${x.status.toLowerCase()}`}><i aria-hidden="true" />{statusLabel[x.status] || x.status}</span></td>
-                  <td><span className={`clean-status clean-${x.status.toLowerCase()}`}>{cleanLabel[x.status] || '—'}</span></td>
+                  <td><CleaningStatus room={x}/></td>
                   <td>
                     <div className="room-actions">
-                      <button type="button" aria-label={`Sửa phòng ${x.roomNumber}`} onClick={() => openEdit(x)}>
-                        <HostIcon name="edit" size={14} />
-                        <span>Sửa</span>
-                      </button>
+                      <CleaningActions room={x}/>
                       <button type="button" className="delete" aria-label={`Xóa phòng ${x.roomNumber}`} onClick={() => remove(x)}>
                         <HostIcon name="trash" size={14} />
                         <span>Xóa</span>
@@ -286,13 +332,11 @@ export default function RoomManagement({ data, run }) {
                 </div>
                 <h3>{x.roomNumber} · {x.roomTypeName}</h3>
                 <p>{x.floorNumber ? `Tầng ${x.floorNumber}` : 'Chưa đặt tầng'} · Tối đa {x.maxAdults + x.maxChildren} khách</p>
+                <CleaningStatus room={x}/>
                 <footer>
                   <b>{money(x.basePrice)}<small>/đêm</small></b>
                   <div className="room-actions">
-                    <button type="button" aria-label={`Sửa phòng ${x.roomNumber}`} onClick={() => openEdit(x)}>
-                      <HostIcon name="edit" size={14} />
-                      <span>Sửa</span>
-                    </button>
+                    <CleaningActions room={x}/>
                     <button type="button" className="delete" aria-label={`Xóa phòng ${x.roomNumber}`} onClick={() => remove(x)}>
                       <HostIcon name="trash" size={14} />
                       <span>Xóa</span>
@@ -438,6 +482,7 @@ export default function RoomManagement({ data, run }) {
           </form>
         </div>
       )}
+      {cleaningRoom && <div className="room-modal cleaning-modal" role="presentation" onMouseDown={e=>e.target===e.currentTarget&&setCleaningRoom(null)}><form onSubmit={completeCleaning} role="dialog" aria-modal="true" aria-labelledby="cleaning-title"><header><div><small>BÀN GIAO PHÒNG</small><h2 id="cleaning-title">Hoàn tất dọn phòng {cleaningRoom.roomNumber}</h2><p>Kiểm tra đủ các hạng mục trước khi chuyển phòng sang sẵn sàng.</p></div><button type="button" className="room-modal-close" onClick={()=>setCleaningRoom(null)} aria-label="Đóng"><HostIcon name="close" size={20}/></button></header><div className="cleaning-checklist">{[['linenChanged','Đã thay ga, gối và khăn'],['bathroomCleaned','Đã vệ sinh phòng tắm'],['amenitiesRestocked','Đã bổ sung nước và vật dụng'],['equipmentChecked','Đã kiểm tra thiết bị trong phòng']].map(([key,label])=><label key={key}><input type="checkbox" checked={checklist[key]} onChange={e=>setChecklist(old=>({...old,[key]:e.target.checked}))}/><span><HostIcon name="checkCircle" size={18}/>{label}</span></label>)}<label className="cleaning-note"><span>Ghi chú bàn giao (tùy chọn)</span><textarea rows="3" value={checklist.note} onChange={e=>setChecklist(old=>({...old,note:e.target.value}))} placeholder="Đồ thất lạc, thiết bị cần theo dõi..."/></label></div><footer><button type="button" className="secondary" onClick={()=>setCleaningRoom(null)}>Để sau</button><button type="submit" disabled={busy}>{busy?'Đang cập nhật...':'Xác nhận sạch & sẵn sàng'}</button></footer></form></div>}
     </section>
   );
 }

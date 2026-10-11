@@ -1003,6 +1003,20 @@
     rgba(0, 0, 0, .38);
 }
 
+.search-bar .date-control input {
+  padding-right: 11px;
+  cursor: pointer;
+  color-scheme: light;
+}
+
+.search-bar .date-control input::-webkit-calendar-picker-indicator {
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  opacity: .62;
+  cursor: pointer;
+}
+
 
 .search-bar select {
   padding-right: 10px;
