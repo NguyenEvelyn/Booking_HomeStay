@@ -112,6 +112,8 @@ export default function HostBookings({ items, homestays, run, sort = 'checkin_as
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState(null);
   const [selectedTab, setSelectedTab] = useState('overview');
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const perPage = 8;
   const now = today();
@@ -286,7 +288,10 @@ export default function HostBookings({ items, homestays, run, sort = 'checkin_as
           ))}
         </nav>
 
-        <div className="booking-filters">
+        <button hidden type="button" className="mobile-filter-trigger" onClick={() => setFilterOpen(true)} aria-expanded={filterOpen} aria-controls="booking-mobile-filters"><HostIcon name="filter" size={17}/><span>Bộ lọc</span></button>
+        {filterOpen && <button hidden type="button" className="mobile-filter-scrim" aria-label="Đóng bộ lọc" onClick={() => setFilterOpen(false)}/>}
+        <div id="booking-mobile-filters" className={`booking-filters mobile-filter-sheet ${filterOpen ? 'mobile-open' : ''}`}>
+          <div hidden className="mobile-filter-heading"><div><small>BỘ LỌC</small><b>Lọc đơn đặt phòng</b></div><button type="button" onClick={() => setFilterOpen(false)} aria-label="Đóng bộ lọc"><HostIcon name="close" size={18}/></button></div>
           <label className="booking-search">
             <span>Tìm kiếm</span>
             <input
@@ -350,16 +355,17 @@ export default function HostBookings({ items, homestays, run, sort = 'checkin_as
               <div className={`booking-time-group group-${group}`}>
                 <span>{groupLabels[group]}</span>
                 <b>{groupCounts[group] || 0}</b>
+                {group === 'closed' && <button hidden type="button" className="mobile-history-toggle" onClick={() => setHistoryOpen(open => !open)} aria-expanded={historyOpen}>{historyOpen ? 'Thu gọn' : 'Xem danh sách'}<HostIcon name={historyOpen ? 'chevronDown' : 'chevronRight'} size={14}/></button>}
               </div>
             )}
-            <article className={`${x.isNew ? 'is-new ' : ''}${urgency?.urgent ? `is-urgent urgency-${urgency.level}` : ''}`} onClick={() => open(x)}>
+            <article className={`${x.isNew ? 'is-new ' : ''}${urgency?.urgent ? `is-urgent urgency-${urgency.level} ` : ''}${group === 'closed' && !historyOpen ? 'mobile-history-collapsed' : ''}`} onClick={() => open(x)}>
               <div className="booking-primary">
-                <span>{x.isNew && <b>Mới</b>}{x.contactIsNew && <b className="contact-updated-chip">Mới cập nhật</b>}{x.bookingCode}</span>
+                <span>{x.isNew && group !== 'closed' && <b>Mới</b>}{x.contactIsNew && group !== 'closed' && <b className="contact-updated-chip">Mới cập nhật</b>}{x.bookingCode}</span>
                 <h3>{x.customerName}</h3>
                 <small>{x.customerPhone || 'Chưa có SĐT'} · Đặt lúc {dateTime(x.createdAt)}</small>
                 {urgency && <span className={`booking-urgency booking-urgency-mobile urgency-${urgency.level}`}>{urgency.label}</span>}
               </div>
-              <div>
+              <div className="booking-property">
                 <small>HOMESTAY / PHÒNG</small>
                 <strong>{x.homestayName}</strong>
                 <span>{x.details?.map(d => `${d.roomTypeName}${d.roomNumber ? ` · ${d.roomNumber}` : ''}`).join(', ') || 'Chưa xếp phòng'}</span>
@@ -370,6 +376,7 @@ export default function HostBookings({ items, homestays, run, sort = 'checkin_as
                   {urgency && <span className={`booking-urgency urgency-${urgency.level}`}>{urgency.label}</span>}
                 </div>
                 <strong>{date(x.checkInDate)} → {date(x.checkOutDate)}</strong>
+                <div hidden className="mobile-booking-date-pair"><span><small>NHẬN PHÒNG</small><b>{date(x.checkInDate)}</b></span><i><HostIcon name="arrowRight" size={15}/></i><span><small>TRẢ PHÒNG</small><b>{date(x.checkOutDate)}</b></span></div>
                 <span>{x.nights} đêm · {x.adultCount + x.childCount} khách</span>
               </div>
               <div className="booking-money">
@@ -391,7 +398,7 @@ export default function HostBookings({ items, homestays, run, sort = 'checkin_as
                   }}>Đã nhận tiền</button>
                 )}
                 {x.status === 'Confirmed' && (
-                  <button className={checkInReady ? 'btn-action-highlight' : 'btn-action-secondary'} onClick={() => open(x, 'checkin')}>Check-in</button>
+                  <button className={checkInReady ? 'btn-action-highlight' : 'btn-action-secondary'} onClick={() => open(x, 'checkin')}>{urgency?.level === 'overdue' ? 'Check-in trễ' : 'Check-in'}</button>
                 )}
                 {x.status === 'CheckedIn' && (
                   <button className="btn-action-highlight" onClick={() => open(x, 'checkout')}>Trả phòng</button>

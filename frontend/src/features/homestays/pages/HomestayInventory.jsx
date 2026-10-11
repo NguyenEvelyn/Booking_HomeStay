@@ -21,6 +21,7 @@ export default function HomestayInventory({ items, open, run, onCreate }) {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [view, setView] = useState('table');
+  const [filterOpen, setFilterOpen] = useState(false);
   const list = useMemo(() => items.filter(item => {
     const haystack = `${item.name} ${item.address} ${item.district} ${item.province}`.toLowerCase();
     return (!status || item.status === status) && haystack.includes(search.trim().toLowerCase());
@@ -39,7 +40,10 @@ export default function HomestayInventory({ items, open, run, onCreate }) {
   return <section className="inventory-section" aria-labelledby="inventory-title">
     <header className="inventory-header">
       <div className="inventory-heading"><span className="inventory-eyebrow">QUẢN LÝ KINH DOANH</span><h2 id="inventory-title">Danh sách Homestay</h2><p>Theo dõi tình trạng phê duyệt, số phòng và mức độ sẵn sàng của từng cơ sở.</p></div>
-      <div className="inventory-toolbar" role="search" aria-label="Tìm và lọc Homestay">
+      <button hidden type="button" className="mobile-filter-trigger" onClick={() => setFilterOpen(true)} aria-expanded={filterOpen} aria-controls="inventory-mobile-filters"><HostIcon name="filter" size={17}/><span>Bộ lọc</span></button>
+      {filterOpen && <button hidden type="button" className="mobile-filter-scrim" aria-label="Đóng bộ lọc" onClick={() => setFilterOpen(false)}/>}
+      <div id="inventory-mobile-filters" className={`inventory-toolbar mobile-filter-sheet ${filterOpen ? 'mobile-open' : ''}`} role="search" aria-label="Tìm và lọc Homestay">
+        <div hidden className="mobile-filter-heading"><div><small>BỘ LỌC</small><b>Tìm và lọc Homestay</b></div><button type="button" onClick={() => setFilterOpen(false)} aria-label="Đóng bộ lọc"><HostIcon name="close" size={18}/></button></div>
         <label className="inventory-search-field">
           <span className="sr-only">Tìm Homestay</span>
           <HostIcon name="search" size={17}/>
@@ -63,6 +67,8 @@ export default function HomestayInventory({ items, open, run, onCreate }) {
     </div>
 
     <div className="inventory-results-bar" aria-live="polite"><b>{list.length}</b><span>Homestay phù hợp</span>{(search || status) && <small>trên tổng số {items.length}</small>}</div>
+
+    <div hidden className="mobile-inventory-list" aria-label="Danh sách Homestay trên điện thoại">{list.map(item => <article key={item.id} className="mobile-inventory-card"><div className="mobile-inventory-media"><PropertyImage item={item}/><b>HS{String(item.id).padStart(3, '0')}</b></div><div className="mobile-inventory-body"><header><span className={`inventory-status status-${item.status.toLowerCase()}`}><i aria-hidden="true"/>{labels[item.status] || item.status}</span><small>Cập nhật {date(item.updatedAt)}</small></header><h3>{item.name}</h3><p><HostIcon name="mapPin" size={14}/><span>{item.address}, {item.district}, {item.province}</span></p>{item.rejectionReason && <p className="mobile-inventory-reason" role="status">Lý do xử lý: {item.rejectionReason}</p>}<div className="mobile-inventory-metrics"><span><b>{item.roomTypeCount}</b> loại phòng</span><span><b>{item.physicalRoomCount}</b> phòng</span><span className="is-available"><b>{item.availableRoomCount}</b> còn trống</span></div></div><footer><span><small>GIÁ TỪ / ĐÊM</small><b>{money(item.fromPrice)}</b></span>{actions(item)}</footer></article>)}{!list.length && <EmptyState/>}</div>
 
     {view === 'table' ? <div className="inventory-table-wrap"><table className="inventory-table">
       <caption className="sr-only">Danh sách Homestay đang quản lý</caption>

@@ -404,3 +404,2519 @@ button {
     min-height: 44px;
   }
 }
+
+/* Mobile-only refinement. Desktop and tablet styles remain untouched. */
+@media (max-width: 767px) {
+  :root {
+    --mobile-gutter-compact: 14px;
+    --mobile-nav-height: 72px;
+  }
+
+  html,
+  body,
+  #root,
+  .host-page,
+  .host-content,
+  .admin-shell,
+  .admin-content,
+  .customer-page {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
+  .host-content {
+    padding-right: var(--mobile-gutter-compact);
+    padding-bottom: calc(var(--mobile-nav-height) + 26px + env(safe-area-inset-bottom));
+    padding-left: var(--mobile-gutter-compact);
+  }
+
+  .host-mobile-bottom-nav[hidden] {
+    position: fixed;
+    z-index: 85;
+    right: 8px;
+    bottom: max(8px, env(safe-area-inset-bottom));
+    left: 8px;
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    min-height: var(--mobile-nav-height);
+    padding: 6px;
+    border: 1px solid rgba(203, 213, 225, .9);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, .96);
+    box-shadow: 0 14px 34px rgba(15, 23, 42, .18);
+    backdrop-filter: blur(14px);
+  }
+
+  .host-mobile-bottom-nav button {
+    min-width: 0;
+    min-height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 4px;
+    padding: 5px 2px;
+    border: 0;
+    border-radius: 12px;
+    color: #64748b;
+    background: transparent;
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 1.1;
+    touch-action: manipulation;
+  }
+
+  .host-mobile-bottom-nav button.active {
+    color: #0b4ae6;
+    background: #edf4ff;
+  }
+
+  .host-mobile-bottom-nav button span {
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .host-header,
+  .admin-header {
+    max-width: 100%;
+  }
+
+  .host-header-titles h1,
+  .admin-header h1,
+  .inventory-heading h2,
+  .room-heading h2,
+  .booking-board > header h2,
+  .revenue-toolbar h2,
+  .host-panel h2,
+  .host-manage-card h3 {
+    max-width: 100%;
+    font-size: clamp(18px, 5.4vw, 23px);
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+  }
+
+  .host-account {
+    min-width: 0;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+  }
+
+  .host-account > button,
+  .content-menu-toggle,
+  .admin-menu,
+  .inventory-create,
+  .room-add-button,
+  .btn-export-csv,
+  .refresh-button,
+  .export-menu summary,
+  .reset-filter,
+  .booking-actions button,
+  .inventory-actions button,
+  .room-actions button,
+  .table-pagination button,
+  .admin-pagination button {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+
+  .overview-kpis,
+  .host-stats,
+  .booking-kpis,
+  .room-kpis,
+  .inventory-kpis,
+  .calendar-summary,
+  .review-summary,
+  .revenue-kpi-grid,
+  .dashboard-kpis {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  .overview-kpis > *,
+  .host-stats > *,
+  .booking-kpis > *,
+  .room-kpis > *,
+  .inventory-kpis > *,
+  .calendar-summary > *,
+  .review-summary > *,
+  .revenue-kpi-grid > *,
+  .dashboard-kpis > * {
+    min-width: 0;
+  }
+
+  .inventory-grid,
+  .room-card-grid,
+  .catalog-stay-grid,
+  .detail-room-list,
+  .post-grid,
+  .featured-amenities > div,
+  .operation-metrics,
+  .revenue-two-column,
+  .dashboard-grid,
+  .attention > div {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 16px !important;
+  }
+
+  .inventory-card,
+  .room-card,
+  .catalog-stay-card,
+  .detail-room-card,
+  .revenue-card,
+  .host-panel,
+  .admin-card {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .inventory-card footer,
+  .room-card-body footer,
+  .catalog-stay-card footer,
+  .booking-actions,
+  .bo-actions {
+    align-items: stretch;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .inventory-card footer > b,
+  .room-card-body footer > b,
+  .catalog-stay-card footer > b {
+    flex-basis: 100%;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .mobile-filter-trigger[hidden] {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    width: 100%;
+    margin: 0 0 12px;
+    padding: 0 16px;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    color: #0b4ae6;
+    background: #fff;
+    font-weight: 800;
+    touch-action: manipulation;
+  }
+
+  .mobile-filter-scrim[hidden] {
+    position: fixed;
+    z-index: 180;
+    inset: 0;
+    display: block !important;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    border: 0;
+    background: rgba(15, 23, 42, .5);
+  }
+
+  .mobile-filter-sheet {
+    position: fixed !important;
+    z-index: 190 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 12px !important;
+    width: 100% !important;
+    max-width: none !important;
+    max-height: min(82dvh, 720px);
+    margin: 0 !important;
+    padding: 18px 16px max(18px, env(safe-area-inset-bottom)) !important;
+    overflow-y: auto;
+    border: 0 !important;
+    border-radius: 20px 20px 0 0 !important;
+    background: #fff !important;
+    box-shadow: 0 -18px 42px rgba(15, 23, 42, .22) !important;
+    transform: translateY(105%);
+    visibility: hidden;
+    transition: transform .22s ease, visibility .22s step-end;
+  }
+
+  .mobile-filter-sheet.mobile-open {
+    transform: translateY(0);
+    visibility: visible;
+    transition: transform .22s ease, visibility 0s;
+  }
+
+  .mobile-filter-heading[hidden] {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 2px;
+  }
+
+  .mobile-filter-heading > div {
+    display: grid;
+    gap: 2px;
+  }
+
+  .mobile-filter-heading small {
+    color: #0b4ae6;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .1em;
+  }
+
+  .mobile-filter-heading b {
+    color: #0f172a;
+    font-size: 18px;
+  }
+
+  .mobile-filter-heading > button {
+    min-width: 44px;
+    min-height: 44px;
+    display: grid;
+    place-items: center;
+    border: 1px solid #dbe3ee;
+    border-radius: 50%;
+    color: #475569;
+    background: #fff;
+  }
+
+  .mobile-filter-sheet label,
+  .mobile-filter-sheet input,
+  .mobile-filter-sheet select,
+  .mobile-filter-sheet .inventory-search-field,
+  .mobile-filter-sheet .inventory-filter-field,
+  .mobile-filter-sheet .room-search-field {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .mobile-filter-sheet input,
+  .mobile-filter-sheet select,
+  .mobile-filter-sheet button {
+    min-height: 44px;
+  }
+
+  .mobile-filter-sheet .preset-control {
+    width: 100%;
+  }
+
+  .inventory-table-wrap,
+  .rooms-table-wrap,
+  .transaction-table-wrap,
+  .admin-table-scroll,
+  .bo-table-wrap,
+  .calendar-scroll,
+  .time-chart,
+  .trend-chart-wrap {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .inventory-table,
+  .rooms-table,
+  .transaction-table,
+  .admin-table-scroll table {
+    min-width: 760px;
+  }
+
+  .booking-tabs,
+  .admin-tabs,
+  .room-property-tabs,
+  .preset-control,
+  .grain-toggle {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: thin;
+  }
+
+  .booking-tabs button,
+  .admin-tabs button,
+  .room-property-tabs button,
+  .preset-control button,
+  .grain-toggle button {
+    min-height: 44px;
+    white-space: nowrap;
+  }
+
+  .revenue-toolbar,
+  .revenue-card > header,
+  .inventory-header,
+  .room-management-header,
+  .booking-board > header,
+  .admin-section-head {
+    align-items: stretch !important;
+    flex-direction: column !important;
+    gap: 12px;
+  }
+
+  .revenue-toolbar-actions,
+  .transaction-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .revenue-toolbar-actions > *,
+  .transaction-actions > * {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .trend-chart {
+    min-width: 660px;
+  }
+
+  .ranking-row {
+    min-width: 0;
+  }
+
+  .modal,
+  .host-modal,
+  .booking-modal,
+  .admin-drawer-backdrop,
+  .reviews-modal-backdrop,
+  .room-modal {
+    max-width: 100vw;
+  }
+
+  /* App-style host launcher: mobile only, desktop markup and behavior stay intact. */
+  .host-header {
+    grid-template-columns: 44px minmax(0, 1fr) 44px !important;
+    min-height: 72px !important;
+    gap: 10px !important;
+    margin-bottom: 12px !important;
+    padding: 10px 14px !important;
+  }
+
+  .host-header .content-menu-toggle,
+  .host-mobile-avatar[hidden] {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .host-header .content-menu-toggle {
+    border-radius: 13px;
+    background: #fff;
+    box-shadow: 0 5px 14px rgba(15, 23, 42, .07);
+  }
+
+  .host-header-titles h1 {
+    display: -webkit-box;
+    margin-top: 2px;
+    overflow: hidden;
+    font-size: clamp(17px, 5vw, 20px) !important;
+    line-height: 1.15;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .host-greeting-tag small {
+    font-size: 9px;
+    letter-spacing: .09em;
+  }
+
+  .host-mobile-avatar[hidden] {
+    display: grid !important;
+    place-items: center;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    border-radius: 50%;
+    color: #fff;
+    background-color: #0b4ae6;
+    background-position: center;
+    background-size: cover;
+    box-shadow: 0 7px 16px rgba(11, 74, 230, .24);
+    font-size: 16px;
+    font-weight: 800;
+  }
+
+  .host-account {
+    display: none !important;
+  }
+
+  .host-mobile-launchpad[hidden] {
+    display: block !important;
+    margin: 0 0 14px;
+    padding: 15px 10px 10px;
+    border: 1px solid #e4eaf2;
+    border-radius: 20px;
+    background: #fff;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, .055);
+  }
+
+  .host-mobile-launchpad-heading {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 0 6px 12px;
+  }
+
+  .host-mobile-launchpad-heading > div {
+    display: grid;
+    gap: 2px;
+  }
+
+  .host-mobile-launchpad-heading small {
+    color: #f0a000;
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: .1em;
+  }
+
+  .host-mobile-launchpad-heading b {
+    color: #08275d;
+    font-size: 17px;
+    line-height: 1.2;
+  }
+
+  .host-mobile-launchpad-heading > span {
+    color: #718096;
+    font-size: 10px;
+    white-space: nowrap;
+  }
+
+  .host-mobile-quick-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 5px 3px;
+  }
+
+  .host-mobile-quick-grid button {
+    min-width: 0;
+    min-height: 76px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    flex-direction: column;
+    gap: 7px;
+    padding: 7px 2px 5px;
+    border: 0;
+    border-radius: 14px;
+    color: #263b5a;
+    background: transparent;
+    font: inherit;
+    touch-action: manipulation;
+  }
+
+  .host-mobile-quick-grid button:active {
+    background: #f2f6fc;
+    transform: scale(.97);
+  }
+
+  .host-mobile-quick-grid i {
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    border-radius: 14px;
+    font-style: normal;
+  }
+
+  .host-mobile-quick-grid span {
+    max-width: 100%;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.15;
+    text-align: center;
+    overflow-wrap: anywhere;
+  }
+
+  .host-mobile-quick-grid .is-blue { color: #0b4ae6; background: #eaf1ff; }
+  .host-mobile-quick-grid .is-cyan { color: #008ca7; background: #e4f8fb; }
+  .host-mobile-quick-grid .is-violet { color: #7448dc; background: #f0eaff; }
+  .host-mobile-quick-grid .is-amber { color: #b66b00; background: #fff2d8; }
+  .host-mobile-quick-grid .is-green { color: #07835b; background: #e3f7ef; }
+  .host-mobile-quick-grid .is-rose { color: #d63b68; background: #ffe8ef; }
+  .host-mobile-quick-grid .is-sky { color: #0677c8; background: #e5f4ff; }
+  .host-mobile-quick-grid .is-slate { color: #53647d; background: #edf1f6; }
+
+  .inventory-kpis article,
+  .room-kpis article,
+  .booking-kpis article,
+  .booking-kpis > button,
+  .revenue-kpi {
+    min-height: 86px !important;
+    padding: 14px 15px !important;
+  }
+
+  .inventory-kpi-icon,
+  .room-kpi-icon,
+  .booking-kpi-icon,
+  .revenue-kpi-head > i {
+    width: 40px !important;
+    height: 40px !important;
+    flex: 0 0 40px !important;
+    border-radius: 12px !important;
+  }
+
+  .inventory-kpis b,
+  .room-kpis b,
+  .booking-kpis strong,
+  .revenue-kpi > strong {
+    font-size: 22px !important;
+    line-height: 1.1 !important;
+  }
+
+  /* Compact, wallet-style revenue overview for phones. */
+  .host-content:has(.finance-page) .host-mobile-launchpad,
+  .finance-page .revenue-toolbar,
+  .finance-page > .revenue-kpi-grid {
+    display: none !important;
+  }
+
+  .finance-page {
+    gap: 12px !important;
+  }
+
+  .finance-page .mobile-filter-trigger[hidden] {
+    margin: 0;
+    border-color: #dce5f3;
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 5px 16px rgba(15, 23, 42, .05);
+  }
+
+  .mobile-finance-picture[hidden] {
+    display: block !important;
+    padding: 16px;
+    border: 1px solid #e1e8f2;
+    border-radius: 22px;
+    background: #fff;
+    box-shadow: 0 8px 26px rgba(15, 23, 42, .065);
+  }
+
+  .mobile-finance-picture-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .mobile-finance-picture-head > div {
+    min-width: 0;
+  }
+
+  .mobile-finance-picture-head small {
+    color: #0b4ae6;
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: .1em;
+  }
+
+  .mobile-finance-picture-head h2 {
+    margin: 3px 0 0;
+    color: #0a285c;
+    font-size: 19px;
+    line-height: 1.2;
+  }
+
+  .mobile-finance-picture-head > button {
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 10px;
+    border: 1px solid #dce5f3;
+    border-radius: 12px;
+    color: #344967;
+    background: #f7f9fc;
+    font-size: 10px;
+    font-weight: 750;
+  }
+
+  .mobile-finance-primary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border: 1px solid #dfe6f0;
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  .mobile-finance-primary article {
+    min-width: 0;
+    padding: 14px 12px;
+    background: #fff;
+  }
+
+  .mobile-finance-primary article:first-child {
+    border: 2px solid #7da5ff;
+    border-radius: 15px;
+    background: #f8faff;
+  }
+
+  .mobile-finance-primary article + article {
+    border-left: 1px solid #e5eaf1;
+  }
+
+  .mobile-finance-primary article > span {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #52657f;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .mobile-finance-primary article > strong {
+    display: block;
+    margin: 9px 0 6px;
+    color: #092b66;
+    font-size: clamp(18px, 5.6vw, 23px);
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+  }
+
+  .mobile-finance-primary .revenue-change {
+    font-size: 9px;
+    line-height: 1.35;
+  }
+
+  .mobile-finance-insight {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+    padding: 11px 12px;
+    border-radius: 13px;
+    color: #164582;
+    background: #eef6ff;
+  }
+
+  .mobile-finance-insight > i {
+    width: 36px;
+    height: 36px;
+    display: grid;
+    place-items: center;
+    flex: 0 0 36px;
+    border-radius: 11px;
+    background: #fff;
+    font-style: normal;
+  }
+
+  .mobile-finance-insight > span {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+  }
+
+  .mobile-finance-insight b {
+    font-size: 12px;
+    overflow-wrap: anywhere;
+  }
+
+  .mobile-finance-insight small {
+    color: #607897;
+    font-size: 10px;
+  }
+
+  .mobile-finance-mini-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .mobile-finance-mini-grid article {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 11px 9px;
+    border: 1px solid #e6ebf2;
+    border-radius: 13px;
+    background: #fff;
+  }
+
+  .mobile-finance-mini-grid article > i {
+    width: 36px;
+    height: 36px;
+    display: grid;
+    place-items: center;
+    flex: 0 0 36px;
+    border-radius: 11px;
+    font-style: normal;
+  }
+
+  .mobile-finance-mini-grid article > span {
+    min-width: 0;
+    display: grid;
+    gap: 3px;
+  }
+
+  .mobile-finance-mini-grid small {
+    color: #687990;
+    font-size: 9px;
+    line-height: 1.2;
+  }
+
+  .mobile-finance-mini-grid strong {
+    color: #102d5b;
+    font-size: 13px;
+    line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+  }
+
+  .mobile-finance-mini-grid .is-blue { color: #0b4ae6; background: #eaf1ff; }
+  .mobile-finance-mini-grid .is-violet { color: #754ad7; background: #f1ebff; }
+  .mobile-finance-mini-grid .is-green { color: #087e59; background: #e3f7ef; }
+  .mobile-finance-mini-grid .is-amber { color: #a76300; background: #fff1d6; }
+
+  .mobile-finance-picture > footer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #e8edf4;
+  }
+
+  .mobile-finance-picture > footer > span {
+    min-width: 0;
+    margin-right: auto;
+    color: #738197;
+    font-size: 9px;
+  }
+
+  .mobile-finance-picture > footer > button,
+  .mobile-finance-export > summary {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 0 10px;
+    border: 1px solid #dce5f3;
+    border-radius: 12px;
+    color: #174781;
+    background: #fff;
+    font-size: 10px;
+    font-weight: 800;
+    list-style: none;
+  }
+
+  .mobile-finance-export {
+    position: relative;
+  }
+
+  .mobile-finance-export summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .mobile-finance-export > div {
+    position: absolute;
+    z-index: 30;
+    right: 0;
+    bottom: 50px;
+    width: 120px;
+    display: grid;
+    gap: 4px;
+    padding: 6px;
+    border: 1px solid #dce5f3;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, .16);
+  }
+
+  .mobile-finance-export > div button {
+    min-height: 44px;
+    border: 0;
+    border-radius: 9px;
+    color: #273b58;
+    background: #f6f8fb;
+    font-weight: 700;
+  }
+
+  .finance-page .revenue-card {
+    padding: 14px !important;
+    border-radius: 18px;
+    box-shadow: 0 6px 20px rgba(15, 23, 42, .05);
+  }
+
+  .finance-page .revenue-card > header {
+    margin-bottom: 12px;
+  }
+
+  .finance-page .revenue-card > header h2 {
+    font-size: 16px !important;
+  }
+
+  .finance-page .operation-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 1px !important;
+    border-radius: 14px;
+  }
+
+  .finance-page .operation-metrics article {
+    min-height: 84px;
+    padding: 12px;
+  }
+
+  .finance-page .operation-metrics strong {
+    margin-top: 6px;
+    font-size: 16px;
+  }
+
+  .finance-page .operation-metrics article:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+
+  .finance-page .metric-help {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    min-height: 32px !important;
+    display: inline-grid;
+    place-items: center;
+    padding: 0;
+    border-radius: 50%;
+    line-height: 1;
+  }
+
+  .finance-page .donut-wrap svg {
+    width: 138px;
+  }
+
+  .finance-page .status-highlight {
+    margin: 10px 0;
+  }
+
+  .finance-page .status-breakdown.improved button {
+    min-height: 48px;
+  }
+
+  /* Six calendar KPIs: two readable columns instead of one long stack. */
+  .booking-calendar .calendar-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  .booking-calendar .calendar-summary article {
+    min-width: 0;
+    min-height: 132px;
+    aspect-ratio: 1.18 / 1;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px !important;
+    border-radius: 17px;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, .055);
+  }
+
+  .booking-calendar .stat-card-icon {
+    width: 38px;
+    height: 38px;
+    display: grid;
+    place-items: center;
+    border-radius: 12px;
+    background: #f1f5ff;
+  }
+
+  .booking-calendar .calendar-summary article:nth-child(2) .stat-card-icon {
+    background: #e8f8f0;
+  }
+
+  .booking-calendar .calendar-summary article:nth-child(4) .stat-card-icon {
+    background: #eef2f7;
+  }
+
+  .booking-calendar .calendar-summary article:nth-child(5) .stat-card-icon {
+    background: #fff3df;
+  }
+
+  .booking-calendar .calendar-summary article:nth-child(6) .stat-card-icon {
+    background: #f1eaff;
+  }
+
+  .booking-calendar .calendar-summary article > div:last-child {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .booking-calendar .calendar-summary small {
+    min-height: 24px;
+    font-size: 9px;
+    line-height: 1.3;
+    letter-spacing: .045em;
+  }
+
+  .booking-calendar .calendar-summary strong {
+    margin: 4px 0 1px;
+    font-size: clamp(19px, 5.5vw, 23px);
+    line-height: 1.12;
+    overflow-wrap: anywhere;
+  }
+
+  .booking-calendar .calendar-summary span {
+    display: block;
+    font-size: 9px;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+  }
+
+  .booking-calendar .calendar-shell {
+    padding: 14px !important;
+    border-radius: 20px;
+  }
+
+  .booking-calendar .calendar-main-head {
+    align-items: stretch !important;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .booking-calendar .calendar-main-head > div:first-child p {
+    display: none;
+  }
+
+  .booking-calendar .calendar-main-head > div:first-child h2 {
+    margin-bottom: 0;
+    font-size: 19px;
+  }
+
+  .booking-calendar .calendar-nav {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+    gap: 8px;
+  }
+
+  .booking-calendar .calendar-nav > button,
+  .booking-calendar .calendar-nav > input {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+  }
+
+  .booking-calendar .calendar-nav .today {
+    grid-column: 1 / -1;
+  }
+
+  .booking-calendar .calendar-filters {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px !important;
+    padding: 12px !important;
+  }
+
+  .booking-calendar .calendar-filters input,
+  .booking-calendar .calendar-filters select,
+  .booking-calendar .calendar-filters button {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 44px;
+  }
+
+  .booking-calendar .calendar-filters input,
+  .booking-calendar .calendar-filters select:first-of-type,
+  .booking-calendar .calendar-filters .btn-jump-today {
+    grid-column: 1 / -1;
+  }
+
+  .booking-calendar .calendar-legend {
+    justify-content: flex-start;
+    gap: 7px 12px;
+    padding: 2px 0;
+  }
+
+  .booking-calendar .calendar-legend span {
+    font-size: 9px;
+  }
+
+  .booking-calendar .calendar-scroll,
+  .booking-calendar .calendar-scroll-tools {
+    display: none !important;
+  }
+
+  .mobile-calendar-list[hidden] {
+    display: block !important;
+    margin-top: 4px;
+  }
+
+  .mobile-calendar-list > header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+
+  .mobile-calendar-list > header small {
+    color: #0b4ae6;
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: .1em;
+  }
+
+  .mobile-calendar-list > header h3 {
+    margin: 3px 0 0;
+    color: #092b61;
+    font-size: 16px;
+  }
+
+  .mobile-calendar-list > header > span {
+    color: #718096;
+    font-size: 9px;
+    text-align: right;
+  }
+
+  .mobile-calendar-list > div {
+    display: grid;
+    gap: 10px;
+  }
+
+  .mobile-calendar-booking {
+    width: 100%;
+    min-height: 148px;
+    display: grid;
+    grid-template-columns: 60px minmax(0, 1fr);
+    gap: 12px;
+    padding: 12px;
+    border: 1px solid #e1e8f2;
+    border-left: 4px solid #64748b;
+    border-radius: 16px;
+    color: #263954;
+    background: #fff;
+    box-shadow: 0 5px 16px rgba(15, 23, 42, .05);
+    text-align: left;
+    touch-action: manipulation;
+  }
+
+  .mobile-calendar-booking:active {
+    background: #f6f9fd;
+  }
+
+  .mobile-calendar-booking.is-confirmed { border-left-color: #10b981; }
+  .mobile-calendar-booking.is-checkedin { border-left-color: #0284c7; }
+  .mobile-calendar-booking.is-completed { border-left-color: #64748b; }
+  .mobile-calendar-booking.is-pendingpayment { border-left-color: #f59e0b; }
+  .mobile-calendar-booking.is-cancelled { border-left-color: #ef4444; }
+  .mobile-calendar-booking.is-expired { border-left-color: #1f2937; }
+
+  .mobile-booking-date {
+    min-height: 76px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    align-self: start;
+    padding: 8px 4px;
+    border-radius: 14px;
+    color: #0b4ae6;
+    background: #edf4ff;
+  }
+
+  .mobile-booking-date small {
+    font-size: 9px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+
+  .mobile-booking-date b {
+    font-size: 25px;
+    line-height: 1.05;
+  }
+
+  .mobile-booking-date em {
+    font-size: 9px;
+    font-style: normal;
+    font-weight: 700;
+  }
+
+  .mobile-booking-main {
+    min-width: 0;
+    display: grid;
+    align-content: start;
+    gap: 7px;
+  }
+
+  .mobile-booking-top {
+    min-width: 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .mobile-booking-top > b {
+    min-width: 0;
+    color: #092b61;
+    font-size: 14px;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  .mobile-booking-top > em {
+    flex: 0 0 auto;
+    padding: 4px 7px;
+    border-radius: 999px;
+    color: #475569;
+    background: #eef2f7;
+    font-size: 8px;
+    font-style: normal;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+
+  .is-confirmed .mobile-booking-top > em { color: #08734f; background: #e6f8ef; }
+  .is-checkedin .mobile-booking-top > em { color: #076b9f; background: #e4f5fd; }
+  .is-pendingpayment .mobile-booking-top > em { color: #985900; background: #fff2d8; }
+  .is-cancelled .mobile-booking-top > em { color: #b42323; background: #feeaea; }
+
+  .mobile-booking-main > strong,
+  .mobile-booking-main > small {
+    min-width: 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+  }
+
+  .mobile-booking-main > strong {
+    color: #173e76;
+    font-size: 11px;
+  }
+
+  .mobile-booking-main > small {
+    color: #65758c;
+    font-size: 10px;
+  }
+
+  .mobile-booking-main > strong svg,
+  .mobile-booking-main > small svg {
+    flex: 0 0 auto;
+    margin-top: 1px;
+  }
+
+  .mobile-booking-stay {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: #43546d;
+    font-size: 10px;
+  }
+
+  .mobile-booking-stay i {
+    font-style: normal;
+  }
+
+  .mobile-booking-stay em {
+    margin-left: auto;
+    color: #718096;
+    font-size: 9px;
+    font-style: normal;
+  }
+
+  .mobile-booking-code {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 6px;
+    border-top: 1px solid #edf1f6;
+    color: #7a8799;
+    font-size: 9px;
+    font-weight: 750;
+  }
+
+  .mobile-calendar-empty {
+    min-height: 170px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 6px;
+    padding: 20px;
+    border: 1px dashed #cbd5e1;
+    border-radius: 16px;
+    color: #8290a3;
+    text-align: center;
+  }
+
+  .mobile-calendar-empty b {
+    color: #40516a;
+    font-size: 13px;
+  }
+
+  .mobile-calendar-empty span {
+    font-size: 11px;
+  }
+
+  /* Mobile overview: dense 2x3 KPI bento and a clean single-column flow. */
+  .host-overview {
+    gap: 14px;
+  }
+
+  .host-overview .overview-range {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    padding: 12px;
+    border-radius: 18px;
+  }
+
+  .host-overview .overview-range-segmented {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 3px;
+  }
+
+  .host-overview .overview-range-btn {
+    min-width: 0;
+    min-height: 48px;
+    padding: 5px 4px;
+    font-size: 10px;
+    line-height: 1.2;
+    white-space: normal;
+  }
+
+  .host-overview .overview-range-inputs {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .host-overview .overview-range-inputs input {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    padding: 5px 7px;
+    font-size: 10px;
+  }
+
+  .host-overview .overview-range-badge {
+    width: 100%;
+    min-height: 40px;
+    justify-content: center;
+    padding: 7px 10px;
+    font-size: 11px;
+  }
+
+  .host-overview .overview-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  .host-overview .overview-kpi-card {
+    min-width: 0;
+    min-height: 138px;
+    aspect-ratio: 1.14 / 1;
+    justify-content: flex-start;
+    padding: 13px !important;
+    overflow: hidden;
+    border-radius: 17px;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, .055);
+  }
+
+  .host-overview .overview-kpi-card:hover {
+    transform: none;
+  }
+
+  .host-overview .kpi-top {
+    min-width: 0;
+    align-items: flex-start;
+    gap: 7px;
+    margin-bottom: 5px;
+  }
+
+  .host-overview .kpi-name {
+    min-width: 0;
+    padding-top: 3px;
+    font-size: 9px;
+    line-height: 1.25;
+    letter-spacing: .045em;
+    overflow-wrap: anywhere;
+  }
+
+  .host-overview .kpi-icon-bubble {
+    width: 36px;
+    height: 36px;
+    flex: 0 0 36px;
+    border-radius: 11px;
+  }
+
+  .host-overview .kpi-value {
+    max-width: 100%;
+    margin: 5px 0 8px;
+    font-size: clamp(19px, 5.8vw, 24px);
+    line-height: 1.08;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+  }
+
+  .host-overview .kpi-bottom {
+    min-width: 0;
+    margin-top: auto;
+    gap: 5px;
+  }
+
+  .host-overview .overview-delta {
+    position: static !important;
+    max-width: 100%;
+    min-height: 26px;
+    gap: 3px;
+    padding: 4px 7px;
+    overflow: hidden;
+    font-size: 9px;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .host-overview .overview-delta > span {
+    display: inline !important;
+    font-size: inherit;
+  }
+
+  .host-overview .overview-delta small {
+    display: none;
+  }
+
+  .host-overview .kpi-detail {
+    width: 100%;
+    font-size: 9px;
+    line-height: 1.2;
+  }
+
+  .host-overview .overview-actions-card,
+  .host-overview .chart-card,
+  .host-overview .list-card {
+    border-radius: 18px;
+    box-shadow: 0 6px 20px rgba(15, 23, 42, .05);
+  }
+
+  .host-overview .overview-actions-head {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 9px;
+    padding: 15px;
+  }
+
+  .host-overview .overview-actions-head h2 {
+    font-size: 16px;
+    line-height: 1.25;
+  }
+
+  .host-overview .overview-actions-count {
+    padding: 5px 9px;
+    font-size: 10px;
+  }
+
+  .host-overview .overview-todo-item {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    gap: 9px;
+    padding: 13px 15px;
+  }
+
+  .host-overview .todo-type-pill {
+    grid-column: 1;
+    width: max-content;
+    max-width: 100%;
+    padding: 5px 8px;
+    font-size: 9px;
+  }
+
+  .host-overview .todo-content {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .host-overview .todo-title {
+    font-size: 12px;
+  }
+
+  .host-overview .todo-desc {
+    font-size: 10px;
+    white-space: normal;
+  }
+
+  .host-overview .todo-action-wrap {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .host-overview .todo-btn {
+    min-height: 36px;
+    padding: 5px 9px;
+    font-size: 9px;
+  }
+
+  .host-overview .overview-todo-empty {
+    align-items: flex-start;
+    padding: 18px 15px;
+  }
+
+  .host-overview .overview-charts-grid,
+  .host-overview .overview-lists-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  .host-overview .chart-header,
+  .host-overview .list-header {
+    gap: 10px;
+    padding: 13px 14px;
+  }
+
+  .host-overview .chart-header h3,
+  .host-overview .list-header h3 {
+    font-size: 13px;
+  }
+
+  .host-overview .revenue-total-badge {
+    max-width: 52%;
+    font-size: 11px;
+    overflow-wrap: anywhere;
+    text-align: right;
+  }
+
+  .host-overview .revenue-bar-chart {
+    min-height: 190px;
+    padding: 18px 10px 12px;
+    overflow: hidden;
+  }
+
+  .host-overview .bar-label {
+    font-size: 8px;
+  }
+
+  .host-overview .status-chart-body,
+  .host-overview .top-stays-list {
+    padding: 13px 14px;
+  }
+
+  .host-overview .top-stay-row {
+    gap: 8px;
+  }
+
+  .host-overview .stay-name,
+  .host-overview .stay-revenue {
+    font-size: 11px;
+  }
+
+  .host-overview .list-body {
+    padding: 5px 14px;
+  }
+
+  .host-overview .compact-booking-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .host-overview .row-sub {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .host-overview .mini-week-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 7px;
+    padding: 12px;
+  }
+
+  .host-overview .week-day-box {
+    min-height: 82px;
+    align-content: center;
+    padding: 8px 3px;
+  }
+
+  .host-overview .overview-shortcuts-grid {
+    display: none !important;
+  }
+
+  /* Mobile bookings: compact information hierarchy and collapsible history. */
+  .booking-manager {
+    gap: 14px;
+  }
+
+  .booking-manager .booking-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  .booking-manager .booking-kpis > button {
+    min-width: 0;
+    min-height: 104px !important;
+    align-items: flex-start;
+    gap: 9px;
+    padding: 12px !important;
+    border-radius: 16px;
+  }
+
+  .booking-manager .booking-kpi-icon {
+    width: 36px !important;
+    height: 36px !important;
+    flex: 0 0 36px !important;
+  }
+
+  .booking-manager .booking-kpis > button > div:last-child {
+    min-width: 0;
+  }
+
+  .booking-manager .booking-kpis small {
+    min-height: 23px;
+    font-size: 9px;
+    line-height: 1.25;
+    letter-spacing: .04em;
+  }
+
+  .booking-manager .booking-kpis strong {
+    margin: 4px 0 2px;
+    font-size: 20px !important;
+    line-height: 1.1;
+    overflow-wrap: anywhere;
+  }
+
+  .booking-manager .booking-kpis span {
+    font-size: 9px;
+    line-height: 1.25;
+  }
+
+  .booking-manager .booking-alert {
+    align-items: flex-start;
+    padding: 11px 12px;
+    border-radius: 14px;
+    font-size: 10px;
+    line-height: 1.4;
+  }
+
+  .booking-manager .booking-board {
+    border-radius: 20px;
+  }
+
+  .booking-manager .booking-board > header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center !important;
+    gap: 10px !important;
+    padding: 14px !important;
+  }
+
+  .booking-manager .booking-board > header p {
+    display: none;
+  }
+
+  .booking-manager .booking-board > header h2 {
+    font-size: 17px;
+  }
+
+  .booking-manager .btn-export-csv {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0 10px !important;
+  }
+
+  .booking-manager .btn-export-csv span {
+    display: none;
+  }
+
+  .booking-manager .booking-tabs {
+    gap: 7px;
+    padding: 10px 14px;
+    scrollbar-width: none;
+  }
+
+  .booking-manager .booking-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .booking-manager .booking-tabs button {
+    min-height: 44px;
+    padding: 7px 11px;
+    font-size: 10px;
+  }
+
+  .booking-manager .mobile-filter-trigger[hidden] {
+    margin: 10px 14px 0;
+  }
+
+  .booking-manager .booking-list {
+    gap: 10px;
+    padding: 12px !important;
+  }
+
+  .booking-manager .booking-time-group {
+    position: static;
+    min-height: 42px;
+    gap: 7px;
+    font-size: 10px;
+  }
+
+  .booking-manager .mobile-history-toggle[hidden] {
+    order: 3;
+    min-height: 36px;
+    display: flex !important;
+    align-items: center;
+    gap: 3px;
+    margin-left: auto;
+    padding: 0 8px;
+    border: 0;
+    border-radius: 10px;
+    color: #0b4ae6;
+    background: #edf4ff;
+    font-size: 9px;
+    font-weight: 800;
+  }
+
+  .booking-manager .group-closed::after {
+    display: none;
+  }
+
+  .booking-manager .booking-list > article.mobile-history-collapsed {
+    display: none !important;
+  }
+
+  .booking-manager .booking-list > article {
+    position: relative;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    gap: 12px 10px !important;
+    align-items: start;
+    padding: 14px !important;
+    overflow: hidden;
+    border-left: 4px solid #94a3b8;
+    border-radius: 17px;
+    box-shadow: 0 5px 16px rgba(15, 23, 42, .045);
+  }
+
+  .booking-manager .booking-list > article.is-new {
+    border-left-color: #0b4ae6;
+  }
+
+  .booking-manager .booking-list > article:has(.status-confirmed) {
+    border-left-color: #0b4ae6;
+  }
+
+  .booking-manager .booking-list > article:has(.status-checkedin) {
+    border-left-color: #0284c7;
+  }
+
+  .booking-manager .booking-list > article:has(.status-completed) {
+    border-left-color: #16a34a;
+  }
+
+  .booking-manager .booking-list > article:has(.status-pendingpayment) {
+    border-left-color: #f59e0b;
+  }
+
+  .booking-manager .booking-list > article:has(.status-cancelled),
+  .booking-manager .booking-list > article:has(.status-expired) {
+    border-left-color: #ef4444;
+  }
+
+  .booking-manager .booking-primary {
+    grid-column: 1;
+    min-width: 0;
+  }
+
+  .booking-manager .booking-primary > span {
+    max-width: 100%;
+    overflow: hidden;
+    font-size: 9px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .booking-manager .booking-primary h3 {
+    margin-top: 5px;
+    font-size: 16px;
+    line-height: 1.2;
+  }
+
+  .booking-manager .booking-primary small {
+    display: block;
+    margin: 3px 0 0;
+    font-size: 10px;
+    line-height: 1.35;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  .booking-manager .booking-primary .booking-urgency-mobile {
+    width: max-content;
+    margin-top: 7px;
+  }
+
+  .booking-manager .booking-list > article > .status {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: start;
+    max-width: 110px;
+    padding: 5px 8px;
+    font-size: 9px;
+    line-height: 1.2;
+    text-align: center;
+    white-space: normal;
+  }
+
+  .booking-manager .booking-property {
+    grid-column: 1 / -1;
+    min-width: 0;
+    display: grid;
+    gap: 3px;
+    padding: 10px 11px;
+    border-radius: 13px;
+    background: #f6f9fd;
+  }
+
+  .booking-manager .booking-property small {
+    margin-bottom: 1px;
+    font-size: 8px;
+  }
+
+  .booking-manager .booking-property strong {
+    color: #0b356f;
+    font-size: 12px;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  .booking-manager .booking-property span {
+    font-size: 10px;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+  }
+
+  .booking-manager .booking-stay {
+    grid-column: 1 / -1;
+  }
+
+  .booking-manager .booking-stay-heading,
+  .booking-manager .booking-stay > strong {
+    display: none !important;
+  }
+
+  .booking-manager .mobile-booking-date-pair[hidden] {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 20px minmax(0, 1fr);
+    align-items: center;
+    gap: 7px;
+  }
+
+  .booking-manager .mobile-booking-date-pair > span {
+    min-width: 0;
+    display: grid;
+    gap: 3px;
+    padding: 10px;
+    border: 1px solid #e1e8f2;
+    border-radius: 13px;
+    background: #fff;
+  }
+
+  .booking-manager .mobile-booking-date-pair small {
+    margin: 0;
+    font-size: 8px;
+  }
+
+  .booking-manager .mobile-booking-date-pair b {
+    color: #0b356f;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .booking-manager .mobile-booking-date-pair > i {
+    display: grid;
+    place-items: center;
+    color: #8a99ad;
+    font-style: normal;
+  }
+
+  .booking-manager .booking-stay > span:last-child {
+    display: block;
+    margin-top: 6px;
+    color: #65758c;
+    font-size: 10px;
+  }
+
+  .booking-manager .booking-money {
+    grid-column: 1;
+    min-width: 0;
+  }
+
+  .booking-manager .booking-money small {
+    font-size: 8px;
+  }
+
+  .booking-manager .booking-money strong {
+    color: #092b61;
+    font-size: 17px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .booking-manager .booking-money > span {
+    margin-top: 5px;
+    padding: 4px 7px;
+    font-size: 9px !important;
+  }
+
+  .booking-manager .booking-actions {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding-top: 10px;
+    border-top: 1px solid #e8edf4;
+  }
+
+  .booking-manager .booking-actions button {
+    width: 100%;
+    min-height: 48px;
+    justify-content: center;
+    padding: 8px;
+    font-size: 11px;
+  }
+
+  .booking-manager .booking-pagination {
+    gap: 10px;
+    padding: 13px 14px;
+    font-size: 10px;
+  }
+
+  .booking-manager .booking-pagination button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* Revenue reconciliation becomes readable transaction cards on phones. */
+  .finance-page .transaction-table-wrap {
+    overflow: visible;
+  }
+
+  .finance-page .transaction-table {
+    width: 100%;
+    min-width: 0 !important;
+    display: block;
+  }
+
+  .finance-page .transaction-table thead,
+  .finance-page .transaction-table tfoot {
+    display: none;
+  }
+
+  .finance-page .transaction-table tbody {
+    display: grid;
+    gap: 8px;
+  }
+
+  .finance-page .transaction-table tbody tr {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px 10px;
+    padding: 11px 12px;
+    border: 1px solid #e1e8f2;
+    border-left: 3px solid #0b4ae6;
+    border-radius: 13px;
+    background: #fff;
+    box-shadow: 0 5px 16px rgba(15, 23, 42, .045);
+  }
+
+  .finance-page .transaction-table td {
+    min-width: 0;
+    display: grid;
+    align-content: start;
+    gap: 2px;
+    padding: 0;
+    border: 0;
+    color: #33445e;
+    font-size: 10px;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  .finance-page .transaction-table td::before {
+    color: #7a899d;
+    font-size: 7px;
+    font-weight: 850;
+    letter-spacing: .06em;
+  }
+
+  .finance-page .transaction-table td:nth-child(1) {
+    grid-column: 1;
+    grid-row: 1;
+    color: #092b61;
+    overflow: hidden;
+    font-size: 10px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .finance-page .transaction-table td:nth-child(1)::before { content: 'MÃ ĐƠN'; }
+
+  .finance-page .transaction-table td:nth-child(9) {
+    grid-column: 2;
+    grid-row: 1;
+    justify-items: end;
+  }
+
+  .finance-page .transaction-table td:nth-child(2),
+  .finance-page .transaction-table td:nth-child(3) {
+    grid-column: 1 / -1;
+    display: block;
+    padding: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .finance-page .transaction-table td:nth-child(2)::before { content: 'KHÁCH LƯU TRÚ'; }
+  .finance-page .transaction-table td:nth-child(3)::before { content: 'HOMESTAY / PHÒNG'; }
+
+  .finance-page .transaction-table td:nth-child(2)::before,
+  .finance-page .transaction-table td:nth-child(3)::before {
+    display: inline;
+    margin-right: 6px;
+  }
+
+  .finance-page .transaction-table td:nth-child(3) {
+    color: #163e76;
+    font-weight: 650;
+  }
+
+  .finance-page .transaction-table td:nth-child(4)::before { content: 'NGÀY THANH TOÁN'; }
+  .finance-page .transaction-table td:nth-child(5)::before { content: 'PHƯƠNG THỨC'; }
+
+  .finance-page .transaction-table td:nth-child(4),
+  .finance-page .transaction-table td:nth-child(5) {
+    padding: 5px 0 7px;
+    border-bottom: 1px solid #edf1f6;
+  }
+
+  .finance-page .transaction-table td:nth-child(5) {
+    text-align: right;
+  }
+
+  .finance-page .transaction-table td:nth-child(6)::before { content: 'SỐ TIỀN'; }
+  .finance-page .transaction-table td:nth-child(7)::before { content: 'PHÍ NỀN TẢNG'; }
+  .finance-page .transaction-table td:nth-child(8)::before { content: 'THỰC NHẬN'; }
+
+  .finance-page .transaction-table td:nth-child(6),
+  .finance-page .transaction-table td:nth-child(8) {
+    color: #092b61;
+    font-size: 12px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .finance-page .transaction-table td:nth-child(7) {
+    display: none;
+  }
+
+  .finance-page .transaction-table td:nth-child(8) {
+    text-align: right;
+  }
+
+  .finance-page .transaction-table td:nth-child(9)::before {
+    display: none;
+  }
+
+  .finance-page .transaction-status {
+    padding: 4px 7px;
+    font-size: 8px;
+  }
+
+  .finance-page .transaction-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 110px;
+    gap: 8px;
+  }
+
+  .finance-page .transaction-actions label,
+  .finance-page .transaction-actions select {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+  }
+
+  .finance-page .table-pagination {
+    justify-content: space-between;
+  }
+
+  .finance-page .table-pagination button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* Homestay inventory uses compact visual cards instead of a clipped table. */
+  .inventory-section > .inventory-table-wrap,
+  .inventory-section > .inventory-grid {
+    display: none !important;
+  }
+
+  .mobile-inventory-list[hidden] {
+    display: grid !important;
+    gap: 10px;
+    padding: 12px;
+    background: #f5f8fc;
+  }
+
+  .mobile-inventory-card {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: 94px minmax(0, 1fr);
+    gap: 12px;
+    padding: 12px;
+    border: 1px solid #dfe7f1;
+    border-radius: 17px;
+    background: #fff;
+    box-shadow: 0 5px 16px rgba(9, 39, 95, .05);
+  }
+
+  .mobile-inventory-media {
+    position: relative;
+    min-width: 0;
+  }
+
+  .mobile-inventory-media > .inventory-image {
+    width: 94px;
+    height: 88px;
+    border-radius: 13px;
+  }
+
+  .mobile-inventory-media > b {
+    position: absolute;
+    right: 6px;
+    top: 6px;
+    padding: 3px 6px;
+    border-radius: 7px;
+    color: #fff;
+    background: rgba(7, 32, 73, .82);
+    font-size: 8px;
+    letter-spacing: .03em;
+  }
+
+  .mobile-inventory-body {
+    min-width: 0;
+  }
+
+  .mobile-inventory-body > header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+  }
+
+  .mobile-inventory-body .inventory-status {
+    padding: 4px 7px;
+    font-size: 8px;
+  }
+
+  .mobile-inventory-body > header > small {
+    color: #8290a3;
+    font-size: 7px;
+    text-align: right;
+  }
+
+  .mobile-inventory-body h3 {
+    display: -webkit-box;
+    margin: 7px 0 5px;
+    overflow: hidden;
+    color: #092b61;
+    font-size: 14px;
+    line-height: 1.25;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .mobile-inventory-body > p {
+    min-width: 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 5px;
+    margin: 0;
+    color: #65758c;
+    font-size: 9px;
+    line-height: 1.35;
+  }
+
+  .mobile-inventory-body > p svg {
+    flex: 0 0 auto;
+    margin-top: 1px;
+  }
+
+  .mobile-inventory-body > p > span {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .mobile-inventory-body .mobile-inventory-reason {
+    margin-top: 5px;
+    color: #b42318;
+    font-weight: 700;
+  }
+
+  .mobile-inventory-metrics {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+    margin-top: 9px;
+  }
+
+  .mobile-inventory-metrics > span {
+    min-width: 0;
+    display: grid;
+    gap: 1px;
+    padding: 6px 4px;
+    border-radius: 9px;
+    color: #63738a;
+    background: #f3f6fa;
+    font-size: 7px;
+    line-height: 1.2;
+    text-align: center;
+  }
+
+  .mobile-inventory-metrics b {
+    color: #153969;
+    font-size: 12px;
+  }
+
+  .mobile-inventory-metrics .is-available {
+    color: #08734f;
+    background: #e9f8f1;
+  }
+
+  .mobile-inventory-metrics .is-available b {
+    color: #08734f;
+  }
+
+  .mobile-inventory-card > footer {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #e8edf4;
+  }
+
+  .mobile-inventory-card > footer > span {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+  }
+
+  .mobile-inventory-card > footer > span small {
+    color: #718096;
+    font-size: 7px;
+    font-weight: 800;
+    letter-spacing: .05em;
+  }
+
+  .mobile-inventory-card > footer > span b {
+    color: #0b4ae6;
+    font-size: 14px;
+    overflow-wrap: anywhere;
+  }
+
+  .mobile-inventory-card .inventory-actions {
+    flex: 0 0 auto;
+  }
+
+  .mobile-inventory-card .inventory-actions button {
+    min-width: 44px;
+    min-height: 44px;
+    justify-content: center;
+    padding: 0 10px;
+  }
+
+  .mobile-inventory-card .inventory-actions button span {
+    font-size: 9px;
+  }
+
+  /* Room operations: selected property, KPIs and rooms stay compact on phones. */
+  .room-management {
+    gap: 0;
+    border-radius: 20px;
+  }
+
+  .room-management .room-property-picker {
+    padding: 14px;
+  }
+
+  .room-management .room-property-picker-head h3 {
+    margin-top: 4px;
+    font-size: 15px;
+    line-height: 1.3;
+  }
+
+  .room-management .room-property-tabs {
+    gap: 8px;
+    margin-top: 11px;
+    padding-bottom: 3px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+
+  .room-management .room-property-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .room-management .room-property-tabs button {
+    min-width: min(76vw, 260px);
+    min-height: 66px;
+    flex: 0 0 auto;
+    padding: 10px 12px;
+    border-radius: 14px;
+    scroll-snap-align: start;
+  }
+
+  .room-management .room-property-tabs button span {
+    overflow: hidden;
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .room-management .room-property-tabs button small {
+    margin-top: 4px;
+    font-size: 9px;
+  }
+
+  .room-management .room-management-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    padding: 15px 14px !important;
+  }
+
+  .room-management .room-heading p {
+    display: none;
+  }
+
+  .room-management .room-heading h2 {
+    display: -webkit-box;
+    margin-top: 4px;
+    overflow: hidden;
+    font-size: 17px !important;
+    line-height: 1.25;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .room-management .mobile-filter-trigger[hidden] {
+    width: 44px;
+    min-width: 44px;
+    padding: 0;
+  }
+
+  .room-management .mobile-filter-trigger span {
+    display: none;
+  }
+
+  .room-management .room-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 1px !important;
+  }
+
+  .room-management .room-kpis article {
+    min-width: 0;
+    min-height: 96px !important;
+    gap: 9px;
+    padding: 12px !important;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .room-management .room-kpi-icon {
+    width: 36px !important;
+    height: 36px !important;
+    flex: 0 0 36px !important;
+  }
+
+  .room-management .room-kpis small {
+    font-size: 8px;
+    line-height: 1.2;
+  }
+
+  .room-management .room-kpis b {
+    margin-top: 3px;
+    font-size: 20px !important;
+  }
+
+  .room-management .room-kpis p {
+    margin-top: 2px;
+    font-size: 8px;
+    line-height: 1.25;
+  }
+
+  .room-management .room-results-bar {
+    padding: 10px 14px;
+  }
+
+  .room-management .room-results-bar p {
+    font-size: 10px;
+  }
+
+  .room-management .room-results-bar > span {
+    display: none;
+  }
+
+  .room-management > .rooms-table-wrap,
+  .room-management > .room-card-grid {
+    display: none !important;
+  }
+
+  .mobile-room-list[hidden] {
+    display: grid !important;
+    gap: 10px;
+    padding: 12px;
+    background: #f5f8fc;
+  }
+
+  .mobile-room-card {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: 92px minmax(0, 1fr);
+    gap: 11px;
+    padding: 12px;
+    border: 1px solid #dfe7f1;
+    border-left: 4px solid #94a3b8;
+    border-radius: 17px;
+    background: #fff;
+    box-shadow: 0 5px 16px rgba(9, 39, 95, .05);
+  }
+
+  .mobile-room-card.is-available { border-left-color: #10b981; }
+  .mobile-room-card.is-occupied { border-left-color: #0284c7; }
+  .mobile-room-card.is-cleaning { border-left-color: #f59e0b; }
+  .mobile-room-card.is-maintenance,
+  .mobile-room-card.is-inactive { border-left-color: #ef4444; }
+
+  .mobile-room-card > .room-table-image,
+  .mobile-room-card > .room-placeholder {
+    width: 92px;
+    height: 88px;
+    border-radius: 13px;
+  }
+
+  .mobile-room-body {
+    min-width: 0;
+  }
+
+  .mobile-room-body > header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 5px;
+  }
+
+  .mobile-room-body .room-status,
+  .mobile-room-body .clean-status {
+    padding: 4px 6px;
+    font-size: 7px;
+    white-space: nowrap;
+  }
+
+  .mobile-room-body h3 {
+    margin: 7px 0 2px;
+    color: #092b61;
+    font-size: 18px;
+    line-height: 1.1;
+  }
+
+  .mobile-room-body > strong {
+    display: block;
+    overflow: hidden;
+    color: #24476f;
+    font-size: 11px;
+    line-height: 1.3;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-room-body > p {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin: 7px 0 0;
+    color: #6b7a90;
+    font-size: 9px;
+  }
+
+  .mobile-room-body > p i {
+    font-style: normal;
+  }
+
+  .mobile-room-card > footer {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #e8edf4;
+  }
+
+  .mobile-room-card > footer > span {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+  }
+
+  .mobile-room-card > footer > span small {
+    color: #718096;
+    font-size: 7px;
+    font-weight: 800;
+    letter-spacing: .05em;
+  }
+
+  .mobile-room-card > footer > span b {
+    color: #0b4ae6;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .mobile-room-card > footer > span em {
+    color: #718096;
+    font-size: 8px;
+    font-style: normal;
+    font-weight: 600;
+  }
+
+  .mobile-room-card .room-actions {
+    display: flex;
+    gap: 6px;
+  }
+
+  .mobile-room-card .room-actions button {
+    min-width: 44px;
+    min-height: 44px;
+    justify-content: center;
+    padding: 0 9px;
+  }
+
+  .mobile-room-card .room-actions button span {
+    font-size: 8px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mobile-filter-sheet,
+    .host-mobile-quick-grid button {
+      transition: none;
+    }
+  }
+}
