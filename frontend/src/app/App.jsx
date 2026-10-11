@@ -471,6 +471,7 @@ export default function App() {
             user={user}
             onHome={() => setView('home')}
             onHomestays={() => setView('catalog')}
+            onOpenHomestay={openHomestay}
             onAccount={() => {
               setMode('change-password');
               setNotice(null);

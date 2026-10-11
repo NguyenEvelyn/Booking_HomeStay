@@ -537,8 +537,19 @@ export default function HostListingWizard({ user, onBack, onSuccess }) {
         bankName: formData.bankName,
         bankAccountNumber: formData.bankAccountNumber,
         bankAccountName: formData.bankAccountName,
-      }).catch(() => {
-        // Continue if already submitted or in pending
+        homestayData: {
+          homestayName: formData.homestayName,
+          description: formData.description,
+          addressLine: formData.addressLine,
+          ward: formData.ward,
+          district: formData.district,
+          province: formData.province,
+          roomTypeName: formData.roomTypeName,
+          roomBasePrice: formData.roomBasePrice,
+          images: (formData.images && formData.images.length > 0) ? formData.images : (formData.imageUrl ? [formData.imageUrl] : []),
+        },
+      }).catch((e) => {
+        console.warn('Host registration notice:', e);
       });
 
       // 2. If user already has host privileges, also create homestay listing
@@ -638,6 +649,9 @@ export default function HostListingWizard({ user, onBack, onSuccess }) {
               },
             },
           }).catch(() => {});
+
+          // 2.6 Gửi hồ sơ đăng ký sang trạng thái Chờ duyệt (Pending) để Admin phê duyệt
+          await homestayApi.submitHomestay(created.id).catch(() => {});
         }
       }
 

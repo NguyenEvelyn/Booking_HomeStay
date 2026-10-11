@@ -460,6 +460,28 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
     setBookingError(availableRooms > 0 ? '' : 'Loại phòng này đã hết phòng trong khoảng ngày bạn chọn.');
   }, [selectedRoom?.id, dateAvailability]);
 
+  const openRoomDetail = async (room) => {
+    const availableQuantity = Math.max(1, Math.min(roomQuantity, room.availableRoomCount || 1));
+    const capacityPerRoom = room.extraGuestAllowed ? room.maxCapacity : room.baseCapacity;
+    setSelectedRoom(room); setShowPaymentPage(false); setActiveRoomImage(0); setRoomQuantity(availableQuantity); setCalendarOpen(true);
+    setAdultCount((value) => Math.max(1, Math.min(value, capacityPerRoom * availableQuantity)));
+    setChildCount(0);
+    window.setTimeout(() => document.getElementById('room-detail-inline')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
+    try { const detail = await homestayApi.roomTypeDetail(room.id); setSelectedRoom((current) => current?.id === room.id ? { ...current, ...detail, availableRoomCount: current.availableRoomCount } : current); } catch { /* giữ dữ liệu danh sách nếu tải gallery thất bại */ }
+  };
+  const autoSelectedRoomRef = useRef(false);
+  useEffect(() => {
+    autoSelectedRoomRef.current = false;
+  }, [id, initialSearch?.roomTypeId]);
+  useEffect(() => {
+    if (!data?.roomTypes || autoSelectedRoomRef.current || !initialSearch?.roomTypeId) return;
+    const target = data.roomTypes.find((r) => r.id === Number(initialSearch.roomTypeId));
+    if (target) {
+      autoSelectedRoomRef.current = true;
+      openRoomDetail(target);
+    }
+  }, [data, initialSearch?.roomTypeId]);
+
   if (error) return <main className="detail-state"><p>{error}</p><button onClick={onBack}>Quay lại danh sách</button></main>;
   if (!data) return <main className="detail-state"><div className="detail-loader" />Đang tải chi tiết homestay...</main>;
 
@@ -583,15 +605,6 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
   const visibleReviews = filteredReviews.slice((Math.min(reviewPage, reviewPageCount) - 1) * reviewsPerPage, Math.min(reviewPage, reviewPageCount) * reviewsPerPage);
   const changeReviewFilters = (change) => { change(); setReviewPage(1); };
   const checkRooms = () => document.getElementById('rooms')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  const openRoomDetail = async (room) => {
-    const availableQuantity = Math.max(1, Math.min(roomQuantity, room.availableRoomCount || 1));
-    const capacityPerRoom = room.extraGuestAllowed ? room.maxCapacity : room.baseCapacity;
-    setSelectedRoom(room); setPriceQuote(null); setNightPricesExpanded(false); setShowPaymentPage(false); setActiveRoomImage(0); setRoomQuantity(availableQuantity); setCalendarOpen(true);
-    setAdultCount((value) => Math.max(1, Math.min(value, capacityPerRoom * availableQuantity)));
-    setChildCount(0);
-    window.setTimeout(() => document.getElementById('room-detail-inline')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
-    try { const detail = await homestayApi.roomTypeDetail(room.id); setSelectedRoom((current) => current?.id === room.id ? { ...current, ...detail, availableRoomCount: current.availableRoomCount } : current); } catch { /* giữ dữ liệu danh sách nếu tải gallery thất bại */ }
-  };
   const closeRoomDetail = () => { setSelectedRoom(null); setShowPaymentPage(false); window.setTimeout(() => document.querySelector('.rooms-section')?.scrollIntoView({ behavior: 'smooth' }), 0); };
   const bookingNights = arrival && departure ? Math.max(0, Math.round((new Date(departure) - new Date(arrival)) / 86400000)) : 0;
   const dayUsePercent = isDayUse ? (dayUseHours <= 3 ? policy.document.dayUse.upToThreeHoursPercent : dayUseHours <= 6 ? policy.document.dayUse.upToSixHoursPercent : policy.document.dayUse.overSixHoursPercent) : 100;
