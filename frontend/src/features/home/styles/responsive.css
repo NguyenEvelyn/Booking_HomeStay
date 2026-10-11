@@ -521,10 +521,6 @@
     width: calc(100% - 180px);
   }
 
-  .hero-ai-credit {
-    display: none;
-  }
-
 
   .search-bar {
     width: 100%;

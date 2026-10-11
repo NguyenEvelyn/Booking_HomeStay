@@ -264,7 +264,6 @@ export default function HomePage({
   const [guestsConfig, setGuestsConfig] = useState({ adults: 2, children: 0, rooms: 1 });
   const [apiStays, setApiStays] = useState([]);
   const [heroPicks, setHeroPicks] = useState([]);
-  const [heroModelVersion, setHeroModelVersion] = useState('');
   const [heroPicksLoading, setHeroPicksLoading] = useState(true);
 
   useEffect(() => {
@@ -312,7 +311,6 @@ export default function HomePage({
       setApiStays(realStays);
 
       if (recommendationResult.status === 'fulfilled' && recommendationResult.value?.items?.length) {
-        setHeroModelVersion(recommendationResult.value.modelVersion || 'AI Tripio');
         setHeroPicks(recommendationResult.value.items.map((item, index) => ({
           id: item.id,
           name: item.name,
@@ -323,7 +321,6 @@ export default function HomePage({
           isTop: index === 0,
         })));
       } else {
-        setHeroModelVersion('Xếp hạng nổi bật');
         setHeroPicks(realStays.slice(0, 4).map((item, index) => ({
           ...item,
           score: Math.round(Number(String(item.rating).replace(',', '.')) * 20),
@@ -881,11 +878,6 @@ export default function HomePage({
               </article>
             ))}
           </div>
-          {heroPicks.length > 0 && (
-            <div className="hero-ai-credit" aria-label={`Mô hình gợi ý ${heroModelVersion}`}>
-              <span aria-hidden="true" /> AI Tripio · {heroModelVersion}
-            </div>
-          )}
         </div>
 
       </section>
