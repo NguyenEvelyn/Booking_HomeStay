@@ -519,6 +519,11 @@ export default function HomePage({
       destDrag.current.active = false;
       el.classList.remove('is-dragging');
       checkDestScroll();
+      // Giữ cờ moved đến hết sự kiện click hiện tại, sau đó mở lại
+      // khả năng bấm cho lần tương tác tiếp theo.
+      setTimeout(() => {
+        destDrag.current.moved = false;
+      }, 0);
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
     };
