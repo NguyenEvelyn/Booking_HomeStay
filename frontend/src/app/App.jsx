@@ -9,6 +9,7 @@ import HomestayDetailPage from '../features/homestays/pages/HomestayDetailPage.j
 import HostDashboardPage from '../features/homestays/pages/HostDashboardPage.jsx';
 import MyBookingsPage from '../features/bookings/pages/MyBookingsPage.jsx';
 import AdminDashboardPage from '../features/admin/pages/AdminDashboardPage.jsx';
+import HostListingWizard from '../features/homestays/pages/HostListingWizard.jsx';
 
 import DevelopmentDialog from '../shared/components/DevelopmentDialog.jsx';
 import ErrorPage from '../shared/components/ErrorPage.jsx';
@@ -479,6 +480,22 @@ export default function App() {
       );
     }
 
+    if (view === 'register-host') {
+      return (
+        <>
+          <HostListingWizard
+            user={user}
+            onBack={() => setView('home')}
+            onSuccess={() => {
+              markCatalogChanged();
+              setView('home');
+            }}
+          />
+          {dialog}
+        </>
+      );
+    }
+
     if (view === 'catalog') {
       return (
         <>
@@ -537,6 +554,7 @@ export default function App() {
           onBookings={() => setView('bookings')}
           onHostPortal={() => setView('host')}
           onAdminPortal={() => setView('admin')}
+          onRegisterHomestay={() => setView('register-host')}
           onDeveloping={showDeveloping}
         />
 
