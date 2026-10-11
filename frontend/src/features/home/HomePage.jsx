@@ -214,13 +214,6 @@ const posts = [
   ['Những trải nghiệm không thể bỏ lỡ trong hành trình', blogThree],
 ];
 
-const heroStays = [
-  ['The Whispering Pines Retreat', heroImage],
-  ['Ocean Breeze Private Retreat', oceanImage],
-  ['The Coastal Haven', coastalImage],
-  ['Azure Bay Private Retreat', azureImage],
-];
-
 const offers = [
   voucherWeek,
   voucherHotDeal,
@@ -270,6 +263,9 @@ export default function HomePage({
   const [searchCheckOut, setSearchCheckOut] = useState('');
   const [guestsConfig, setGuestsConfig] = useState({ adults: 2, children: 0, rooms: 1 });
   const [apiStays, setApiStays] = useState([]);
+  const [heroPicks, setHeroPicks] = useState([]);
+  const [heroModelVersion, setHeroModelVersion] = useState('');
+  const [heroPicksLoading, setHeroPicksLoading] = useState(true);
 
   useEffect(() => {
     if (!userMenuOpen) return undefined;
@@ -293,12 +289,7 @@ export default function HomePage({
 
   useEffect(() => {
     let mounted = true;
-    homestayApi
-      .list({ pageSize: 6 })
-      .then((res) => {
-        if (mounted && res?.items?.length) {
-          setApiStays(
-            res.items.map((item, idx) => ({
+    const mapStay = (item, idx) => ({
               id: item.id,
               name: item.name,
               location: `${item.district || ''}, ${item.province || ''}`.replace(/^,\s*/, '') || 'Việt Nam',
@@ -308,15 +299,52 @@ export default function HomePage({
               rating: item.averageRating ? Number(item.averageRating).toFixed(1).replace('.', ',') : '4,8',
               image: item.thumbnailUrl || stays[idx % stays.length].image,
               description: item.description || null,
-            }))
-          );
-        }
-      })
-      .catch(() => {});
+            });
+
+    Promise.allSettled([
+      homestayApi.list({ pageSize: 8, sort: 'rating_desc' }),
+      homestayApi.recommendations({ topK: 4, guests: 2, adults: 2, children: 0, rooms: 1 }),
+    ]).then(([listResult, recommendationResult]) => {
+      if (!mounted) return;
+      const realStays = listResult.status === 'fulfilled'
+        ? (listResult.value?.items || []).map(mapStay)
+        : [];
+      setApiStays(realStays);
+
+      if (recommendationResult.status === 'fulfilled' && recommendationResult.value?.items?.length) {
+        setHeroModelVersion(recommendationResult.value.modelVersion || 'AI Tripio');
+        setHeroPicks(recommendationResult.value.items.map((item, index) => ({
+          id: item.id,
+          name: item.name,
+          location: [item.district, item.province].filter(Boolean).join(', '),
+          image: item.thumbnailUrl || realStays.find((stay) => stay.id === item.id)?.image || heroImage,
+          score: Math.round(Number(item.score || 0)),
+          reason: item.reasons?.[0] || 'Phù hợp với nhu cầu của bạn',
+          isTop: index === 0,
+        })));
+      } else {
+        setHeroModelVersion('Xếp hạng nổi bật');
+        setHeroPicks(realStays.slice(0, 4).map((item, index) => ({
+          ...item,
+          score: Math.round(Number(String(item.rating).replace(',', '.')) * 20),
+          reason: item.location,
+          isTop: index === 0,
+        })));
+      }
+      setHeroPicksLoading(false);
+    }).catch(() => {
+      if (mounted) {
+        setHeroPicksLoading(false);
+      }
+    });
     return () => {
       mounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    setActiveHero(0);
+  }, [heroPicks.length]);
 
   const displayStays = apiStays.length > 0 ? apiStays : stays;
 
@@ -351,7 +379,8 @@ export default function HomePage({
   };
 
   const changeHero = (index) => {
-    const total = heroStays.length;
+    const total = heroPicks.length;
+    if (!total) return;
     const nextIndex = (index + total) % total;
 
     setActiveHero(nextIndex);
@@ -585,10 +614,10 @@ export default function HomePage({
           ===================================================== */}
       <section className="hero" id="home">
         <div className="hero-background" aria-hidden="true">
-          {heroStays.map(([name, image], index) => (
+          {(heroPicks.length ? heroPicks : [{ id: 'fallback', name: 'Tripio', image: heroImage }]).map((item, index) => (
             <img
-              key={name}
-              src={image}
+              key={item.id}
+              src={item.image}
               alt=""
               className={`hero-background-image ${
                 activeHero === index ? 'is-active' : ''
@@ -793,7 +822,7 @@ export default function HomePage({
 
         <div
           className={`hero-picks${heroDragStart ? ' is-dragging' : ''}`}
-          aria-label="Gợi ý homestay nổi bật"
+          aria-label="Homestay hot do AI Tripio gợi ý"
           onPointerDown={handleHeroPointerDown}
           onPointerMove={handleHeroPointerMove}
           onPointerUp={handleHeroPointerUp}
@@ -803,12 +832,22 @@ export default function HomePage({
           <div
             className="hero-picks-track"
             style={{
-              transform: `translateY(calc(-${activeHero * 122}px + ${heroDragOffset}px))`,
+              transform: `translateY(calc(-${activeHero * 132}px + ${heroDragOffset}px))`,
             }}
           >
-            {heroStays.map(([name, image], index) => (
+            {heroPicksLoading && (
+              <article className="hero-pick-loading" aria-live="polite">
+                <span>AI đang chọn Homestay phù hợp…</span>
+              </article>
+            )}
+            {!heroPicksLoading && heroPicks.length === 0 && (
+              <article className="hero-pick-empty">
+                <span>Chưa có Homestay nổi bật</span>
+              </article>
+            )}
+            {heroPicks.map((item, index) => (
               <article
-                key={`${name}-${index}`}
+                key={item.id}
                 className={index === activeHero ? 'is-active' : ''}
                 onClick={() => {
                   if (Math.abs(heroDragOffset) < 10) {
@@ -816,19 +855,25 @@ export default function HomePage({
                   }
                 }}
               >
-                <img src={image} alt="" draggable="false" />
+                <img src={item.image} alt={`Ảnh ${item.name}`} draggable="false" />
 
-                <span>{name}</span>
+                <div className="hero-pick-copy">
+                  <small className={item.isTop ? 'is-hot' : ''}>
+                    {item.isTop ? 'HOT NHẤT · AI GỢI Ý' : `${item.score}% PHÙ HỢP`}
+                  </small>
+                  <strong>{item.name}</strong>
+                  <em>{item.location || item.reason}</em>
+                </div>
 
                 <button
                   type="button"
-                  aria-label={`Hiển thị ${name}`}
+                  aria-label={`Xem chi tiết ${item.name}`}
                   onPointerDown={(event) => {
                     event.stopPropagation();
                   }}
                   onClick={(event) => {
                     event.stopPropagation();
-                    changeHero(index);
+                    onOpenHomestay?.(item.id);
                   }}
                 >
                   <Icon name="arrowUpRight" />
@@ -836,6 +881,11 @@ export default function HomePage({
               </article>
             ))}
           </div>
+          {heroPicks.length > 0 && (
+            <div className="hero-ai-credit" aria-label={`Mô hình gợi ý ${heroModelVersion}`}>
+              <span aria-hidden="true" /> AI Tripio · {heroModelVersion}
+            </div>
+          )}
         </div>
 
       </section>

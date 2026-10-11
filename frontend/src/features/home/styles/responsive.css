@@ -200,7 +200,7 @@
   .hero-picks {
     right: 24px;
     width: 270px;
-    height: 214px;
+    height: 248px;
   }
 
   .hero-picks-track {
@@ -216,10 +216,9 @@
     height: 80px;
   }
 
-  .hero-picks article span {
+  .hero-pick-copy {
     left: 122px;
-    width: 130px;
-    font-size: 12px;
+    width: 132px;
   }
 
   .hero-picks article > button {
@@ -494,6 +493,36 @@
     font-size: 11px;
 
     line-height: 1.55;
+  }
+
+  .hero-picks {
+    right: 20px;
+    bottom: 138px;
+    width: calc(100% - 40px);
+    height: 112px;
+  }
+
+  .hero-picks-track,
+  .hero-picks article {
+    width: 100%;
+  }
+
+  .hero-picks article {
+    background: rgba(16, 31, 52, .58);
+  }
+
+  .hero-picks img {
+    width: 96px;
+    height: 90px;
+  }
+
+  .hero-pick-copy {
+    left: 122px;
+    width: calc(100% - 180px);
+  }
+
+  .hero-ai-credit {
+    display: none;
   }
 
 
