@@ -484,6 +484,14 @@ export default function HomePage({
     setTimeout(checkDestScroll, 350);
   };
 
+  const openDestination = (name) => {
+    if (typeof onBrowseHomestays === 'function') {
+      onBrowseHomestays({ location: name });
+    } else {
+      onDeveloping(`Điểm đến ${name}`);
+    }
+  };
+
   const onDestMouseDown = (e) => {
     if (e.button !== 0) return;
     const el = destTrackRef.current;
@@ -1288,14 +1296,17 @@ export default function HomePage({
               <article
                 className="dest-card"
                 key={name}
-                style={{ cursor: 'pointer' }}
+                role="link"
+                tabIndex={0}
+                aria-label={`Xem homestay và đặt phòng tại ${name}`}
                 onClick={() => {
                   if (destDrag.current.moved) return;
-                  if (typeof onBrowseHomestays === 'function') {
-                    onBrowseHomestays({ search: name });
-                  } else {
-                    onDeveloping(`Điểm đến ${name}`);
-                  }
+                  openDestination(name);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key !== 'Enter' && event.key !== ' ') return;
+                  event.preventDefault();
+                  openDestination(name);
                 }}
               >
                 <img
