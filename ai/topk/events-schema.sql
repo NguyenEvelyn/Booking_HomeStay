@@ -19,6 +19,8 @@ CREATE INDEX IF NOT EXISTS ix_recommendation_events_homestay_time
     ON recommendation_events(homestay_id, occurred_at DESC);
 CREATE INDEX IF NOT EXISTS ix_recommendation_events_source_time
     ON recommendation_events(source, occurred_at DESC);
+CREATE INDEX IF NOT EXISTS ix_recommendation_events_session_type_time
+    ON recommendation_events(session_id, event_type, occurred_at DESC);
 CREATE UNIQUE INDEX IF NOT EXISTS ux_recommendation_events_booking
     ON recommendation_events(booking_id) WHERE booking_id IS NOT NULL;
 

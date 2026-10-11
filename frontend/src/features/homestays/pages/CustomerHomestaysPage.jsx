@@ -13,6 +13,15 @@ const money = (value) => value == null ? 'Liên hệ' : `${new Intl.NumberFormat
 const covers = [pineHomestayImage, azureHomestayImage, sunsetHomestayImage];
 const roomFilters = ['Phòng đơn', 'Phòng đôi', 'Phòng có ban công', 'Phòng gia đình'];
 const amenityOptions = ['WiFi', 'Bể bơi', 'Bếp', 'Ban công', 'Điều hòa', 'Chỗ đỗ xe', 'Máy giặt', 'Cho phép thú cưng'];
+const localIsoDate = (date) => {
+  const offset = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 10);
+};
+const dateAfter = (value, days = 1) => {
+  const date = value ? new Date(`${value}T00:00:00`) : new Date();
+  date.setDate(date.getDate() + days);
+  return localIsoDate(date);
+};
 
 function Icon({ name, filled = false, size }) {
   const icons = {
@@ -72,7 +81,7 @@ function Icon({ name, filled = false, size }) {
 }
 
 export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings, onAccount, refreshKey = 0, initialSearch }) {
-  const [search, setSearch] = useState(initialSearch?.search || '');
+  const [search, setSearch] = useState(initialSearch?.search || initialSearch?.location || '');
   const [location, setLocation] = useState(initialSearch?.location || '');
   const [result, setResult] = useState({ items: [], total: 0 });
   const [maxPrice, setMaxPrice] = useState(3000000);
@@ -97,6 +106,7 @@ export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings
   const [error, setError] = useState('');
 
   const totalGuests = guestsConfig.adults + guestsConfig.children;
+  const isDayUseSearch = Boolean(checkIn && checkOut && checkIn === checkOut);
   const criteria = (targetPage = page) => ({
     search,
     location,
@@ -118,18 +128,23 @@ export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings
     setError('');
     try {
       if ((checkIn && !checkOut) || (!checkIn && checkOut)) throw new Error('Vui lòng chọn đầy đủ ngày nhận và ngày trả phòng.');
-      if (checkIn && checkOut && checkOut <= checkIn) throw new Error('Ngày trả phòng phải sau ngày nhận phòng.');
+      if (checkIn && checkOut && checkOut < checkIn) throw new Error('Ngày trả phòng không được trước ngày nhận phòng.');
       const nights = checkIn && checkOut ? Math.max(1, Math.round((new Date(checkOut) - new Date(checkIn)) / 86400000)) : 1;
+      // API danh sách kiểm tra tồn phòng theo khoảng [nhận, trả). Với day-use,
+      // dùng ngày kế tiếp chỉ cho bước kiểm tra tồn; ngày hiển thị vẫn giữ nguyên
+      // để trang chi tiết áp dụng chính sách và mức giá theo giờ.
+      const availabilityCheckOut = isDayUseSearch ? dateAfter(checkIn) : checkOut;
 
       const [catalogResult, recommendationResult] = await Promise.allSettled([
-        homestayApi.list(criteria(targetPage)),
-        location
-          ? Promise.resolve({ items: [], modelVersion: '' })
-          : homestayApi.recommendations({
+        homestayApi.list({ ...criteria(targetPage), checkOut: availabilityCheckOut }),
+        homestayApi.recommendations({
               search,
+              location,
               checkIn,
-              checkOut,
+              checkOut: availabilityCheckOut,
               guests: totalGuests,
+              adults: guestsConfig.adults,
+              children: guestsConfig.children,
               rooms: guestsConfig.rooms,
               totalBudget: maxPrice * guestsConfig.rooms * nights,
               amenities: preferredAmenities,
@@ -174,9 +189,12 @@ export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings
         recordRecommendationEvent({
           eventType: 'search',
           search: search.trim(),
+          location: location.trim(),
           checkIn: checkIn || null,
           checkOut: checkOut || null,
           guests: totalGuests,
+          adults: guestsConfig.adults,
+          children: guestsConfig.children,
           rooms: guestsConfig.rooms,
           totalBudget: maxPrice * guestsConfig.rooms * nights,
           amenities: preferredAmenities,
@@ -220,10 +238,7 @@ export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings
     localStorage.setItem('tripio-favorites', JSON.stringify(next));
   };
 
-  const openItem = (id) => {
-    recordRecommendationEvent('click', id).catch(() => {});
-    onOpen(id, criteria(page));
-  };
+  const openItem = (id) => onOpen(id, criteria(page));
   const pageCount = Math.max(1, Math.ceil(result.total / (result.pageSize || 12)));
 
   return (
@@ -272,34 +287,33 @@ export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings
 
         <label>
           Ngày nhận
-          <span className="search-control">
+          <span className="search-control date-control">
             <input
-              type="text"
-              placeholder="Chọn ngày nhận"
+              type="date"
+              aria-label="Ngày nhận phòng"
+              min={localIsoDate(new Date())}
               value={checkIn}
               onChange={(e) => {
                 setCheckIn(e.target.value);
-                if (checkOut && checkOut <= e.target.value) setCheckOut('');
+                if (checkOut && checkOut < e.target.value) setCheckOut('');
               }}
-              onFocus={(e) => { e.currentTarget.type = 'date'; }}
-              onBlur={(e) => { if (!e.currentTarget.value) e.currentTarget.type = 'text'; }}
             />
-            <i><Icon name="calendar" /></i>
           </span>
         </label>
 
         <label>
-          Ngày trả
-          <span className="search-control">
+          <span className="catalog-date-label">
+            Ngày trả
+            {isDayUseSearch && <em>Trong ngày</em>}
+          </span>
+          <span className="search-control date-control">
             <input
-              type="text"
-              placeholder="Chọn ngày trả"
+              type="date"
+              aria-label="Ngày trả phòng"
+              min={checkIn || localIsoDate(new Date())}
               value={checkOut}
               onChange={(e) => setCheckOut(e.target.value)}
-              onFocus={(e) => { e.currentTarget.type = 'date'; }}
-              onBlur={(e) => { if (!e.currentTarget.value) e.currentTarget.type = 'text'; }}
             />
-            <i><Icon name="calendar" /></i>
           </span>
         </label>
 

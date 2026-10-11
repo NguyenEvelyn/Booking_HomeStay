@@ -20,6 +20,7 @@ public sealed class SupabaseStorageService(HttpClient httpClient)
             HttpMethod.Post,
             $"{_baseUrl}/storage/v1/object/{encodedBucket}/{encodedPath}");
         request.Headers.TryAddWithoutValidation("apikey", _secretKey);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _secretKey);
         request.Headers.TryAddWithoutValidation("x-upsert", "false");
         request.Headers.CacheControl = new CacheControlHeaderValue
         {

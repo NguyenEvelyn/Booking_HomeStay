@@ -144,6 +144,11 @@
   transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s ease, box-shadow 0.25s ease;
 }
 
+.dest-card:focus-visible {
+  outline: 3px solid #f4b400;
+  outline-offset: 4px;
+}
+
 /* Khi hover vào: thẻ to ra và nổi bật */
 .dest-card:hover {
   width: 395px;

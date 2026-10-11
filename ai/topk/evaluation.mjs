@@ -8,7 +8,8 @@ export function parseQuery(event) {
     const checkIn = data?.checkIn;
     const checkOut = data?.checkOut;
     const nights = checkIn && checkOut ? Math.max(1, Math.round((new Date(checkOut) - new Date(checkIn)) / 86400000)) : 1;
-    return { search: data?.search || '', guests: data?.guests || 2, adults: data?.guests || 2,
+    return { search: data?.search || data?.location || '', guests: data?.guests || 2,
+      adults: data?.adults ?? Math.max(1, (data?.guests || 2) - (data?.children || 0)), children: data?.children || 0,
       rooms: data?.rooms || 1, nights, totalBudget: data?.totalBudget || 0,
       preferredAmenities: data?.amenities || [], recommendedIds: data?.recommendedIds || [] };
   } catch { return null; }

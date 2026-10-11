@@ -9,7 +9,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HomestayAuth.Api.Features.Bookings;
 
-public sealed record ManualBookingRequest(long RoomId, DateOnly CheckIn, DateOnly CheckOut, int GuestCount, string? Note);
+public sealed record ManualBookingRequest(long RoomId, DateOnly CheckIn, DateOnly CheckOut, int AdultCount, int ChildCount,
+    string GuestName, string GuestEmail, string GuestPhone, string? Note);
 public sealed record DepositRequest(decimal? Amount, string PaymentMethod = "Manual", string? TransactionCode = null);
 public sealed record CheckInRequest(string Notes, object? Evidence = null);
 public sealed record ChargeRequest(string Type, string Description, int Quantity, decimal UnitPrice, object? Evidence = null);
@@ -23,7 +24,8 @@ public sealed record CheckoutRequest(decimal PaymentAmount = 0, string PaymentMe
 [ApiController]
 [Route("api")]
 [Authorize]
-public sealed class BookingOperationsController(AppDbContext db, RoomInventoryService inventory, PaymentService payments, AdditionalChargeService chargeService, IdempotencyService idempotency, PolicyService policyService) : ControllerBase
+public sealed class BookingOperationsController(AppDbContext db, RoomInventoryService inventory, PaymentService payments, AdditionalChargeService chargeService,
+    IdempotencyService idempotency, PolicyService policyService, BookingPricingService pricingService) : ControllerBase
 {
     private long UserId => long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
     private string Role => User.FindFirstValue(ClaimTypes.Role) ?? "Customer";
@@ -31,32 +33,52 @@ public sealed class BookingOperationsController(AppDbContext db, RoomInventorySe
     [HttpPost("bookings")]
     public async Task<IActionResult> Create(ManualBookingRequest request)
     {
+        if (Role != "Host") return Forbid();
         if (BookingRules.ValidateDates(request.CheckIn, request.CheckOut, BookingRules.Today) is { } error) return BadRequest(new { message = error });
-        if (request.GuestCount <= 0) return BadRequest(new { message = "Số khách phải lớn hơn 0." });
+        var guestCount = request.AdultCount + request.ChildCount;
+        if (request.AdultCount <= 0 || request.ChildCount < 0) return BadRequest(new { message = "Số lượng khách không hợp lệ." });
+        if (string.IsNullOrWhiteSpace(request.GuestName) || string.IsNullOrWhiteSpace(request.GuestEmail) || string.IsNullOrWhiteSpace(request.GuestPhone))
+            return BadRequest(new { message = "Vui lòng nhập đủ họ tên, email và số điện thoại khách." });
         await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
         await inventory.LockRoom(request.RoomId);
-        var room = await db.Rooms.Include(x => x.RoomType).SingleOrDefaultAsync(x => x.Id == request.RoomId && x.Status == "Available");
+        var room = await db.Rooms.Include(x => x.RoomType).ThenInclude(x => x.PricePeriods)
+            .SingleOrDefaultAsync(x => x.Id == request.RoomId && x.Status == "Available" && x.RoomType.Homestay.HostId == UserId);
         if (room is null) return NotFound(new { message = "Phòng không tồn tại hoặc không kinh doanh." });
         var allowedCapacity = room.RoomType.ExtraGuestAllowed ? room.RoomType.MaxCapacity : room.RoomType.BaseCapacity;
-        if (request.GuestCount > allowedCapacity) return BadRequest(new { message = "Số khách vượt sức chứa được phép." });
+        if (guestCount > allowedCapacity) return BadRequest(new { message = "Số khách vượt sức chứa được phép." });
         if (!await inventory.IsAvailable(room.Id, request.CheckIn, request.CheckOut))
             return Conflict(new { message = "Phòng đã được giữ hoặc đặt trong khoảng thời gian này." });
-        var nights = request.CheckOut.DayNumber - request.CheckIn.DayNumber;
         var policy = await policyService.Resolve(room.RoomType.HomestayId, DateTime.UtcNow);
-        var roomAmount = room.RoomType.BasePrice * nights;
-        var extra = BookingRules.ExtraFee(request.GuestCount, room.RoomType.BaseCapacity, 1, room.RoomType.ExtraGuestFee, nights);
+        var price = pricingService.Calculate(room.RoomType, request.CheckIn, request.CheckOut, request.AdultCount, request.ChildCount, 1, null,
+            "Deposit", room.RoomType.PricePeriods.ToList(), policy, BookingRules.Today);
+        var nights = price.Nights;
+        var roomAmount = price.RoomAmount;
+        var extra = price.ExtraAdultFee;
         var now = DateTime.UtcNow;
-        var booking = new Booking { BookingCode = $"TRP{now:yyMMddHHmmss}{Guid.NewGuid():N}"[..24].ToUpperInvariant(), CustomerId = UserId,
-            HomestayId = room.RoomType.HomestayId, CheckInDate = request.CheckIn, CheckOutDate = request.CheckOut, AdultCount = request.GuestCount,
-            ChildCount = 0, RoomAmount = roomAmount, DepositAmount = BookingRules.Deposit(roomAmount, room.RoomType.DepositPercent),
-            Subtotal = roomAmount, TotalAmount = roomAmount + extra, DiscountAmount = 0, ServiceFee = 0, TaxAmount = 0, CommissionRate = policy.CommissionRate,
+        var email = request.GuestEmail.Trim().ToLowerInvariant();
+        var phone = request.GuestPhone.Trim();
+        var customer = await db.Users.SingleOrDefaultAsync(x => x.Email == email);
+        if (customer is not null && customer.Role != "Customer") return Conflict(new { message = "Email này đang thuộc tài khoản không phải khách hàng." });
+        if (customer is null && await db.Users.AnyAsync(x => x.PhoneNumber == phone))
+            return Conflict(new { message = "Số điện thoại này đã thuộc một tài khoản khác. Vui lòng kiểm tra lại email khách." });
+        if (customer is null)
+        {
+            customer = new User { FullName = request.GuestName.Trim(), Email = email, PhoneNumber = phone, PasswordHash = null,
+                Role = "Customer", Status = "Unverified", CreatedAt = now, UpdatedAt = now };
+            db.Users.Add(customer); await db.SaveChangesAsync();
+        }
+        var booking = new Booking { BookingCode = $"TRP{now:yyMMddHHmmss}{Guid.NewGuid():N}"[..24].ToUpperInvariant(), CustomerId = customer.Id,
+            HomestayId = room.RoomType.HomestayId, CheckInDate = request.CheckIn, CheckOutDate = request.CheckOut, AdultCount = request.AdultCount,
+            ChildCount = request.ChildCount, RoomAmount = roomAmount, DepositAmount = price.DepositAmount,
+            Subtotal = price.TotalAmount, TotalAmount = price.TotalAmount, DiscountAmount = price.DiscountAmount, ServiceFee = 0, TaxAmount = 0, CommissionRate = policy.CommissionRate,
             Status = BookingStatus.Hold, PaymentStatus = PaymentStatus.Unpaid, HoldExpiresAt = now.AddMinutes(policy.HoldMinutes), CustomerNote = request.Note,
-            PricingSnapshotJson = BookingService.PricingSnapshot(room.RoomType, roomAmount, nights), PolicySnapshotJson = PolicyService.Serialize(policy), ReviewCreateUntil = request.CheckOut.AddDays(policy.ReviewCreateDays), ReviewEditUntil = request.CheckOut.AddDays(policy.ReviewEditDays), CreatedAt = now, UpdatedAt = now };
-        booking.Details.Add(new BookingDetail { RoomId = room.Id, RoomTypeId = room.RoomTypeId, Quantity = 1, PricePerNight = room.RoomType.BasePrice, NumberOfNights = nights, ExtraFee = 0, LineTotal = roomAmount });
-        inventory.Allocate(booking, room.Id, request.CheckIn, request.CheckOut, room.RoomType.BasePrice);
+            ContactName = request.GuestName.Trim(), ContactEmail = email, ContactPhone = phone, GuestName = request.GuestName.Trim(),
+            PricingSnapshotJson = JsonSerializer.Serialize(new { room.RoomType.Id, room.RoomType.Name, price }), PolicySnapshotJson = PolicyService.Serialize(policy), ReviewCreateUntil = request.CheckOut.AddDays(policy.ReviewCreateDays), ReviewEditUntil = request.CheckOut.AddDays(policy.ReviewEditDays), CreatedAt = now, UpdatedAt = now };
+        booking.Details.Add(new BookingDetail { RoomId = room.Id, RoomTypeId = room.RoomTypeId, Quantity = 1, PricePerNight = price.RoomAmountBeforeDiscount / nights, NumberOfNights = nights, ExtraFee = extra, LineTotal = price.TotalAmount });
+        inventory.Allocate(booking, room.Id, request.CheckIn, request.CheckOut, price.RoomAmountBeforeDiscount / nights);
         if (extra > 0) booking.AdditionalCharges.Add(chargeService.Create(0, "extra_guest", "Phụ thu khách vượt sức chứa cơ bản", 1, extra, UserId, null));
         db.Bookings.Add(booking); await db.SaveChangesAsync(); await tx.CommitAsync();
-        return CreatedAtAction(nameof(Balance), new { id = booking.Id }, new { booking.Id, booking.BookingCode, booking.RoomAmount, booking.DepositAmount, booking.HoldExpiresAt, additionalCharge = extra });
+        return CreatedAtAction(nameof(Balance), new { id = booking.Id }, new { booking.Id, booking.BookingCode, booking.RoomAmount, booking.TotalAmount, booking.DepositAmount, booking.HoldExpiresAt, additionalCharge = extra });
     }
 
     [HttpPost("bookings/{id:long}/pay-deposit")]
@@ -70,7 +92,9 @@ public sealed class BookingOperationsController(AppDbContext db, RoomInventorySe
         var amount = request.Amount ?? booking.DepositAmount;
         if (amount < booking.DepositAmount) return BadRequest(new { message = "Số tiền cọc chưa đủ." });
         db.Payments.Add(new Payment { BookingId = id, TransactionCode = request.TransactionCode ?? $"MAN-{Guid.NewGuid():N}", PaymentMethod = request.PaymentMethod, TransactionType = "Deposit", Amount = amount, Status = "Success", PaidAt = DateTime.UtcNow, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
-        booking.Status = BookingStatus.Confirmed; booking.PaymentStatus = PaymentStatus.Deposited; booking.UpdatedAt = DateTime.UtcNow;
+        booking.Status = BookingStatus.Confirmed;
+        booking.PaymentStatus = amount >= booking.TotalAmount ? PaymentStatus.Paid : PaymentStatus.Deposited;
+        booking.UpdatedAt = DateTime.UtcNow;
         var response = new { booking.Status, booking.PaymentStatus, paid = amount }; StoreIdempotency("pay-deposit", request, response);
         await db.SaveChangesAsync(); await tx.CommitAsync(); return Ok(response);
     }

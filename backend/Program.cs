@@ -1,6 +1,7 @@
 using HomestayAuth.Api.Features.Auth.Services;
 using HomestayAuth.Api.Features.Homestays.Services;
 using HomestayAuth.Api.Features.Recommendations;
+using HomestayAuth.Api.Features.DemandForecasting;
 using HomestayAuth.Api.Features.Admin.Audit;
 using HomestayAuth.Api.Features.Admin.Authorization;
 using HomestayAuth.Api.Infrastructure.Persistence;
@@ -75,8 +76,10 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IHomestayQueryService, HomestayQueryService>();
 builder.Services.AddHttpClient<SupabaseStorageService>();
 builder.Services.AddScoped<RecommendationService>();
+builder.Services.AddScoped<DemandForecastService>();
 builder.Services.AddScoped<IAuditLogService, AuditLogService>();
-builder.Services.AddSingleton(RecommendationWeights.Load(builder.Environment.ContentRootPath));
+builder.Services.AddSingleton(new RecommendationWeightsProvider(builder.Environment.ContentRootPath));
+builder.Services.AddHostedService<RecommendationEventRetentionService>();
 builder.Services.AddSingleton<HomestayAuth.Api.Features.Bookings.VnPayService>();
 builder.Services.AddHostedService<HomestayAuth.Api.Features.Bookings.ExpiredBookingWorker>();
 builder.Services.AddHostedService<HomestayAuth.Api.Features.Bookings.OutboxWorker>();
@@ -87,6 +90,7 @@ builder.Services.AddScoped<HomestayAuth.Api.Features.Bookings.IdempotencyService
 builder.Services.AddScoped<HomestayAuth.Api.Features.Bookings.BookingService>();
 builder.Services.AddScoped<HomestayAuth.Api.Features.Bookings.AdditionalChargeService>();
 builder.Services.AddScoped<HomestayAuth.Api.Features.Bookings.PolicyService>();
+builder.Services.AddSingleton<HomestayAuth.Api.Features.Bookings.BookingPricingService>();
 builder.Services.AddSingleton<IEmailOtpSender, EmailOtpSender>();
 builder.Services.AddRateLimiter(options =>
 {
@@ -139,7 +143,12 @@ var authentication = builder.Services.AddAuthentication(JwtBearerDefaults.Authen
         {
             OnMessageReceived = context =>
             {
-                context.Token = context.Request.Cookies["token"];
+                // Safari/iOS can block the authentication cookie when the frontend
+                // and API are hosted on different sites. Prefer an explicit Bearer
+                // token in that case and keep the cookie as a backwards-compatible
+                // fallback for same-site/local clients.
+                if (!context.Request.Headers.ContainsKey("Authorization"))
+                    context.Token = context.Request.Cookies["token"];
                 return Task.CompletedTask;
             },
             OnTokenValidated = async context =>
@@ -188,10 +197,16 @@ builder.Services.AddAuthorization(options =>
 });
 builder.Services.AddControllers();
 var configuredClientUrl = Environment.GetEnvironmentVariable("CLIENT_URL") ?? "http://localhost:5173";
+var additionalClientUrls = (Environment.GetEnvironmentVariable("CLIENT_URLS") ?? string.Empty)
+    .Split([',', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+var allowedClientUrls = new HashSet<string>(additionalClientUrls, StringComparer.OrdinalIgnoreCase)
+{
+    configuredClientUrl.TrimEnd('/')
+};
 builder.Services.AddCors(options => options.AddPolicy("Frontend", policy =>
     policy.SetIsOriginAllowed(origin =>
     {
-        if (string.Equals(origin, configuredClientUrl, StringComparison.OrdinalIgnoreCase)) return true;
+        if (allowedClientUrls.Contains(origin.TrimEnd('/'))) return true;
         if (Uri.TryCreate(origin, UriKind.Absolute, out var uri))
         {
             return uri.Host == "localhost" || uri.Host == "127.0.0.1";
@@ -206,8 +221,9 @@ var app = builder.Build();
 
 // Keep lightweight additive schema changes in sync for deployments that do not
 // run EF migrations (for example the current Neon setup).
-await using (var schemaScope = app.Services.CreateAsyncScope())
+if (!string.Equals(Environment.GetEnvironmentVariable("SKIP_SCHEMA_SYNC"), "true", StringComparison.OrdinalIgnoreCase))
 {
+    await using var schemaScope = app.Services.CreateAsyncScope();
     var schemaDb = schemaScope.ServiceProvider.GetRequiredService<AppDbContext>();
     await schemaDb.Database.ExecuteSqlRawAsync("""
         ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(500);
@@ -255,6 +271,11 @@ await using (var schemaScope = app.Services.CreateAsyncScope())
         ALTER TABLE room_types ADD COLUMN IF NOT EXISTS extra_child_fee NUMERIC(18,2) NOT NULL DEFAULT 0;
         ALTER TABLE room_types ADD COLUMN IF NOT EXISTS child_max_age INTEGER NOT NULL DEFAULT 11;
         ALTER TABLE room_types ADD COLUMN IF NOT EXISTS deposit_percent NUMERIC(5,4) NOT NULL DEFAULT .30;
+        ALTER TABLE rooms ADD COLUMN IF NOT EXISTS cleaning_status VARCHAR(30) NOT NULL DEFAULT 'Clean';
+        ALTER TABLE rooms ADD COLUMN IF NOT EXISTS cleaning_started_at TIMESTAMPTZ;
+        ALTER TABLE rooms ADD COLUMN IF NOT EXISTS cleaning_completed_at TIMESTAMPTZ;
+        ALTER TABLE rooms ADD COLUMN IF NOT EXISTS cleaning_checklist JSONB;
+        UPDATE rooms SET cleaning_status = 'NeedCleaning' WHERE status = 'Cleaning' AND cleaning_status = 'Clean';
         ALTER TABLE homestays ADD COLUMN IF NOT EXISTS time_zone_id VARCHAR(100) NOT NULL DEFAULT 'Asia/Ho_Chi_Minh';
         ALTER TABLE homestays ADD COLUMN IF NOT EXISTS cleaning_buffer_minutes INTEGER NOT NULL DEFAULT 120;
         ALTER TABLE homestays ADD COLUMN IF NOT EXISTS late_checkout_1_3h_fee NUMERIC(18,2) NOT NULL DEFAULT 200000;
@@ -268,6 +289,32 @@ await using (var schemaScope = app.Services.CreateAsyncScope())
         ALTER TABLE bookings ADD COLUMN IF NOT EXISTS policy_snapshot JSONB NOT NULL DEFAULT '{{}}'::jsonb;
         ALTER TABLE bookings ADD COLUMN IF NOT EXISTS review_create_until DATE;
         ALTER TABLE bookings ADD COLUMN IF NOT EXISTS review_edit_until DATE;
+        UPDATE bookings
+        SET review_create_until = check_out_date + 14
+        WHERE review_create_until IS NULL;
+        UPDATE bookings
+        SET review_edit_until = check_out_date + 14
+        WHERE review_edit_until IS NULL;
+        ALTER TABLE bookings ALTER COLUMN review_create_until SET NOT NULL;
+        ALTER TABLE bookings ALTER COLUMN review_edit_until SET NOT NULL;
+        CREATE TABLE IF NOT EXISTS booking_guests (
+          booking_guest_id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+          booking_id BIGINT NOT NULL REFERENCES bookings(booking_id) ON DELETE CASCADE,
+          is_primary BOOLEAN NOT NULL DEFAULT FALSE,
+          guest_type VARCHAR(20) NOT NULL CHECK (guest_type IN ('adult','child')),
+          full_name VARCHAR(150) NOT NULL,
+          birth_date DATE,
+          gender VARCHAR(20) NOT NULL,
+          nationality VARCHAR(80) NOT NULL,
+          document_type VARCHAR(30) NOT NULL,
+          document_number VARCHAR(50), address VARCHAR(500), accompanying_adult VARCHAR(150),
+          declaration_deferred BOOLEAN NOT NULL DEFAULT FALSE,
+          declaration_status VARCHAR(30) NOT NULL DEFAULT 'Completed' CHECK (declaration_status IN ('Completed','Deferred','Incomplete')),
+          declaration_due_at TIMESTAMPTZ, created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS ix_booking_guests_booking ON booking_guests(booking_id);
+        CREATE UNIQUE INDEX IF NOT EXISTS ux_booking_guests_primary ON booking_guests(booking_id) WHERE is_primary;
         ALTER TABLE bookings DROP CONSTRAINT IF EXISTS bookings_status_check;
         UPDATE bookings SET status='Hold' WHERE status='PendingPayment';
         UPDATE bookings SET status='CheckedOut' WHERE status='Completed';
@@ -310,6 +357,32 @@ await using (var schemaScope = app.Services.CreateAsyncScope())
         );
         CREATE INDEX IF NOT EXISTS ix_booking_room_stays_schedule
           ON booking_room_stays(room_id,start_date,end_date) WHERE status='Active';
+        CREATE TABLE IF NOT EXISTS booking_date_changes (
+          id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+          booking_id BIGINT NOT NULL REFERENCES bookings(booking_id) ON DELETE RESTRICT,
+          old_check_in_date DATE NOT NULL,
+          old_check_out_date DATE NOT NULL,
+          new_check_in_date DATE NOT NULL,
+          new_check_out_date DATE NOT NULL,
+          days_before_check_in INTEGER NOT NULL,
+          date_change_fee NUMERIC(18,2) NOT NULL DEFAULT 0,
+          price_difference NUMERIC(18,2) NOT NULL DEFAULT 0,
+          total_amount_difference NUMERIC(18,2) NOT NULL DEFAULT 0,
+          reason VARCHAR(500),
+          changed_by BIGINT NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS booking_extensions (
+          id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+          booking_id BIGINT NOT NULL REFERENCES bookings(booking_id) ON DELETE RESTRICT,
+          old_check_out_date DATE NOT NULL,
+          new_check_out_date DATE NOT NULL,
+          extended_nights INTEGER NOT NULL,
+          total_cost NUMERIC(18,2) NOT NULL DEFAULT 0,
+          reason VARCHAR(500),
+          extended_by BIGINT NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
         CREATE TABLE IF NOT EXISTS homestay_policies (
           policy_id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
           homestay_id BIGINT NOT NULL REFERENCES homestays(homestay_id) ON DELETE CASCADE,
@@ -328,6 +401,7 @@ await using (var schemaScope = app.Services.CreateAsyncScope())
           created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
           UNIQUE(homestay_id,version), CHECK (effective_to IS NULL OR effective_to > effective_from)
         );
+        ALTER TABLE homestay_policies ADD COLUMN IF NOT EXISTS operational_policy JSONB NOT NULL DEFAULT '{{}}'::jsonb;
         CREATE TABLE IF NOT EXISTS cancellation_policy_tiers (
           tier_id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
           policy_id BIGINT NOT NULL REFERENCES homestay_policies(policy_id) ON DELETE CASCADE,
@@ -382,6 +456,12 @@ await using (var schemaScope = app.Services.CreateAsyncScope())
         ALTER TABLE bookings ADD COLUMN IF NOT EXISTS recommendation_session_id VARCHAR(100);
         ALTER TABLE bookings ADD COLUMN IF NOT EXISTS host_note VARCHAR(1000);
         ALTER TABLE bookings ADD COLUMN IF NOT EXISTS host_viewed_at TIMESTAMPTZ;
+        ALTER TABLE bookings ADD COLUMN IF NOT EXISTS contact_name VARCHAR(150);
+        ALTER TABLE bookings ADD COLUMN IF NOT EXISTS contact_phone VARCHAR(20);
+        ALTER TABLE bookings ADD COLUMN IF NOT EXISTS contact_email VARCHAR(255);
+        ALTER TABLE bookings ADD COLUMN IF NOT EXISTS guest_name VARCHAR(150);
+        ALTER TABLE bookings ADD COLUMN IF NOT EXISTS contact_name_edit_count INTEGER NOT NULL DEFAULT 0;
+        ALTER TABLE bookings ADD COLUMN IF NOT EXISTS contact_updated_at TIMESTAMPTZ;
         ALTER TABLE bookings ADD COLUMN IF NOT EXISTS commission_rate NUMERIC(5,4) NOT NULL DEFAULT 0.10;
         ALTER TABLE payments ADD COLUMN IF NOT EXISTS vnp_transaction_no VARCHAR(30);
         ALTER TABLE payments ADD COLUMN IF NOT EXISTS response_code VARCHAR(10);
@@ -427,6 +507,7 @@ await using (var schemaScope = app.Services.CreateAsyncScope())
         CREATE INDEX IF NOT EXISTS ix_recommendation_events_customer_time ON recommendation_events(customer_id, occurred_at DESC);
         CREATE INDEX IF NOT EXISTS ix_recommendation_events_homestay_time ON recommendation_events(homestay_id, occurred_at DESC);
         CREATE INDEX IF NOT EXISTS ix_recommendation_events_source_time ON recommendation_events(source, occurred_at DESC);
+        CREATE INDEX IF NOT EXISTS ix_recommendation_events_session_type_time ON recommendation_events(session_id, event_type, occurred_at DESC);
         """);
 }
 

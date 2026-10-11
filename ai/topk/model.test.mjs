@@ -20,3 +20,11 @@ test('amenity preference changes order; hard amenity requirement excludes missin
   assert.equal(rankHomestays(catalog, { ...query, preferredAmenities: ['Hồ bơi'] })[0].homestayId, 1);
   assert.deepEqual(rankHomestays(catalog, { ...query, requiredAmenities: ['Hồ bơi'] }).map((item) => item.homestayId), [1]);
 });
+
+test('filters by adult and child capacity independently', () => {
+  const familyCatalog = [{ id: 3, name: 'Family', province: 'Đà Nẵng', district: 'Sơn Trà', amenities: [],
+    roomTypes: [{ id: 31, name: 'Gia đình', basePrice: 900000, baseCapacity: 4, maxCapacity: 4,
+      maxAdults: 2, maxChildren: 2, availableRoomCount: 1 }] }];
+  assert.equal(rankHomestays(familyCatalog, { guests: 4, adults: 2, children: 2, rooms: 1 }).length, 1);
+  assert.equal(rankHomestays(familyCatalog, { guests: 4, adults: 3, children: 1, rooms: 1 }).length, 0);
+});

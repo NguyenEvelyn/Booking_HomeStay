@@ -29,11 +29,18 @@ public class Booking
     public string? RecommendationSessionId { get; set; }
     public string? HostNote { get; set; }
     public DateTime? HostViewedAt { get; set; }
+    public string? ContactName { get; set; }
+    public string? ContactPhone { get; set; }
+    public string? ContactEmail { get; set; }
+    public string? GuestName { get; set; }
+    public int ContactNameEditCount { get; set; }
+    public DateTime? ContactUpdatedAt { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public ICollection<BookingDetail> Details { get; set; } = [];
     public ICollection<Payment> Payments { get; set; } = [];
     public ICollection<AdditionalCharge> AdditionalCharges { get; set; } = [];
     public ICollection<BookingRoomStay> RoomStays { get; set; } = [];
+    public ICollection<BookingGuest> Guests { get; set; } = [];
     public Homestay Homestay { get; set; } = null!;
 }

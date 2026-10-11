@@ -7,15 +7,16 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HomestayAuth.Api.Features.Recommendations;
 
-public sealed record RecommendationQuery(string? Search, DateOnly? CheckIn, DateOnly? CheckOut,
-    int Guests, int Rooms, decimal? TotalBudget, string? Amenities, string? RoomType, int MinRating, int TopK, string? SessionId);
+public sealed record RecommendationQuery(string? Search, string? Location, DateOnly? CheckIn, DateOnly? CheckOut,
+    int Guests, int Adults, int Children, int Rooms, decimal? TotalBudget, string? Amenities, string? RoomType,
+    int MinRating, int TopK, string? SessionId);
 public sealed record RecommendationItem(long Id, string Name, string District, string Province,
     string? ThumbnailUrl, long RoomTypeId, string RoomTypeName, decimal EstimatedTotal,
     decimal Score, IReadOnlyList<string> Reasons);
 
-public sealed class RecommendationService(AppDbContext db, RecommendationWeights weights)
+public sealed class RecommendationService(AppDbContext db, RecommendationWeightsProvider weightsProvider)
 {
-    public string ModelVersion => weights.Version;
+    public string ModelVersion => weightsProvider.Current.Version;
     private static string Normalize(string? value)
     {
         var source = (value ?? "").Normalize(NormalizationForm.FormD).ToLowerInvariant().Replace('đ', 'd');
@@ -24,6 +25,7 @@ public sealed class RecommendationService(AppDbContext db, RecommendationWeights
 
     public async Task<IReadOnlyList<RecommendationItem>> Recommend(RecommendationQuery query, ClaimsPrincipal user)
     {
+        var weights = weightsProvider.Current;
         var homesQuery = db.Homestays.AsNoTracking().Where(h => h.Status == "Approved");
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
@@ -31,13 +33,19 @@ public sealed class RecommendationService(AppDbContext db, RecommendationWeights
             homesQuery = homesQuery.Where(h => EF.Functions.ILike(h.Name, pattern)
                 || EF.Functions.ILike(h.District, pattern) || EF.Functions.ILike(h.Province, pattern));
         }
+        if (!string.IsNullOrWhiteSpace(query.Location))
+        {
+            var locationPattern = $"%{query.Location.Trim()}%";
+            homesQuery = homesQuery.Where(h => EF.Functions.ILike(h.District, locationPattern)
+                || EF.Functions.ILike(h.Province, locationPattern));
+        }
         var homes = await homesQuery.Select(h => new { h.Id, h.Name, h.District, h.Province,
             ThumbnailUrl = h.Images.OrderByDescending(i => i.IsThumbnail).ThenBy(i => i.SortOrder)
                 .Select(i => i.ImageUrl).FirstOrDefault() }).ToListAsync();
         if (homes.Count == 0) return [];
         var homeIds = homes.Select(h => h.Id).ToArray();
         var types = await db.RoomTypes.AsNoTracking().Where(r => homeIds.Contains(r.HomestayId) && r.Status == "Active")
-            .Select(r => new { r.Id, r.HomestayId, r.Name, r.BasePrice, r.BaseCapacity, r.MaxCapacity,
+            .Select(r => new { r.Id, r.HomestayId, r.Name, r.BasePrice, r.BaseCapacity, r.MaxCapacity, r.MaxAdults, r.MaxChildren,
                 r.ExtraGuestAllowed, r.ExtraGuestFee }).ToListAsync();
         if (types.Count == 0) return [];
         var typeIds = types.Select(t => t.Id).ToArray();
@@ -90,6 +98,7 @@ public sealed class RecommendationService(AppDbContext db, RecommendationWeights
                 if (!string.IsNullOrWhiteSpace(query.RoomType) && !Normalize(type.Name).Contains(Normalize(query.RoomType))) continue;
                 var capacity = type.ExtraGuestAllowed ? type.MaxCapacity : type.BaseCapacity;
                 if (capacity * query.Rooms < query.Guests) continue;
+                if (type.MaxAdults * query.Rooms < query.Adults || type.MaxChildren * query.Rooms < query.Children) continue;
                 var occupiedIds = blocked.Where(b => b.RoomTypeId == type.Id && b.RoomId.HasValue).Select(b => b.RoomId!.Value).ToHashSet();
                 var legacyCount = blocked.Where(b => b.RoomTypeId == type.Id && !b.RoomId.HasValue).Sum(b => b.Quantity);
                 var available = rooms.Count(r => r.RoomTypeId == type.Id

@@ -9,6 +9,8 @@ import HomestayDetailPage from '../features/homestays/pages/HomestayDetailPage.j
 import HostDashboardPage from '../features/homestays/pages/HostDashboardPage.jsx';
 import MyBookingsPage from '../features/bookings/pages/MyBookingsPage.jsx';
 import AdminDashboardPage from '../features/admin/pages/AdminDashboardPage.jsx';
+import HostListingWizard from '../features/homestays/pages/HostListingWizard.jsx';
+import CustomerProfilePage from '../features/profile/pages/CustomerProfilePage.jsx';
 
 import DevelopmentDialog from '../shared/components/DevelopmentDialog.jsx';
 import ErrorPage from '../shared/components/ErrorPage.jsx';
@@ -75,6 +77,9 @@ export default function App() {
       .me()
       .then(({ user: currentUser }) => {
         setUser(currentUser);
+        if (currentUser.role === 'Host' && params.has('homestay')) {
+          setView('host');
+        }
         if (params.has('auth')) {
           window.history.replaceState({}, '', window.location.pathname);
         }
@@ -107,6 +112,18 @@ export default function App() {
       window.removeEventListener('storage', refreshCatalog);
       window.removeEventListener('focus', refreshCatalog);
     };
+  }, []);
+
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      setUser(null);
+      setView('home');
+      setShowHome(false);
+      setMode('login');
+      setNotice({ type: 'error', text: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại để tiếp tục.' });
+    };
+    window.addEventListener('tripio:unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('tripio:unauthorized', handleUnauthorized);
   }, []);
 
   const markCatalogChanged = () => {
@@ -464,6 +481,49 @@ export default function App() {
       );
     }
 
+    if (view === 'register-host') {
+      return (
+        <>
+          <HostListingWizard
+            user={user}
+            onBack={() => setView('home')}
+            onSuccess={() => {
+              markCatalogChanged();
+              setView('home');
+            }}
+          />
+          {dialog}
+        </>
+      );
+    }
+
+    if (view === 'profile') {
+      return (
+        <>
+          <CustomerProfilePage
+            user={user}
+            onBack={() => setView('home')}
+            onChangePassword={() => {
+              setMode('change-password');
+              setNotice(null);
+            }}
+            onVerification={(type) => showDeveloping(
+              type === 'email'
+                ? 'Xác thực lại địa chỉ email'
+                : 'Xác thực số điện thoại qua SMS'
+            )}
+            onUserChanged={(profile) => setUser((current) => ({
+              ...current,
+              fullName: profile.fullName ?? current.fullName,
+              phoneNumber: profile.phoneNumber ?? current.phoneNumber,
+              avatarUrl: profile.avatarUrl ?? current.avatarUrl,
+            }))}
+          />
+          {dialog}
+        </>
+      );
+    }
+
     if (view === 'catalog') {
       return (
         <>
@@ -522,6 +582,8 @@ export default function App() {
           onBookings={() => setView('bookings')}
           onHostPortal={() => setView('host')}
           onAdminPortal={() => setView('admin')}
+          onRegisterHomestay={() => setView('register-host')}
+          onProfile={() => setView('profile')}
           onDeveloping={showDeveloping}
         />
 

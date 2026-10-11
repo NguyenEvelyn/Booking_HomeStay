@@ -23,6 +23,11 @@ public static class BookingRules
         adults < 1 || adults > 300 || children < 0 || children > 300 || quantity < 1 || quantity > 10
             ? "Số khách hoặc số phòng không hợp lệ." : null;
 
+    public static string? ValidateCapacity(int adults, int children, int quantity, int maxCapacity) =>
+        adults + children > maxCapacity * quantity
+            ? "Tổng số khách vượt quá sức chứa của phòng."
+            : null;
+
     public static decimal ExtraFee(int guests, int baseCapacity, int quantity, decimal fee, int nights) =>
         Math.Max(0, guests - baseCapacity * quantity) * fee * nights;
 

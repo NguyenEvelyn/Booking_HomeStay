@@ -146,6 +146,9 @@ public sealed class HomestayQueryService(AppDbContext db) : IHomestayQueryServic
             .Where(r => r.Id == roomTypeId && r.Status == "Active" && r.Homestay.Status == "Approved")
             .Select(r => new RoomTypeDetailResponse(
                 r.Id, r.HomestayId, r.Homestay.Name, r.Name, r.Description, r.BasePrice,
+                r.PricePeriods.Select(p => (decimal?)p.PricePerNight).Min() < r.BasePrice
+                    ? r.PricePeriods.Select(p => (decimal?)p.PricePerNight).Min()!.Value
+                    : r.BasePrice,
                 r.MaxAdults, r.MaxChildren, r.BaseCapacity, r.MaxCapacity, r.ExtraGuestAllowed, r.ExtraGuestFee, r.ExtraChildFee, r.ChildMaxAge, r.BedType, r.RoomSize,
                 r.Rooms.Count(room => room.Status == "Available"),
                 r.Images.OrderBy(i => i.SortOrder)

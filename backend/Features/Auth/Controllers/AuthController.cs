@@ -37,7 +37,7 @@ public class AuthController(IAuthService authService, IWebHostEnvironment enviro
         var result = await authService.LoginAsync(request);
         if (result.User is null) return Unauthorized(new { message = result.Error });
         Response.Cookies.Append("token", result.Token!, CookieOptions(request.Remember));
-        return Ok(new { message = "Đăng nhập thành công.", user = result.User });
+        return Ok(new { message = "Đăng nhập thành công.", user = result.User, accessToken = result.Token });
     }
 
     [HttpPost("verify-email")]

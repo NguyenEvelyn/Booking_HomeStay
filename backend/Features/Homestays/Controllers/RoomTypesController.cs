@@ -1,4 +1,3 @@
-using HomestayAuth.Api.Domain.Entities;
 using HomestayAuth.Api.Features.Bookings;
 using HomestayAuth.Api.Features.Homestays.Services;
 using HomestayAuth.Api.Infrastructure.Persistence;
@@ -19,78 +18,39 @@ public sealed class RoomTypesController(IHomestayQueryService service, AppDbCont
     }
 
     [HttpGet("{roomTypeId:long}/calendar")]
-    public async Task<IActionResult> GetCalendar(long roomTypeId, [FromQuery] int months = 3)
+    public async Task<IActionResult> GetCalendar(long roomTypeId, [FromQuery] int months = 6)
     {
         months = Math.Clamp(months, 1, 12);
-        var roomType = await db.RoomTypes
-            .AsNoTracking()
-            .FirstOrDefaultAsync(rt => rt.Id == roomTypeId && rt.Status == "Active");
+        var roomTypeExists = await db.RoomTypes.AsNoTracking()
+            .AnyAsync(x => x.Id == roomTypeId && x.Status == "Active" && x.Homestay.Status == "Approved");
+        if (!roomTypeExists) return NotFound(new { message = "Không tìm thấy loại phòng." });
 
-        if (roomType is null)
-            return NotFound(new { message = "Không tìm thấy loại phòng." });
-
-        var totalRooms = await db.Rooms
-            .AsNoTracking()
-            .CountAsync(r => r.RoomTypeId == roomTypeId && (r.Status == "Available" || BookingRules.InventoryStatuses.Contains(r.Status)));
-
+        var totalRooms = await db.Rooms.AsNoTracking()
+            .CountAsync(x => x.RoomTypeId == roomTypeId && BookingRules.InventoryStatuses.Contains(x.Status));
         if (totalRooms == 0)
-        {
-            totalRooms = await db.Rooms.AsNoTracking().CountAsync(r => r.RoomTypeId == roomTypeId);
-            if (totalRooms == 0) totalRooms = 1;
-        }
+            totalRooms = await db.Rooms.AsNoTracking().CountAsync(x => x.RoomTypeId == roomTypeId);
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        var endDate = today.AddDays(months * 31);
+        var today = BookingRules.Today;
+        var endDate = today.AddMonths(months);
         var now = DateTime.UtcNow;
-
-        var activeBookings = await db.BookingDetails
-            .AsNoTracking()
-            .Where(d => d.RoomTypeId == roomTypeId
-                && d.Booking.CheckInDate < endDate
-                && d.Booking.CheckOutDate > today
-                && (BookingRules.ReservedStatuses.Contains(d.Booking.Status)
-                    || (d.Booking.Status == BookingStatus.Hold && d.Booking.HoldExpiresAt > now)))
-            .Select(d => new
-            {
-                d.Booking.CheckInDate,
-                d.Booking.CheckOutDate,
-                Quantity = d.Quantity > 0 ? d.Quantity : 1
-            })
+        var bookings = await db.BookingDetails.AsNoTracking()
+            .Where(x => x.RoomTypeId == roomTypeId && x.Booking.CheckInDate < endDate && x.Booking.CheckOutDate > today
+                && (BookingRules.ReservedStatuses.Contains(x.Booking.Status)
+                    || (x.Booking.Status == BookingStatus.Hold && x.Booking.HoldExpiresAt > now)))
+            .Select(x => new { x.Booking.CheckInDate, x.Booking.CheckOutDate, Quantity = x.Quantity > 0 ? x.Quantity : 1 })
             .ToListAsync();
 
         var bookedDates = new List<string>();
         var dailyStatus = new Dictionary<string, object>();
-
         for (var date = today; date <= endDate; date = date.AddDays(1))
         {
-            var dateStr = date.ToString("yyyy-MM-dd");
-            var bookedCount = activeBookings
-                .Where(b => b.CheckInDate <= date && b.CheckOutDate > date)
-                .Sum(b => b.Quantity);
-
-            var available = Math.Max(0, totalRooms - bookedCount);
-            var isBooked = bookedCount >= totalRooms;
-
-            if (isBooked)
-            {
-                bookedDates.Add(dateStr);
-            }
-
-            dailyStatus[dateStr] = new
-            {
-                status = isBooked ? "booked" : "available",
-                availableRooms = available,
-                totalRooms = totalRooms
-            };
+            var booked = bookings.Where(x => x.CheckInDate <= date && x.CheckOutDate > date).Sum(x => x.Quantity);
+            var available = Math.Max(0, totalRooms - booked);
+            if (available == 0) bookedDates.Add(date.ToString("yyyy-MM-dd"));
+            dailyStatus[date.ToString("yyyy-MM-dd")] = new { status = available == 0 ? "booked" : "available", availableRooms = available, totalRooms };
         }
 
-        return Ok(new
-        {
-            roomTypeId,
-            totalRooms,
-            bookedDates,
-            dailyStatus
-        });
+        return Ok(new { roomTypeId, totalRooms, bookedDates, dailyStatus });
     }
 }
 

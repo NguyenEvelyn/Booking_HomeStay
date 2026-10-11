@@ -42,6 +42,11 @@ DATABASE_URL=postgresql://your_user:your_password@your-host/neondb?sslmode=requi
 JWT_SECRET=replace_with_a_long_random_secret
 JWT_EXPIRES_HOURS=24
 COOKIE_MAX_AGE_MS=86400000
+
+# Lưu ảnh lâu dài trên Supabase Storage (bucket phải được đặt Public)
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SECRET_KEY=sb_secret_your_server_key
+SUPABASE_STORAGE_BUCKET=homestay-images
 ```
 
 Không ghi mật khẩu thật vào `.env.example` và không commit file `.env`.
@@ -100,6 +105,15 @@ React frontend → ASP.NET Core API → PostgreSQL (Neon)
 ```
 
 Frontend không kết nối trực tiếp và không được chứa tài khoản hoặc mật khẩu PostgreSQL.
+
+### Cấu hình ảnh khi deploy Render
+
+Khai báo cả ba biến `SUPABASE_URL`, `SUPABASE_SECRET_KEY` và
+`SUPABASE_STORAGE_BUCKET` trong Environment của **backend service** trên Render.
+Không lưu ảnh upload vào thư mục cục bộ của Render và không lưu URL dạng
+`http://localhost:5000/uploads/...`: ổ đĩa deploy là tạm thời, còn `localhost`
+trong trình duyệt là máy của người dùng. Sau khi thêm hoặc đổi biến môi trường,
+hãy redeploy backend. Các ảnh cũ đã lưu bằng URL localhost cần được tải lên lại.
 
 ## Lỗi kết nối Neon/PostgreSQL thường gặp
 

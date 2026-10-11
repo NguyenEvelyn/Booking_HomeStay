@@ -18,6 +18,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<RoomImage> RoomImages => Set<RoomImage>();
     public DbSet<Booking> Bookings => Set<Booking>();
     public DbSet<BookingDetail> BookingDetails => Set<BookingDetail>();
+    public DbSet<BookingGuest> BookingGuests => Set<BookingGuest>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<Review> Reviews => Set<Review>();
     public DbSet<ReviewReport> ReviewReports => Set<ReviewReport>();
@@ -40,7 +41,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<CompensationCatalogItem> CompensationCatalogItems => Set<CompensationCatalogItem>();
     public DbSet<CompensationClaim> CompensationClaims => Set<CompensationClaim>();
     public DbSet<CompensationClaimItem> CompensationClaimItems => Set<CompensationClaimItem>();
-    public DbSet<CompensationEvidence> CompensationEvidence => Set<CompensationEvidence>();
+    public DbSet<CheckInOut> CheckInOuts => Set<CheckInOut>();
+    public DbSet<BookingDateChange> BookingDateChanges => Set<BookingDateChange>();
+    public DbSet<BookingExtension> BookingExtensions => Set<BookingExtension>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -84,6 +87,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         recommendationEvent.HasIndex(x => x.BookingId).IsUnique();
         recommendationEvent.Property(x => x.QueryData).HasColumnName("query_data").HasColumnType("jsonb");
         recommendationEvent.Property(x => x.Source).HasColumnName("source").HasMaxLength(20);
+        recommendationEvent.HasIndex(x => new { x.SessionId, x.EventType, x.OccurredAt });
         var user = modelBuilder.Entity<User>();
         // PostgreSQL folds unquoted identifiers to lowercase.
         user.ToTable("users");
@@ -179,6 +183,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         room.Property(x => x.FloorNumber).HasColumnName("floor_number");
         room.Property(x => x.Status).HasColumnName("status").HasMaxLength(30).IsRequired();
         room.Property(x => x.Note).HasColumnName("note").HasMaxLength(500);
+        room.Property(x => x.CleaningStatus).HasColumnName("cleaning_status").HasMaxLength(30).HasDefaultValue("Clean");
+        room.Property(x => x.CleaningStartedAt).HasColumnName("cleaning_started_at");
+        room.Property(x => x.CleaningCompletedAt).HasColumnName("cleaning_completed_at");
+        room.Property(x => x.CleaningChecklistJson).HasColumnName("cleaning_checklist").HasColumnType("jsonb");
         room.Property(x => x.CreatedAt).HasColumnName("created_at");
         room.Property(x => x.UpdatedAt).HasColumnName("updated_at");
         room.HasOne(x => x.RoomType).WithMany(x => x.Rooms).HasForeignKey(x => x.RoomTypeId);
@@ -286,9 +294,28 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         booking.Property(x => x.RecommendationSessionId).HasColumnName("recommendation_session_id").HasMaxLength(100);
         booking.Property(x => x.HostNote).HasColumnName("host_note").HasMaxLength(1000);
         booking.Property(x => x.HostViewedAt).HasColumnName("host_viewed_at");
+        booking.Property(x => x.ContactName).HasColumnName("contact_name").HasMaxLength(150);
+        booking.Property(x => x.ContactPhone).HasColumnName("contact_phone").HasMaxLength(20);
+        booking.Property(x => x.ContactEmail).HasColumnName("contact_email").HasMaxLength(255);
+        booking.Property(x => x.GuestName).HasColumnName("guest_name").HasMaxLength(150);
+        booking.Property(x => x.ContactNameEditCount).HasColumnName("contact_name_edit_count").HasDefaultValue(0);
+        booking.Property(x => x.ContactUpdatedAt).HasColumnName("contact_updated_at");
         booking.Property(x => x.CreatedAt).HasColumnName("created_at");
         booking.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+        booking.HasIndex(x => new { x.HomestayId, x.Status, x.CheckInDate }).HasDatabaseName("ix_bookings_homestay_status_check_in");
         booking.HasOne(x => x.Homestay).WithMany().HasForeignKey(x => x.HomestayId).OnDelete(DeleteBehavior.Restrict);
+
+        var bookingGuest = modelBuilder.Entity<BookingGuest>();
+        bookingGuest.ToTable("booking_guests"); bookingGuest.HasKey(x => x.Id);
+        bookingGuest.Property(x => x.Id).HasColumnName("booking_guest_id"); bookingGuest.Property(x => x.BookingId).HasColumnName("booking_id");
+        bookingGuest.Property(x => x.IsPrimary).HasColumnName("is_primary"); bookingGuest.Property(x => x.GuestType).HasColumnName("guest_type").HasMaxLength(20);
+        bookingGuest.Property(x => x.FullName).HasColumnName("full_name").HasMaxLength(150); bookingGuest.Property(x => x.BirthDate).HasColumnName("birth_date");
+        bookingGuest.Property(x => x.Gender).HasColumnName("gender").HasMaxLength(20); bookingGuest.Property(x => x.Nationality).HasColumnName("nationality").HasMaxLength(80);
+        bookingGuest.Property(x => x.DocumentType).HasColumnName("document_type").HasMaxLength(30); bookingGuest.Property(x => x.DocumentNumber).HasColumnName("document_number").HasMaxLength(50);
+        bookingGuest.Property(x => x.Address).HasColumnName("address").HasMaxLength(500); bookingGuest.Property(x => x.AccompanyingAdult).HasColumnName("accompanying_adult").HasMaxLength(150);
+        bookingGuest.Property(x => x.DeclarationDeferred).HasColumnName("declaration_deferred"); bookingGuest.Property(x => x.DeclarationStatus).HasColumnName("declaration_status").HasMaxLength(30);
+        bookingGuest.Property(x => x.DeclarationDueAt).HasColumnName("declaration_due_at"); bookingGuest.Property(x => x.CreatedAt).HasColumnName("created_at"); bookingGuest.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+        bookingGuest.HasOne(x => x.Booking).WithMany(x => x.Guests).HasForeignKey(x => x.BookingId).OnDelete(DeleteBehavior.Cascade);
 
         var detail = modelBuilder.Entity<BookingDetail>();
         detail.ToTable("booking_details"); detail.HasKey(x => x.Id);
@@ -405,6 +432,23 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         stay.Property(x => x.StartDate).HasColumnName("start_date"); stay.Property(x => x.EndDate).HasColumnName("end_date"); stay.Property(x => x.NightlyPrice).HasColumnName("nightly_price").HasPrecision(18,2);
         stay.Property(x => x.Status).HasColumnName("status").HasMaxLength(20); stay.Property(x => x.CreatedAt).HasColumnName("created_at"); stay.HasOne(x => x.Booking).WithMany(x => x.RoomStays).HasForeignKey(x => x.BookingId);
 
+        var checkInOut = modelBuilder.Entity<CheckInOut>();
+        checkInOut.ToTable("check_in_outs");
+        checkInOut.HasKey(x => x.Id);
+        checkInOut.HasIndex(x => x.BookingId).IsUnique();
+        checkInOut.Property(x => x.Id).HasColumnName("check_in_out_id");
+        checkInOut.Property(x => x.BookingId).HasColumnName("booking_id");
+        checkInOut.Property(x => x.CheckedInBy).HasColumnName("checked_in_by");
+        checkInOut.Property(x => x.ActualCheckInAt).HasColumnName("actual_check_in_at");
+        checkInOut.Property(x => x.CheckedOutBy).HasColumnName("checked_out_by");
+        checkInOut.Property(x => x.ActualCheckOutAt).HasColumnName("actual_check_out_at");
+        checkInOut.Property(x => x.GuestIdentityNumber).HasColumnName("guest_identity_number").HasMaxLength(30);
+        checkInOut.Property(x => x.DepositAmount).HasColumnName("deposit_amount").HasPrecision(18,2);
+        checkInOut.Property(x => x.AdditionalCharge).HasColumnName("additional_charge").HasPrecision(18,2);
+        checkInOut.Property(x => x.Note).HasColumnName("note").HasMaxLength(500);
+        checkInOut.Property(x => x.Status).HasColumnName("status").HasMaxLength(20);
+        checkInOut.HasOne(x => x.Booking).WithOne().HasForeignKey<CheckInOut>(x => x.BookingId);
+
         var idem = modelBuilder.Entity<IdempotencyRecord>();
         idem.ToTable("idempotency_records"); idem.HasKey(x => x.Id); idem.HasIndex(x => new { x.Scope, x.Key, x.ActorId }).IsUnique();
         idem.Property(x => x.Id).HasColumnName("id"); idem.Property(x => x.Scope).HasColumnName("scope").HasMaxLength(80); idem.Property(x => x.Key).HasColumnName("key").HasMaxLength(100); idem.Property(x => x.ActorId).HasColumnName("actor_id");
@@ -422,6 +466,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         policy.Property(x => x.HoldMinutes).HasColumnName("hold_minutes"); policy.Property(x => x.ReviewCreateDays).HasColumnName("review_create_days"); policy.Property(x => x.ReviewEditDays).HasColumnName("review_edit_days");
         policy.Property(x => x.CommissionRate).HasColumnName("commission_rate").HasPrecision(5,4); policy.Property(x => x.GuestDowngradeRefundMode).HasColumnName("guest_downgrade_refund_mode").HasMaxLength(20);
         policy.Property(x => x.GuestDowngradeRefundPercent).HasColumnName("guest_downgrade_refund_percent").HasPrecision(5,2); policy.Property(x => x.AutoApproveLateCheckoutWithoutNextBooking).HasColumnName("auto_approve_late_checkout");
+        policy.Property(x => x.OperationalPolicyJson).HasColumnName("operational_policy").HasColumnType("jsonb");
         policy.Property(x => x.EffectiveFrom).HasColumnName("effective_from"); policy.Property(x => x.EffectiveTo).HasColumnName("effective_to"); policy.Property(x => x.Status).HasColumnName("status").HasMaxLength(20);
         policy.Property(x => x.CreatedBy).HasColumnName("created_by"); policy.Property(x => x.CreatedAt).HasColumnName("created_at");
 
@@ -474,5 +519,37 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         evidence.Property(x => x.MediaType).HasColumnName("media_type").HasMaxLength(20); evidence.Property(x => x.Caption).HasColumnName("caption").HasMaxLength(500);
         evidence.Property(x => x.UploadedBy).HasColumnName("uploaded_by"); evidence.Property(x => x.CreatedAt).HasColumnName("created_at");
         evidence.HasOne(x => x.Claim).WithMany(x => x.Evidence).HasForeignKey(x => x.ClaimId).OnDelete(DeleteBehavior.Cascade);
+
+        var dateChange = modelBuilder.Entity<BookingDateChange>();
+        dateChange.ToTable("booking_date_changes");
+        dateChange.HasKey(x => x.Id);
+        dateChange.Property(x => x.Id).HasColumnName("id");
+        dateChange.Property(x => x.BookingId).HasColumnName("booking_id");
+        dateChange.Property(x => x.OldCheckInDate).HasColumnName("old_check_in_date");
+        dateChange.Property(x => x.OldCheckOutDate).HasColumnName("old_check_out_date");
+        dateChange.Property(x => x.NewCheckInDate).HasColumnName("new_check_in_date");
+        dateChange.Property(x => x.NewCheckOutDate).HasColumnName("new_check_out_date");
+        dateChange.Property(x => x.DaysBeforeCheckIn).HasColumnName("days_before_check_in");
+        dateChange.Property(x => x.DateChangeFee).HasColumnName("date_change_fee").HasPrecision(18, 2);
+        dateChange.Property(x => x.PriceDifference).HasColumnName("price_difference").HasPrecision(18, 2);
+        dateChange.Property(x => x.TotalAmountDifference).HasColumnName("total_amount_difference").HasPrecision(18, 2);
+        dateChange.Property(x => x.Reason).HasColumnName("reason").HasMaxLength(500);
+        dateChange.Property(x => x.ChangedBy).HasColumnName("changed_by");
+        dateChange.Property(x => x.CreatedAt).HasColumnName("created_at");
+        dateChange.HasOne(x => x.Booking).WithMany().HasForeignKey(x => x.BookingId).OnDelete(DeleteBehavior.Restrict);
+
+        var extension = modelBuilder.Entity<BookingExtension>();
+        extension.ToTable("booking_extensions");
+        extension.HasKey(x => x.Id);
+        extension.Property(x => x.Id).HasColumnName("id");
+        extension.Property(x => x.BookingId).HasColumnName("booking_id");
+        extension.Property(x => x.OldCheckOutDate).HasColumnName("old_check_out_date");
+        extension.Property(x => x.NewCheckOutDate).HasColumnName("new_check_out_date");
+        extension.Property(x => x.ExtendedNights).HasColumnName("extended_nights");
+        extension.Property(x => x.TotalCost).HasColumnName("total_cost").HasPrecision(18, 2);
+        extension.Property(x => x.Reason).HasColumnName("reason").HasMaxLength(500);
+        extension.Property(x => x.ExtendedBy).HasColumnName("extended_by");
+        extension.Property(x => x.CreatedAt).HasColumnName("created_at");
+        extension.HasOne(x => x.Booking).WithMany().HasForeignKey(x => x.BookingId).OnDelete(DeleteBehavior.Restrict);
     }
 }

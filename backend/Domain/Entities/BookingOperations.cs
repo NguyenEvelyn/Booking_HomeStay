@@ -115,3 +115,52 @@ public class OutboxMessage
     public string? LastError { get; set; }
     public DateTime CreatedAt { get; set; }
 }
+
+public class CheckInOut
+{
+    public long Id { get; set; }
+    public long BookingId { get; set; }
+    public long? CheckedInBy { get; set; }
+    public DateTime? ActualCheckInAt { get; set; }
+    public long? CheckedOutBy { get; set; }
+    public DateTime? ActualCheckOutAt { get; set; }
+    public string? GuestIdentityNumber { get; set; }
+    public decimal DepositAmount { get; set; }
+    public decimal AdditionalCharge { get; set; }
+    public string? Note { get; set; }
+    public string Status { get; set; } = "NotCheckedIn";
+    public Booking Booking { get; set; } = null!;
+}
+
+public class BookingDateChange
+{
+    public long Id { get; set; }
+    public long BookingId { get; set; }
+    public DateOnly OldCheckInDate { get; set; }
+    public DateOnly OldCheckOutDate { get; set; }
+    public DateOnly NewCheckInDate { get; set; }
+    public DateOnly NewCheckOutDate { get; set; }
+    public int DaysBeforeCheckIn { get; set; }
+    public decimal DateChangeFee { get; set; }
+    public decimal PriceDifference { get; set; }
+    public decimal TotalAmountDifference { get; set; }
+    public string? Reason { get; set; }
+    public long ChangedBy { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public Booking Booking { get; set; } = null!;
+}
+
+public class BookingExtension
+{
+    public long Id { get; set; }
+    public long BookingId { get; set; }
+    public DateOnly OldCheckOutDate { get; set; }
+    public DateOnly NewCheckOutDate { get; set; }
+    public int ExtendedNights { get; set; }
+    public decimal TotalCost { get; set; }
+    public string? Reason { get; set; }
+    public long ExtendedBy { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public Booking Booking { get; set; } = null!;
+}
+
