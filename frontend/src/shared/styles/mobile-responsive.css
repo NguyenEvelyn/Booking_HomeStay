@@ -362,7 +362,7 @@ button {
 }
 
 @media (max-width: 420px) {
-  .customer-nav-actions .customer-icon-btn[aria-label="Phòng đã đặt"] {
+  .customer-nav-actions .customer-icon-btn[aria-label="Chuyến đi của tôi"] {
     display: none;
   }
 
