@@ -241,6 +241,7 @@ export default function HomePage({
   onAdminPortal,
   onRegisterHomestay,
   onRegisterHost,
+  onProfile,
 }) {
   const [menuScrolled, setMenuScrolled] = useState(false);
   const [activeNav, setActiveNav] = useState('home');
@@ -722,7 +723,7 @@ export default function HomePage({
                   <span><b>Nhận xét của tôi</b><small>Quản lý đánh giá đã viết</small></span>
                 </button>
 
-                <button type="button" className="home-user-menu__item" role="menuitem" onClick={() => { setUserMenuOpen(false); onDeveloping('Hồ sơ của tôi'); }}>
+                <button type="button" className="home-user-menu__item" role="menuitem" onClick={() => { setUserMenuOpen(false); onProfile?.(); }}>
                   <i><Icon name="profile" /></i>
                   <span><b>Hồ sơ của tôi</b><small>Thông tin và tùy chọn cá nhân</small></span>
                 </button>
