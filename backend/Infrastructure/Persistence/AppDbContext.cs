@@ -44,6 +44,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<CheckInOut> CheckInOuts => Set<CheckInOut>();
     public DbSet<BookingDateChange> BookingDateChanges => Set<BookingDateChange>();
     public DbSet<BookingExtension> BookingExtensions => Set<BookingExtension>();
+    public DbSet<HostRegistration> HostRegistrations => Set<HostRegistration>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -547,5 +548,24 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         extension.Property(x => x.ExtendedBy).HasColumnName("extended_by");
         extension.Property(x => x.CreatedAt).HasColumnName("created_at");
         extension.HasOne(x => x.Booking).WithMany().HasForeignKey(x => x.BookingId).OnDelete(DeleteBehavior.Restrict);
+
+        var hostReg = modelBuilder.Entity<HostRegistration>();
+        hostReg.ToTable("host_registrations");
+        hostReg.HasKey(x => x.Id);
+        hostReg.Property(x => x.Id).HasColumnName("id");
+        hostReg.Property(x => x.UserId).HasColumnName("user_id");
+        hostReg.Property(x => x.PhoneNumber).HasColumnName("phone_number").HasMaxLength(50);
+        hostReg.Property(x => x.IdCardNumber).HasColumnName("id_card_number").HasMaxLength(50);
+        hostReg.Property(x => x.BankName).HasColumnName("bank_name").HasMaxLength(100);
+        hostReg.Property(x => x.BankAccountNumber).HasColumnName("bank_account_number").HasMaxLength(50);
+        hostReg.Property(x => x.BankAccountName).HasColumnName("bank_account_name").HasMaxLength(100);
+        hostReg.Property(x => x.HomestayDataJson).HasColumnName("homestay_data").HasColumnType("jsonb");
+        hostReg.Property(x => x.Status).HasColumnName("status").HasMaxLength(30).HasDefaultValue("Pending");
+        hostReg.Property(x => x.RejectionReason).HasColumnName("rejection_reason").HasMaxLength(500);
+        hostReg.Property(x => x.ReviewedBy).HasColumnName("reviewed_by");
+        hostReg.Property(x => x.ReviewedAt).HasColumnName("reviewed_at");
+        hostReg.Property(x => x.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+        hostReg.Property(x => x.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+        hostReg.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
     }
 }

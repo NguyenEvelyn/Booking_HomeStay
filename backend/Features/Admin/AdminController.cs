@@ -11,6 +11,7 @@ namespace HomestayAuth.Api.Features.Admin;
 
 public sealed record AdminDecisionRequest(string? Reason);
 public sealed record AdminFeaturedRequest(bool IsFeatured);
+public sealed record AdminChangeRoleRequest(string Role, string? Reason = null);
 
 [ApiController, Route("api/admin"), Authorize(Policy = AdminPolicies.Access)]
 public sealed class AdminController(AppDbContext db, IAuditLogService audit, IAuthService authService) : ControllerBase
@@ -164,6 +165,22 @@ public sealed class AdminController(AppDbContext db, IAuditLogService audit, IAu
         audit.Add(HttpContext, locking ? "user.lock" : "user.unlock", "user", id, before, new { user.Status, user.AuthVersion }, reason);
         await db.SaveChangesAsync(); await transaction.CommitAsync();
         return Ok(new { message = user.Status == "Active" ? "Đã mở khóa tài khoản." : "Đã khóa tài khoản." });
+    }
+
+    [HttpPatch("users/{id:long}/role"), Authorize(Policy = AdminPolicies.FullAccess)]
+    public async Task<IActionResult> ChangeUserRole(long id, AdminChangeRoleRequest request)
+    {
+        var validRoles = new[] { "Customer", "Host", "Support", "Admin" };
+        if (!validRoles.Contains(request.Role)) return BadRequest(new { message = "Vai trò không hợp lệ." });
+        var user = await db.Users.SingleOrDefaultAsync(u => u.Id == id);
+        if (user is null) return NotFound(new { message = "Không tìm thấy tài khoản." });
+        if (user.Role == request.Role) return Ok(new { message = "Tài khoản đã có vai trò này." });
+        var before = new { user.Role };
+        user.Role = request.Role;
+        user.UpdatedAt = DateTime.UtcNow;
+        audit.Add(HttpContext, "user.change_role", "user", id, before, new { user.Role }, request.Reason);
+        await db.SaveChangesAsync();
+        return Ok(new { message = $"Đã chuyển vai trò người dùng sang {request.Role}." });
     }
 
     [HttpPost("users/{id:long}/password-reset"), Authorize(Policy = AdminPolicies.FullAccess)]

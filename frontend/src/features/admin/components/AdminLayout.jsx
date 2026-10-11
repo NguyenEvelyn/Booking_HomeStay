@@ -1,7 +1,7 @@
 import React,{useEffect,useState}from'react';
 import'../styles/admin.css';
 
-const items=[['overview','▦','Tổng quan'],['users','♙','Người dùng'],['homestays','⌂','Homestay'],['bookings','▤','Đặt phòng'],['payments','₫','Thanh toán'],['reviews','★','Đánh giá'],['ai','◎','Thống kê AI'],['settings','⚙','Cấu hình'],['audit','≡','Nhật ký hoạt động']];
+const items=[['overview','▦','Tổng quan'],['host-registrations','✍','Duyệt làm Host'],['homestays','⌂','Homestay'],['users','♙','Người dùng'],['bookings','▤','Đặt phòng'],['payments','₫','Thanh toán'],['reviews','★','Đánh giá'],['ai','◎','Thống kê AI'],['settings','⚙','Cấu hình'],['audit','≡','Nhật ký hoạt động']];
 export default function AdminLayout({user,tab,onTab,onLogout,onChangePassword,children}){
  const[open,setOpen]=useState(false);useEffect(()=>{const close=e=>e.key==='Escape'&&setOpen(false);document.addEventListener('keydown',close);return()=>document.removeEventListener('keydown',close)},[]);
  const current=items.find(x=>x[0]===tab)?.[2]||'Tổng quan';

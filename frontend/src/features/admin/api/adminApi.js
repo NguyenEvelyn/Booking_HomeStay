@@ -27,5 +27,9 @@ export const adminApi = {
   ,payments: filters => apiClient(`/admin/payments${query(filters)}`)
   ,refunds: filters => apiClient(`/admin/payments/refunds${query(filters)}`)
   ,hostReport: filters => apiClient(`/admin/payments/host-report${query(filters)}`)
-  ,syncPayment: (id,reason) => apiClient(`/admin/payments/${id}/sync`,{method:'POST',body:JSON.stringify({reason})})
+  ,syncPayment: (id,reason) => apiClient(`/admin/payments/${id}/sync`,{method:'POST',body:JSON.stringify({reason})}),
+  hostRegistrations: (filters) => apiClient(`/admin/host-registrations${query(filters)}`),
+  approveHostRegistration: (id) => apiClient(`/admin/host-registrations/${id}/approve`, { method: 'PATCH' }),
+  rejectHostRegistration: (id, reason = '') => apiClient(`/admin/host-registrations/${id}/reject`, { method: 'PATCH', body: JSON.stringify({ reason }) }),
+  changeUserRole: (id, role, reason = '') => apiClient(`/admin/users/${id}/role`, { method: 'PATCH', body: JSON.stringify({ role, reason }) }),
 };
