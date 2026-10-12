@@ -288,6 +288,13 @@ if (!string.Equals(Environment.GetEnvironmentVariable("SKIP_SCHEMA_SYNC"), "true
         ALTER TABLE host_registrations ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
         ALTER TABLE host_registrations ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP;
         ALTER TABLE host_registrations ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP;
+        CREATE INDEX IF NOT EXISTS ix_audit_logs_target_created ON audit_logs(target_type,target_id,created_at DESC);
+        CREATE TABLE IF NOT EXISTS system_settings (
+          setting_key VARCHAR(80) PRIMARY KEY,
+          value_json JSONB NOT NULL DEFAULT '{{}}'::jsonb,
+          updated_by BIGINT REFERENCES users(user_id) ON DELETE SET NULL,
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
         ALTER TABLE homestays ADD COLUMN IF NOT EXISTS rejection_reason VARCHAR(500);
         ALTER TABLE homestays ADD COLUMN IF NOT EXISTS reviewed_by BIGINT REFERENCES users(user_id) ON DELETE SET NULL;
         ALTER TABLE homestays ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;

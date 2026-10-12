@@ -38,6 +38,7 @@ export const homestayApi = {
   hostPolicy: (id) => apiClient(`/host/homestays/${id}/booking-policy`),
   saveHostPolicy: (id,data) => apiClient(`/host/homestays/${id}/booking-policy`, { method: 'PUT', body: JSON.stringify(data) }),
   hostList: () => apiClient('/host/homestays'),
+  hostDemandForecast: ({ homestayId, historyMonths = 24, horizon = 6 }) => apiClient(`/host/ai/demand-forecast?${new URLSearchParams({ homestayId, historyMonths, horizon })}`),
   hostOverview: () => apiClient('/host/homestays/overview'),
   revenueSummary: (filters = {}) => apiClient(`/partner/revenue/summary?${new URLSearchParams(Object.entries(filters).filter(([,v])=>v!==''&&v!=null))}`),
   revenueTransactions: (filters = {}) => apiClient(`/partner/revenue/transactions?${new URLSearchParams(Object.entries(filters).filter(([,v])=>v!==''&&v!=null))}`),

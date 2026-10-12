@@ -32,4 +32,6 @@ export const adminApi = {
   approveHostRegistration: (id) => apiClient(`/admin/host-registrations/${id}/approve`, { method: 'PATCH' }),
   rejectHostRegistration: (id, reason = '') => apiClient(`/admin/host-registrations/${id}/reject`, { method: 'PATCH', body: JSON.stringify({ reason }) }),
   changeUserRole: (id, role, reason = '') => apiClient(`/admin/users/${id}/role`, { method: 'PATCH', body: JSON.stringify({ role, reason }) }),
+  settings: () => apiClient('/admin/settings'),
+  saveSettings: settings => apiClient('/admin/settings',{method:'PUT',body:JSON.stringify(settings)})
 };

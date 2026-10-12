@@ -141,9 +141,9 @@ button {
     --mobile-gutter: 14px;
   }
 
-  body {
-    font-size: 14px;
-  }
+  body { font-size: 16px; }
+
+  input,select,textarea { font-size:16px; }
 
   .page-section,
   .detail-content,

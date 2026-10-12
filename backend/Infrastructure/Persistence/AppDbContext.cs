@@ -45,9 +45,19 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<BookingDateChange> BookingDateChanges => Set<BookingDateChange>();
     public DbSet<BookingExtension> BookingExtensions => Set<BookingExtension>();
     public DbSet<HostRegistration> HostRegistrations => Set<HostRegistration>();
+    public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        var systemSetting = modelBuilder.Entity<SystemSetting>();
+        systemSetting.ToTable("system_settings");
+        systemSetting.HasKey(x => x.Key);
+        systemSetting.Property(x => x.Key).HasColumnName("setting_key").HasMaxLength(80);
+        systemSetting.Property(x => x.ValueJson).HasColumnName("value_json").HasColumnType("jsonb");
+        systemSetting.Property(x => x.UpdatedBy).HasColumnName("updated_by");
+        systemSetting.Property(x => x.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+        systemSetting.HasOne<User>().WithMany().HasForeignKey(x => x.UpdatedBy).OnDelete(DeleteBehavior.SetNull);
+
         var conflictEvent = modelBuilder.Entity<BookingConflictEvent>();
         conflictEvent.ToTable("booking_conflict_events");
         conflictEvent.HasKey(x => x.Id);

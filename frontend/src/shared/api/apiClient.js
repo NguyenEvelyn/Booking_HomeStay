@@ -44,16 +44,27 @@ export async function apiClient(path, options = {}) {
   const isForm = options.body instanceof FormData;
   const method = String(options.method || 'GET').toUpperCase();
   const accessToken = getAccessToken();
-  const response = await fetch(`${API_URL}${path}`, {
-    credentials: 'include',
-    cache: method === 'GET' ? 'no-store' : undefined,
-    headers: {
-      ...(isForm ? {} : { 'Content-Type': 'application/json' }),
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      ...options.headers
-    },
-    ...options
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), Number(options.timeoutMs) || 20000);
+  let response;
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      credentials: 'include',
+      cache: method === 'GET' ? 'no-store' : undefined,
+      headers: {
+        ...(isForm ? {} : { 'Content-Type': 'application/json' }),
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        ...options.headers
+      },
+      ...options,
+      signal: options.signal || controller.signal
+    });
+  } catch (error) {
+    if (error?.name === 'AbortError') throw new Error('Máy chủ phản hồi quá lâu. Vui lòng kiểm tra kết nối và thử lại.');
+    throw new Error('Không thể kết nối máy chủ Tripio. Hãy kiểm tra mạng hoặc địa chỉ API.');
+  } finally {
+    clearTimeout(timeout);
+  }
   const data = await response.json().catch(() => ({}));
   if (response.status === 401 && typeof window !== 'undefined') {
     clearAccessToken();

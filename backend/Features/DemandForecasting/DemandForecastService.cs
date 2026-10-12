@@ -10,6 +10,12 @@ public sealed class DemandForecastService(AppDbContext db)
         BookingStatus.CheckoutPendingPayment, BookingStatus.CheckedOut];
 
     public async Task<DemandForecastResult> Forecast(string? region, int historyMonths, int horizon)
+        => await ForecastQuery(region, historyMonths, horizon, null);
+
+    public async Task<DemandForecastResult> ForecastForHomestay(long homestayId, int historyMonths, int horizon)
+        => await ForecastQuery(null, historyMonths, horizon, homestayId);
+
+    private async Task<DemandForecastResult> ForecastQuery(string? region, int historyMonths, int horizon, long? homestayId)
     {
         historyMonths = Math.Clamp(historyMonths, 6, 60);
         var currentMonth = new DateOnly(BookingRules.Today.Year, BookingRules.Today.Month, 1);
@@ -22,12 +28,16 @@ public sealed class DemandForecastService(AppDbContext db)
             query = query.Where(x => EF.Functions.ILike(x.Homestay.Province, pattern)
                 || EF.Functions.ILike(x.Homestay.District, pattern));
         }
-        var rows = await query.Select(x => new { x.CheckInDate, x.TotalAmount,
+        if (homestayId.HasValue) query = query.Where(x => x.HomestayId == homestayId.Value);
+        var rows = await query.Select(x => new { x.BookingCode, x.CheckInDate, x.TotalAmount,
             RoomNights = x.Details.Sum(d => d.Quantity * d.NumberOfNights) }).ToListAsync();
         var monthly = rows.GroupBy(x => new { x.CheckInDate.Year, x.CheckInDate.Month })
             .Select(g => new MonthlyDemand(new DateOnly(g.Key.Year, g.Key.Month, 1), g.Count(),
                 g.Sum(x => x.RoomNights), g.Sum(x => x.TotalAmount))).OrderBy(x => x.Month).ToList();
-        return DemandForecastModel.Forecast(monthly, horizon, string.IsNullOrWhiteSpace(region) ? null : region.Trim());
+        return DemandForecastModel.Forecast(monthly, horizon, string.IsNullOrWhiteSpace(region) ? null : region.Trim()) with
+        {
+            HasSyntheticData = rows.Any(x => x.BookingCode.StartsWith("DFDEMO-"))
+        };
     }
 
     public Task<List<string>> Regions() => db.Homestays.AsNoTracking().Where(x => x.Status == "Approved")

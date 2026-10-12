@@ -7,6 +7,9 @@ import './shared/styles/portal.css';
 import './features/homestays/pages/host-layout.css';
 import './shared/styles/mobile-responsive.css';
 import FeedbackProvider from './shared/feedback/FeedbackProvider.jsx';
+import { initializeNativeShell } from './shared/mobile/nativeBridge.js';
+
+initializeNativeShell();
 
 createRoot(document.getElementById('root')).render(<StrictMode><FeedbackProvider><App /></FeedbackProvider></StrictMode>);
 
