@@ -4,6 +4,10 @@
    ========================================================================== */
 
 :root {
+  /* Tripio Brand Colors */
+  --color-primary: #011E60;
+  --color-accent: #FFB700;
+
   --host-primary: #0b4ae6;
   --host-primary-hover: #083ac0;
   --host-primary-light: #eef4ff;
@@ -35,10 +39,22 @@
   --host-danger-bg: #fef2f2;
   --host-danger-text: #b91c1c;
 
+  /* Radius scale */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-pill: 999px;
+
+  /* Legacy radius tokens (backward compat) */
   --host-radius-sm: 8px;
   --host-radius: 12px;
   --host-radius-lg: 16px;
   --host-radius-xl: 20px;
+
+  /* Component sizing */
+  --input-height: 44px;
+  --icon-btn-size: 40px;
 
   --host-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --host-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.06), 0 2px 6px -2px rgba(15, 23, 42, 0.04);
@@ -1700,8 +1716,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border: 0;
   border-radius: 50%;
   background: #f1f5f9;
@@ -2252,7 +2268,7 @@
   color: #be123c;
 }
 
-.booking-modal-expand{display:grid;place-items:center;width:36px;height:36px;flex:0 0 36px;padding:0;border:1px solid #dce4ef;border-radius:50%;background:#fff;color:#64748b;cursor:pointer;transition:all .15s ease}.booking-modal-expand svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.booking-modal-expand:hover{border-color:#155eef;background:#eef4ff;color:#155eef}.booking-modal.is-maximized{padding:0}.booking-modal.is-maximized>section{width:100vw;height:100vh;max-height:100vh;border:0;border-radius:0}.booking-modal.is-maximized .booking-header-bar{padding-left:32px;padding-right:32px}
+.booking-modal-expand{display:grid;place-items:center;width:40px;height:40px;flex:0 0 40px;padding:0;border:1px solid #dce4ef;border-radius:50%;background:#fff;color:#64748b;cursor:pointer;transition:all .15s ease}.booking-modal-expand svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.booking-modal-expand:hover{border-color:#155eef;background:#eef4ff;color:#155eef}.booking-modal.is-maximized{padding:0}.booking-modal.is-maximized>section{width:100vw;height:100vh;max-height:100vh;border:0;border-radius:0}.booking-modal.is-maximized .booking-header-bar{padding-left:32px;padding-right:32px}
 
 .calendar-summary {
   display: grid;
@@ -3952,23 +3968,24 @@
 .stage-intro-card {
   display: flex;
   align-items: flex-start;
-  gap: 16px;
-  padding: 16px 20px;
-  background: linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%);
-  border: 1px solid #bfdbfe;
-  border-radius: 12px;
+  gap: 14px;
+  padding: 14px 18px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-left: 3px solid #011E60;
+  border-radius: 8px;
+  margin-bottom: 4px;
 }
 
 .stage-intro-icon {
-  width: 44px;
-  height: 44px;
-  background: #ffffff;
-  color: #0b4ae6;
-  border-radius: 10px;
+  width: 36px;
+  height: 36px;
+  background: #e8f0fe;
+  color: #011E60;
+  border-radius: 8px;
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(11, 74, 230, 0.12);
 }
 
 .stage-intro-card h4 {
@@ -4083,7 +4100,7 @@
 }
 
 .form-input {
-  height: 40px;
+  height: 44px;
   padding: 0 12px;
   border: 1.5px solid #cbd5e1;
   border-radius: 8px;
@@ -4133,13 +4150,21 @@
 }
 
 .btn-lifecycle-action.checkin {
-  background: linear-gradient(135deg, #0b4ae6 0%, #1e40af 100%);
+  background: #011E60;
   color: #ffffff;
 }
 
+.btn-lifecycle-action.checkin:hover:not(:disabled) {
+  background: #032b84;
+}
+
 .btn-lifecycle-action.checkout {
-  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  background: #15803d;
   color: #ffffff;
+}
+
+.btn-lifecycle-action.checkout:hover:not(:disabled) {
+  background: #166534;
 }
 
 .btn-lifecycle-action:hover:not(:disabled) {
@@ -4869,32 +4894,34 @@
 
 .guest-counter-ctrl {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: #f8fafc;
-  border: 1px solid #cbd5e1;
+  align-items: stretch;
+  height: 40px;
+  border: 1.5px solid #cbd5e1;
   border-radius: 8px;
   overflow: hidden;
+  background: #ffffff;
 }
 
 .guest-counter-btn {
-  width: 34px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f1f5f9;
-  border: 0;
+  background: #f8fafc;
+  border: none;
+  border-radius: 0;
   color: #1e293b;
-  font-size: 16px;
-  font-weight: bold;
+  font-size: 18px;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.1s ease;
+  transition: background 0.12s ease;
+  flex-shrink: 0;
 }
 
 .guest-counter-btn:hover:not(:disabled) {
   background: #e2e8f0;
-  color: #0b4ae6;
+  color: #011E60;
 }
 
 .guest-counter-btn:disabled {
@@ -4903,9 +4930,17 @@
 }
 
 .guest-counter-val {
-  font-size: 14px;
-  font-weight: 800;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 700;
   color: #0f172a;
+  border-left: 1.5px solid #cbd5e1;
+  border-right: 1.5px solid #cbd5e1;
+  background: #ffffff;
+  user-select: none;
 }
 
 /* Preset Catalog Cards */
@@ -5788,31 +5823,33 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 9px 18px;
-  border-radius: 9px;
+  padding: 0 18px;
+  height: 40px;
+  border-radius: 8px;
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
   border: none;
-  background: #155eef;
+  background: #011E60;
   color: #ffffff;
-  box-shadow: 0 2px 6px rgba(21, 94, 239, 0.25);
+  box-shadow: 0 2px 8px rgba(1, 30, 96, 0.2);
   transition: all 0.15s ease;
   white-space: nowrap;
 }
 
 .btn-primary-action:hover {
-  background: #124ecc;
+  background: #032b84;
   transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(1, 30, 96, 0.28);
 }
 
 .btn-primary-action.action-green {
-  background: #16a34a;
-  box-shadow: 0 2px 6px rgba(22, 163, 74, 0.25);
+  background: #15803d;
+  box-shadow: 0 2px 8px rgba(21, 128, 61, 0.22);
 }
 
 .btn-primary-action.action-green:hover {
-  background: #15803d;
+  background: #166534;
 }
 
 .action-menu-wrapper {
@@ -5892,7 +5929,8 @@
 
 .action-dropdown-item.danger {
   color: #dc2626;
-  border-top: 1px solid #fef2f2;
+  border-top: 1px solid #fee2e2;
+  margin-top: 4px;
 }
 
 .action-dropdown-item.danger:hover {
@@ -6227,9 +6265,585 @@
   .booking-header-code-name p{display:grid;gap:3px}
   .overview-pane .price-fluctuation-card.no-change{align-items:flex-start;flex-direction:column}
 }
+/* ========================================================
+   LIFECYCLE STEPPER & STAGE ARCHITECTURE (TRIPIO DESIGN SYSTEM)
+   ======================================================== */
+.lifecycle-stepper-wrap {
+  position: sticky;
+  top: 104px;
+  z-index: 25;
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 12px 24px 8px;
+  box-shadow: 0 2px 8px rgba(9, 39, 95, 0.04);
+}
+
+.lifecycle-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.stepper-step {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.18s ease-in-out;
+  position: relative;
+}
+
+.stepper-step:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.stepper-step.is-active-view {
+  background: #f0f7ff;
+  border-color: #011E60;
+  box-shadow: 0 0 0 1px #011E60, 0 3px 10px rgba(1, 30, 96, 0.08);
+}
+
+.stepper-step.is-completed {
+  border-color: #86efac;
+  background: #f0fdf4;
+}
+
+.stepper-step.is-active-view.is-completed {
+  border-color: #011E60;
+  background: #f0fdf4;
+  box-shadow: 0 0 0 1px #011E60, 0 3px 10px rgba(1, 30, 96, 0.08);
+}
+
+.stepper-step .step-num {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 14px;
+  background: #e2e8f0;
+  color: #475569;
+  flex-shrink: 0;
+  transition: all 0.18s ease;
+}
+
+.stepper-step.is-active-view .step-num {
+  background: #011E60;
+  color: #ffffff;
+}
+
+.stepper-step.is-completed .step-num {
+  background: #15803d;
+  color: #ffffff;
+}
+
+.stepper-step .step-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.stepper-step .step-text strong {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.25;
+}
+
+.stepper-step.is-active-view .step-text strong {
+  color: #011E60;
+}
+
+.stepper-step .step-text small {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: none;
+}
+
+.stepper-step.is-active-view .step-text small {
+  color: #0369a1;
+  font-weight: 600;
+}
+
+.stepper-step.is-completed .step-text small {
+  color: #15803d;
+  font-weight: 600;
+}
+
+.stepper-line {
+  flex: 0 0 24px;
+  height: 2px;
+  background: #e2e8f0;
+  position: relative;
+}
+
+.stepper-line.is-completed {
+  background: #22c55e;
+}
+
+.stepper-subnav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 6px;
+  border-top: 1px solid #f1f5f9;
+  overflow-x: auto;
+}
+
+.subnav-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.subnav-tab-btn:hover {
+  background: #f1f5f9;
+  color: #09275f;
+}
+
+.subnav-tab-btn.active {
+  background: #f0f7ff;
+  color: #011E60;
+  border-color: #bfdbfe;
+  font-weight: 700;
+}
+
+.subnav-tab-btn .tab-pill-warning {
+  background: #fef3c7;
+  color: #b45309;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.subnav-tab-btn .tab-pill-count {
+  background: #e2e8f0;
+  color: #334155;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+/* STAGE 2 ACTION BAR */
+.staying-actions-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 14px 18px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.staying-actions-left {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.btn-op-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 15px;
+  font-size: 13px;
+  font-weight: 600;
+  background: #f8fafc;
+  color: #1e293b;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-op-secondary:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #09275f;
+}
+
+.btn-proceed-checkout {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 22px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #ffffff;
+  background: #011E60;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(1, 30, 96, 0.22);
+  transition: all 0.18s ease;
+}
+
+.btn-proceed-checkout:hover {
+  background: #032b84;
+  box-shadow: 0 6px 16px rgba(1, 30, 96, 0.32);
+  transform: translateY(-1px);
+}
+
+.stage-pre-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+}
+
+.stage-pre-actions span {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+@media (max-width: 860px) {
+  .lifecycle-stepper-wrap {
+    top: 0;
+    padding: 10px 14px;
+  }
+  .lifecycle-stepper {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .stepper-line {
+    display: none;
+  }
+  .staying-actions-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .staying-actions-left {
+    justify-content: stretch;
+  }
+  .staying-actions-left .btn-op-secondary {
+    flex: 1;
+    justify-content: center;
+  }
+  .btn-proceed-checkout {
+    width: 100%;
+    justify-content: center;
+  }
+}
 
 
 
+/* ==========================================================
+   TRIPIO UI REFRESH - Design System Tokens & Utilities
+   ========================================================== */
 
+/* NumberStepper - unified component */
+.number-stepper {
+  display: flex;
+  align-items: stretch;
+  height: 40px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #ffffff;
+  width: 120px;
+}
 
+.number-stepper__btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8fafc;
+  border: none;
+  border-radius: 0;
+  color: #334155;
+  font-size: 18px;
+  font-weight: 500;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.12s ease;
+  line-height: 1;
+}
+
+.number-stepper__btn:hover:not(:disabled) {
+  background: #e2e8f0;
+  color: #011E60;
+}
+
+.number-stepper__btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.number-stepper__btn--minus {
+  border-right: 1.5px solid #cbd5e1;
+}
+
+.number-stepper__btn--plus {
+  border-left: 1.5px solid #cbd5e1;
+}
+
+.number-stepper__val {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+  background: #ffffff;
+  user-select: none;
+  min-width: 32px;
+}
+
+/* Icon Button - circular, 40x40 */
+.icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: #f1f5f9;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.icon-btn:hover {
+  background: #e2e8f0;
+  color: #011E60;
+}
+
+.icon-btn.icon-btn--danger:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+/* Section divider heading */
+.section-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 0 8px;
+  border-bottom: 1px solid #f1f5f9;
+  margin-bottom: 16px;
+}
+
+.section-heading h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+}
+
+.section-heading p {
+  margin: 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+/* Clean status badges */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.status-pill--neutral {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+.status-pill--info {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.status-pill--success {
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.status-pill--warning {
+  background: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.status-pill--danger {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.status-pill--primary {
+  background: #e8f0fe;
+  color: #011E60;
+  border: 1px solid #bfdbfe;
+}
+
+/* Improved staying-secondary-group */
+.staying-secondary-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Improved form-sub-header to be a section separator */
+.form-section-sep {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 18px 0 10px;
+  border-bottom: 1px solid #f1f5f9;
+  margin-bottom: 12px;
+}
+
+.form-section-sep h5 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #09275f;
+  white-space: nowrap;
+}
+
+.form-section-sep span {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+/* Responsive: fix guest tier grid on mobile */
+@media (max-width: 640px) {
+  .guest-tier-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .form-grid-2 {
+    grid-template-columns: 1fr;
+  }
+  .lifecycle-stage-pane {
+    padding: 16px;
+  }
+  .staying-actions-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .btn-proceed-checkout {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Circular Icon Buttons: Expand and Close (Strict 40x40 circle) */
+.booking-modal-expand,
+.booking-modal-close {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 40px !important;
+  height: 40px !important;
+  min-width: 40px !important;
+  min-height: 40px !important;
+  border-radius: 50% !important;
+  border: 1px solid #cbd5e1 !important;
+  background: #ffffff !important;
+  color: #475569 !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+  flex-shrink: 0 !important;
+}
+
+.booking-modal-expand:hover {
+  background: #f1f5f9 !important;
+  color: #011E60 !important;
+  border-color: #94a3b8 !important;
+}
+
+.booking-modal-close:hover {
+  background: #fee2e2 !important;
+  color: #dc2626 !important;
+  border-color: #fca5a5 !important;
+}
+
+/* Action Menu Divider & Icon Alignment */
+.action-dropdown-divider {
+  height: 1px;
+  background: #f1f5f9;
+  margin: 4px 0;
+}
+
+.action-dropdown-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+/* Stepper step label */
+.stepper-step .step-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #334155;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.stepper-step.is-active-view .step-label {
+  color: #011E60;
+  font-weight: 800;
+}
+
+.stepper-step.is-completed .step-label {
+  color: #15803d;
+}
 

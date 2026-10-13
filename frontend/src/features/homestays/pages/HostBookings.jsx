@@ -67,7 +67,7 @@ export default function HostBookings({ items, homestays, run }) {
   const [sort, setSort] = useState('created-desc');
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState(null);
-  const [selectedTab, setSelectedTab] = useState('overview');
+  const [selectedStage, setSelectedStage] = useState('CHECK_IN');
 
   const perPage = 8;
   const now = today();
@@ -103,9 +103,41 @@ export default function HostBookings({ items, homestays, run }) {
     revenue: items.filter(x => String(x.createdAt).slice(0, 7) === month).reduce((sum, x) => sum + Number(x.paidAmount || 0), 0)
   };
 
-  const open = async (item, tab = 'overview') => {
+  const getInitialStage = (bookingStatus) => {
+    switch (bookingStatus) {
+      case 'Hold':
+      case 'Confirmed':
+        return 'CHECK_IN';
+      case 'CheckedIn':
+        return 'STAYING';
+      case 'CheckedOut':
+      case 'Completed':
+        return 'CHECK_OUT';
+      case 'Cancelled':
+      case 'CancellationRequested':
+        return 'OVERVIEW';
+      default:
+        return 'CHECK_IN';
+    }
+  };
+
+  const open = async (item, requestedStage = null) => {
     setSelected({ ...item, isNew: false, contactIsNew: false });
-    setSelectedTab(tab);
+    let stage = requestedStage;
+    if (!stage || stage === 'overview') {
+      stage = getInitialStage(item.status);
+    } else if (stage === 'checkin' || stage === 'CHECK_IN') {
+      stage = 'CHECK_IN';
+    } else if (stage === 'checkout' || stage === 'stay' || stage === 'STAYING') {
+      // RULE 4, 18, 19: When booking is CheckedIn (Staying), clicking 'Trả phòng' MUST OPEN STAGE 2 ('STAYING')!
+      // NEVER auto-open Stage 3 ('CHECK_OUT')!
+      if (item.status === 'CheckedIn') {
+        stage = 'STAYING';
+      } else {
+        stage = 'CHECK_OUT';
+      }
+    }
+    setSelectedStage(stage);
     if (item.isNew || item.contactIsNew) homestayApi.markBookingViewed(item.id).catch(() => {});
   };
 
@@ -319,15 +351,15 @@ export default function HostBookings({ items, homestays, run }) {
                   }}>Đã nhận tiền</button>
                 )}
                 {x.status === 'Confirmed' && (
-                  <button className="btn-action-highlight" onClick={() => open(x, 'checkin')}>Check-in</button>
+                  <button className="btn-action-highlight" onClick={() => open(x, 'CHECK_IN')}>Check-in</button>
                 )}
                 {x.status === 'CheckedIn' && (
-                  <button className="btn-action-highlight" onClick={() => open(x, 'checkout')}>Trả phòng</button>
+                  <button className="btn-action-highlight" onClick={() => open(x, 'STAYING')}>Trả phòng</button>
                 )}
                 {x.status === 'CancellationRequested' && (
                   <button onClick={() => decide(x, true)}>Duyệt hủy</button>
                 )}
-                <button className="btn-detail" onClick={() => open(x, 'overview')}>Chi tiết</button>
+                <button className="btn-detail" onClick={() => open(x)}>Chi tiết</button>
               </div>
             </article>
           ))}
@@ -348,7 +380,7 @@ export default function HostBookings({ items, homestays, run }) {
         </footer>
       </div>
 
-      {selected && <BookingDetail item={selected} initialTab={selectedTab} close={() => setSelected(null)} run={run} decide={decide} />}
+      {selected && <BookingDetail item={selected} initialStage={selectedStage} close={() => setSelected(null)} run={run} decide={decide} />}
     </section>
   );
 }
@@ -443,6 +475,44 @@ const calcExtraGuestSurcharge = (actual, bookedAdults, bookedChildren, capacity,
   };
 };
 
+function NumberStepper({ value, min = 0, max = 99, step = 1, onChange, disabled = false, ariaLabel = '' }) {
+  const current = Number(value) || 0;
+
+  const handleDecrement = () => {
+    if (disabled || current <= min) return;
+    onChange(Math.max(min, current - step));
+  };
+
+  const handleIncrement = () => {
+    if (disabled || current >= max) return;
+    onChange(Math.min(max, current + step));
+  };
+
+  return (
+    <div className="number-stepper" aria-label={ariaLabel}>
+      <button
+        type="button"
+        className="number-stepper__btn number-stepper__btn--minus"
+        onClick={handleDecrement}
+        disabled={disabled || current <= min}
+        aria-label="Giảm"
+      >
+        <HostIcon name="minus" size={14} />
+      </button>
+      <div className="number-stepper__val">{current}</div>
+      <button
+        type="button"
+        className="number-stepper__btn number-stepper__btn--plus"
+        onClick={handleIncrement}
+        disabled={disabled || current >= max}
+        aria-label="Tăng"
+      >
+        <HostIcon name="plus" size={14} />
+      </button>
+    </div>
+  );
+}
+
 function BookingActionMenu({ actions = [] }) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef(null);
@@ -465,30 +535,38 @@ function BookingActionMenu({ actions = [] }) {
         type="button"
         className="btn-action-menu"
         onClick={() => setOpen(!open)}
+        aria-expanded={open}
       >
-        <span>⋮ Thao tác</span>
-        <span style={{ fontSize: '10px', marginLeft: '4px' }}>▼</span>
+        <HostIcon name="moreVertical" size={15} />
+        <span>Thao tác</span>
+        <HostIcon name="chevronDown" size={12} />
       </button>
 
       {open && (
         <div className="action-dropdown-popover">
-          <div className="action-dropdown-title">THAO TÁC BOOKING</div>
+          <div className="action-dropdown-title">THAO TÁC</div>
           <div className="action-dropdown-list">
             {actions.map((act, idx) => (
-              <button
-                key={idx}
-                type="button"
-                className={`action-dropdown-item ${act.danger ? 'danger' : ''} ${act.disabled ? 'disabled' : ''}`}
-                disabled={act.disabled}
-                onClick={() => {
-                  if (act.disabled) return;
-                  setOpen(false);
-                  act.handler();
-                }}
-              >
-                {act.icon && <HostIcon name={act.icon} size={14} />}
-                <span>{act.label}</span>
-              </button>
+              <React.Fragment key={idx}>
+                {act.danger && <div className="action-dropdown-divider" />}
+                <button
+                  type="button"
+                  className={`action-dropdown-item ${act.danger ? 'danger' : ''} ${act.disabled ? 'disabled' : ''}`}
+                  disabled={act.disabled}
+                  onClick={() => {
+                    if (act.disabled) return;
+                    setOpen(false);
+                    act.handler();
+                  }}
+                >
+                  {act.icon && (
+                    <span className="action-dropdown-icon">
+                      <HostIcon name={act.icon} size={15} color={act.danger ? '#dc2626' : '#475569'} />
+                    </span>
+                  )}
+                  <span>{act.label}</span>
+                </button>
+              </React.Fragment>
             ))}
           </div>
         </div>
@@ -497,16 +575,56 @@ function BookingActionMenu({ actions = [] }) {
   );
 }
 
-function BookingDetail({ item: initialItem, initialTab = 'overview', close, run, decide }) {
+function BookingDetail({ item: initialItem, initialStage = null, initialTab = null, close, run, decide }) {
   const [item, setItem] = useState(initialItem);
-  const [activeTab, setActiveTab] = useState(() => {
-    if (initialTab === 'services') return 'stay';
-    if (['overview', 'checkin', 'stay', 'checkout', 'bill', 'history'].includes(initialTab)) return initialTab;
-    if (['Hold', 'Confirmed'].includes(initialItem?.status)) return 'checkin';
-    if (initialItem?.status === 'CheckedIn') return 'stay';
-    if (['CheckedOut', 'Completed'].includes(initialItem?.status)) return 'checkout';
-    return 'overview';
+  const [activeStage, setActiveStage] = useState(() => {
+    const requested = initialStage || initialTab;
+    if (requested === 'checkin' || requested === 'CHECK_IN') return 'CHECK_IN';
+    if (requested === 'stay' || requested === 'STAYING') return 'STAYING';
+    if (requested === 'checkout' || requested === 'CHECK_OUT') {
+      // RULE 4 & 18: If booking is CheckedIn (Staying), DO NOT auto-open CHECK_OUT!
+      if (initialItem?.status === 'CheckedIn') return 'STAYING';
+      return 'CHECK_OUT';
+    }
+    if (requested === 'bill' || requested === 'BILL') return 'BILL';
+    if (requested === 'history' || requested === 'HISTORY') return 'HISTORY';
+    if (requested === 'overview' || requested === 'OVERVIEW' || requested === 'SUMMARY') return 'OVERVIEW';
+    
+    // Default based on booking status:
+    switch (initialItem?.status) {
+      case 'Hold':
+      case 'Confirmed':
+        return 'CHECK_IN';
+      case 'CheckedIn':
+        return 'STAYING';
+      case 'CheckedOut':
+      case 'Completed':
+        return 'CHECK_OUT';
+      case 'Cancelled':
+      case 'CancellationRequested':
+        return 'OVERVIEW';
+      default:
+        return 'CHECK_IN';
+    }
   });
+
+  const activeTab = activeStage === 'CHECK_IN' ? 'checkin' : activeStage === 'STAYING' ? 'stay' : activeStage === 'CHECK_OUT' ? 'checkout' : activeStage === 'BILL' ? 'bill' : activeStage === 'HISTORY' ? 'history' : 'overview';
+
+  const setActiveTab = (tab) => {
+    if (tab === 'checkin' || tab === 'CHECK_IN') setActiveStage('CHECK_IN');
+    else if (tab === 'stay' || tab === 'STAYING') setActiveStage('STAYING');
+    else if (tab === 'checkout' || tab === 'CHECK_OUT') {
+      if (item.status === 'Confirmed') {
+        alert('Vui lòng hoàn tất thủ tục Check-in trước khi trả phòng.');
+        return;
+      }
+      setActiveStage('CHECK_OUT');
+    }
+    else if (tab === 'bill' || tab === 'BILL') setActiveStage('BILL');
+    else if (tab === 'history' || tab === 'HISTORY') setActiveStage('HISTORY');
+    else if (tab === 'overview' || tab === 'OVERVIEW' || tab === 'SUMMARY') setActiveStage('OVERVIEW');
+    else setActiveStage(tab);
+  };
   const [note, setNote] = useState(initialItem.hostNote || '');
   const [showIncidentalModal, setShowIncidentalModal] = useState(false);
   const [incidentalCategory, setIncidentalCategory] = useState('service');
@@ -803,6 +921,7 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
         }
       }));
       setCheckInMessage(res.message || 'Xác nhận đối chiếu và check-in thành công!');
+      setActiveStage('STAYING');
       run(homestayApi.hostBookings, false);
     } catch (err) {
       alert(err.message || 'Lỗi khi xác nhận check-in.');
@@ -1343,7 +1462,7 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
     const list = [];
     if (!['Cancelled', 'CheckedOut', 'Completed'].includes(item.status)) {
       list.push({
-        label: '+ Thêm khoản phát sinh',
+        label: 'Thêm khoản phát sinh',
         icon: 'plus',
         handler: () => {
           setIncidentalCategory('service');
@@ -1419,7 +1538,7 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
   return (
     <div className={`booking-modal ${isMaximized ? 'is-maximized' : ''}`} onMouseDown={e => e.target === e.currentTarget && close()}>
       <section>
-        {/* REFACTORED HEADER BAR (SECTION XXII) */}
+        {/* REFACTORED HEADER BAR */}
         <div className="booking-header-bar">
           <div className="booking-header-code-name">
             <small>CHI TIẾT ĐƠN ĐẶT PHÒNG</small>
@@ -1439,17 +1558,6 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
             ) : (
               <span className="badge-debt-settled">Đã thanh toán đủ</span>
             )}
-            {item.checkInOut?.guestIdentityNumber && (
-              <span className="identity-verified-pill">
-                <HostIcon name="check" size={13} />
-                <span>CCCD: {item.checkInOut.guestIdentityNumber}</span>
-              </span>
-            )}
-            {recordedPropertyDeposit > 0 && (
-              <span className="badge-property-deposit">
-                <span>Cọc tài sản: {money(recordedPropertyDeposit)}</span>
-              </span>
-            )}
           </div>
 
           <div className="booking-header-right">
@@ -1458,11 +1566,11 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
               <button
                 type="button"
                 className="btn-primary-action action-green"
-                onClick={() => setActiveTab('checkin')}
+                onClick={() => setActiveStage('CHECK_IN')}
                 title="Tiến hành nhận phòng cho khách"
               >
                 <HostIcon name="check" size={16} />
-                <span>✓ Check-in</span>
+                <span>Check-in</span>
               </button>
             )}
 
@@ -1470,11 +1578,11 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
               <button
                 type="button"
                 className="btn-primary-action action-green"
-                onClick={() => setActiveTab('checkout')}
+                onClick={() => setActiveStage('CHECK_OUT')}
                 title="Tiến hành kiểm tra & trả phòng cho khách"
               >
                 <HostIcon name="check" size={16} />
-                <span>✓ Tiến hành Check-out</span>
+                <span>Tiến hành Check-out</span>
               </button>
             )}
 
@@ -1490,7 +1598,7 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
               </button>
             )}
 
-            {item.status === 'Cancelled' && (
+            {['Cancelled', 'CancellationRequested'].includes(item.status) && (
               <button
                 type="button"
                 className="btn-primary-action"
@@ -1502,7 +1610,7 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
               </button>
             )}
 
-            {/* ACTION DROPDOWN MENU [⋮ Thao tác ▼] */}
+            {/* ACTION DROPDOWN MENU [⋮ Thao tác] */}
             <BookingActionMenu actions={bookingActions} />
 
             <button
@@ -1513,87 +1621,129 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
               title={isMaximized ? 'Thu nhỏ' : 'Phóng to'}
               aria-pressed={isMaximized}
             >
-              {isMaximized ? (
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4v5H4M15 20v-5h5M4 9l5-5M20 15l-5 5" /></svg>
-              ) : (
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5" /></svg>
-              )}
+              <HostIcon name={isMaximized ? 'minimize' : 'maximize'} size={18} />
             </button>
 
-            <button className="booking-modal-close" onClick={close} aria-label="Đóng">
-              <HostIcon name="close" size={20} />
+            <button className="booking-modal-close" onClick={close} aria-label="Đóng" title="Đóng">
+              <HostIcon name="close" size={18} />
             </button>
           </div>
         </div>
 
-        {/* 6 MAIN TABS NAV */}
-        <div className="lifecycle-tabs-nav" role="tablist" aria-label="Các phần của đơn đặt phòng">
-          <button
-            type="button"
-            className={`lifecycle-tab-btn ${activeTab === 'overview' ? 'active' : ''}`}
-            onClick={() => setActiveTab('overview')}
-            role="tab" aria-selected={activeTab === 'overview'}
-          >
-            <HostIcon name="bookings" size={15} />
-            <span>Tổng quan</span>
-          </button>
+        {/* TRIPIO LIFECYCLE STEPPER & SUB-NAVIGATION */}
+        <div className="lifecycle-stepper-wrap">
+          <div className="lifecycle-stepper" role="navigation" aria-label="Tiến trình vòng đời đơn đặt phòng">
+            {/* BƯỚC 1: CHECK-IN */}
+            <button
+              type="button"
+              className={`stepper-step ${activeStage === 'CHECK_IN' ? 'is-active-view' : ''} ${['CheckedIn', 'CheckedOut', 'Completed'].includes(item.status) ? 'is-completed' : ''}`}
+              onClick={() => setActiveStage('CHECK_IN')}
+            >
+              <span className="step-num">
+                {['CheckedIn', 'CheckedOut', 'Completed'].includes(item.status) ? (
+                  <HostIcon name="check" size={14} color="#ffffff" />
+                ) : (
+                  '1'
+                )}
+              </span>
+              <span className="step-label">1. Check-in</span>
+            </button>
 
-          <button
-            type="button"
-            className={`lifecycle-tab-btn ${activeTab === 'checkin' ? 'active' : ''}`}
-            onClick={() => setActiveTab('checkin')}
-            role="tab" aria-selected={activeTab === 'checkin'}
-          >
-            <HostIcon name="key" size={15} />
-            <span>Check-in</span>
-            {item.checkInOut?.guestIdentityNumber && <span className="tab-pill-success">Đã đối chiếu</span>}
-          </button>
+            <div className={`stepper-line ${['CheckedIn', 'CheckedOut', 'Completed'].includes(item.status) ? 'is-completed' : ''}`} />
 
-          <button
-            type="button"
-            className={`lifecycle-tab-btn ${activeTab === 'stay' ? 'active' : ''}`}
-            onClick={() => setActiveTab('stay')}
-            role="tab" aria-selected={activeTab === 'stay'}
-          >
-            <HostIcon name="tag" size={15} />
-            <span>Đang ở & dịch vụ</span>
-            {inStayChargesList.length > 0 && <span className="tab-pill-count">{inStayChargesList.length}</span>}
-          </button>
+            {/* BƯỚC 2: ĐANG Ở */}
+            <button
+              type="button"
+              className={`stepper-step ${activeStage === 'STAYING' ? 'is-active-view' : ''} ${['CheckedOut', 'Completed'].includes(item.status) ? 'is-completed' : ''}`}
+              onClick={() => {
+                if (item.status === 'Confirmed') {
+                  setActiveStage('CHECK_IN');
+                } else {
+                  setActiveStage('STAYING');
+                }
+              }}
+            >
+              <span className="step-num">
+                {['CheckedOut', 'Completed'].includes(item.status) ? (
+                  <HostIcon name="check" size={14} color="#ffffff" />
+                ) : (
+                  '2'
+                )}
+              </span>
+              <span className="step-label">2. Đang ở</span>
+            </button>
 
-          <button
-            type="button"
-            className={`lifecycle-tab-btn ${activeTab === 'checkout' ? 'active' : ''}`}
-            onClick={() => setActiveTab('checkout')}
-            role="tab" aria-selected={activeTab === 'checkout'}
-          >
-            <HostIcon name="calendar" size={15} />
-            <span>Check-out</span>
-            {['CheckedOut', 'Completed'].includes(item.status) && <span className="tab-pill-success">Đã trả</span>}
-          </button>
+            <div className={`stepper-line ${['CheckedOut', 'Completed'].includes(item.status) ? 'is-completed' : ''}`} />
 
-          <button
-            type="button"
-            className={`lifecycle-tab-btn ${activeTab === 'bill' ? 'active' : ''}`}
-            onClick={() => setActiveTab('bill')}
-            role="tab" aria-selected={activeTab === 'bill'}
-          >
-            <HostIcon name="finance" size={15} />
-            <span>Hóa đơn</span>
-            {liveRemainingDue > 0 && <span className="tab-pill-warning">Còn nợ</span>}
-          </button>
+            {/* BƯỚC 3: CHECK-OUT */}
+            <button
+              type="button"
+              className={`stepper-step ${activeStage === 'CHECK_OUT' ? 'is-active-view' : ''} ${['CheckedOut', 'Completed'].includes(item.status) ? 'is-completed' : ''}`}
+              onClick={() => {
+                if (item.status === 'Confirmed') {
+                  alert('Vui lòng hoàn tất thủ tục Check-in trước khi trả phòng.');
+                  return;
+                }
+                setActiveStage('CHECK_OUT');
+              }}
+            >
+              <span className="step-num">
+                {['CheckedOut', 'Completed'].includes(item.status) ? (
+                  <HostIcon name="check" size={14} color="#ffffff" />
+                ) : (
+                  '3'
+                )}
+              </span>
+              <span className="step-label">3. Check-out</span>
+            </button>
+          </div>
 
-          <button
-            type="button"
-            className={`lifecycle-tab-btn ${activeTab === 'history' ? 'active' : ''}`}
-            onClick={() => setActiveTab('history')}
-            role="tab" aria-selected={activeTab === 'history'}
-          >
-            <HostIcon name="clock" size={15} />
-            <span>Lịch sử</span>
-            {(item.payments?.length || 0) + (item.auditLogs?.length || 0) > 0 && (
-              <span className="tab-pill-count">{(item.payments?.length || 0) + (item.auditLogs?.length || 0)}</span>
-            )}
-          </button>
+          {/* SUB-NAV CHO CÁC VIEW MỞ RỘNG */}
+          <div className="stepper-subnav">
+            <button
+              type="button"
+              className={`subnav-tab-btn ${['CHECK_IN', 'STAYING', 'CHECK_OUT'].includes(activeStage) ? 'active' : ''}`}
+              onClick={() => {
+                if (item.status === 'Confirmed') setActiveStage('CHECK_IN');
+                else if (item.status === 'CheckedIn') setActiveStage('STAYING');
+                else setActiveStage('CHECK_OUT');
+              }}
+            >
+              <HostIcon name="key" size={14} />
+              <span>Quy trình lưu trú ({activeStage === 'CHECK_IN' ? 'Check-in' : activeStage === 'CHECK_OUT' ? 'Check-out' : 'Đang ở'})</span>
+            </button>
+
+            <button
+              type="button"
+              className={`subnav-tab-btn ${activeStage === 'BILL' ? 'active' : ''}`}
+              onClick={() => setActiveStage('BILL')}
+            >
+              <HostIcon name="finance" size={14} />
+              <span>Hóa đơn quyết toán</span>
+              {liveRemainingDue > 0 && <span className="tab-pill-warning">Còn nợ {money(liveRemainingDue)}</span>}
+            </button>
+
+            <button
+              type="button"
+              className={`subnav-tab-btn ${activeStage === 'HISTORY' ? 'active' : ''}`}
+              onClick={() => setActiveStage('HISTORY')}
+            >
+              <HostIcon name="clock" size={14} />
+              <span>Lịch sử & Nhật ký</span>
+              {(item.payments?.length || 0) + (item.auditLogs?.length || 0) > 0 && (
+                <span className="tab-pill-count">{(item.payments?.length || 0) + (item.auditLogs?.length || 0)}</span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              className={`subnav-tab-btn ${activeStage === 'OVERVIEW' ? 'active' : ''}`}
+              onClick={() => setActiveStage('OVERVIEW')}
+            >
+              <HostIcon name="bookings" size={14} />
+              <span>Tổng quan đơn</span>
+            </button>
+          </div>
         </div>
 
         {/* TAB 1: TỔNG QUAN & LƯU TRÚ (Section 2, 3, 13, 16) */}
@@ -1958,7 +2108,7 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
                   <p className="checkin-recorded-note">Ghi chú đối chiếu: <em>{item.checkInOut.note}</em></p>
                 )}
                 <div className="stage-actions-row">
-                  <button type="button" className="btn-lifecycle-next" onClick={() => setActiveTab('stay')}>
+                  <button type="button" className="btn-lifecycle-next" onClick={() => setActiveStage('STAYING')}>
                     <span>Chuyển sang Quản lý Lưu trú & Dịch vụ (Giai đoạn 2)</span>
                     <HostIcon name="chevronRight" size={16} />
                   </button>
@@ -1966,6 +2116,40 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
               </div>
             ) : (
               <div className="stage-form-card">
+                {/* TIỆN ÍCH TRƯỚC KHI CHECK-IN: ĐỔI NGÀY & ĐỔI PHÒNG */}
+                {['Hold', 'Confirmed'].includes(item.status) && (
+                  <div className="stage-pre-actions">
+                    <button
+                      type="button"
+                      className="btn-op-secondary"
+                      onClick={() => {
+                        setDateChangeIn(item.checkInDate ? item.checkInDate.slice(0, 10) : '');
+                        setDateChangeOut(item.checkOutDate ? item.checkOutDate.slice(0, 10) : '');
+                        setDateChangeReason('');
+                        setDateChangeCustomFee('');
+                        setDateChangeMessage('');
+                        fetchDateChangeQuote(item.checkInDate, item.checkOutDate);
+                        setShowDateChangeModal(true);
+                      }}
+                    >
+                      <HostIcon name="calendar" size={15} />
+                      <span>Đổi ngày lưu trú</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="btn-op-secondary"
+                      onClick={() => {
+                        loadAvailableRooms();
+                        setShowRoomChangeModal(true);
+                      }}
+                    >
+                      <HostIcon name="key" size={15} />
+                      <span>Đổi phòng lưu trú</span>
+                    </button>
+                  </div>
+                )}
+
                 {/* 1. Đối chiếu CCCD & SĐT */}
                 <div className="form-sub-header">
                   <h5>1. Đối chiếu thông tin cá nhân khách</h5>
@@ -2101,17 +2285,12 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
                       <strong>Người lớn (≥12 tuổi)</strong>
                       <small>Tiêu chuẩn theo đơn</small>
                     </header>
-                    <div className="guest-counter-ctrl">
-                      <button
-                        type="button"
-                        onClick={() => setActualGuests(p => ({ ...p, adults: Math.max(1, p.adults - 1) }))}
-                      >-</button>
-                      <span>{actualGuests.adults}</span>
-                      <button
-                        type="button"
-                        onClick={() => setActualGuests(p => ({ ...p, adults: p.adults + 1 }))}
-                      >+</button>
-                    </div>
+                    <NumberStepper
+                      value={actualGuests.adults}
+                      min={1}
+                      onChange={val => setActualGuests(p => ({ ...p, adults: val }))}
+                      ariaLabel="Số người lớn"
+                    />
                   </div>
 
                   <div className="guest-tier-card">
@@ -2119,17 +2298,12 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
                       <strong>Trẻ em &lt;2 tuổi</strong>
                       <small>Miễn phí lưu trú</small>
                     </header>
-                    <div className="guest-counter-ctrl">
-                      <button
-                        type="button"
-                        onClick={() => setActualGuests(p => ({ ...p, childUnder2: Math.max(0, p.childUnder2 - 1) }))}
-                      >-</button>
-                      <span>{actualGuests.childUnder2}</span>
-                      <button
-                        type="button"
-                        onClick={() => setActualGuests(p => ({ ...p, childUnder2: p.childUnder2 + 1 }))}
-                      >+</button>
-                    </div>
+                    <NumberStepper
+                      value={actualGuests.childUnder2}
+                      min={0}
+                      onChange={val => setActualGuests(p => ({ ...p, childUnder2: val }))}
+                      ariaLabel="Trẻ dưới 2 tuổi"
+                    />
                   </div>
 
                   <div className="guest-tier-card">
@@ -2137,17 +2311,12 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
                       <strong>Trẻ 2 - &lt;6 tuổi</strong>
                       <small>{policy.guests?.child2To6SurchargePercent > 0 ? `+${policy.guests.child2To6SurchargePercent}%` : 'Miễn phí'}</small>
                     </header>
-                    <div className="guest-counter-ctrl">
-                      <button
-                        type="button"
-                        onClick={() => setActualGuests(p => ({ ...p, child2To6: Math.max(0, p.child2To6 - 1) }))}
-                      >-</button>
-                      <span>{actualGuests.child2To6}</span>
-                      <button
-                        type="button"
-                        onClick={() => setActualGuests(p => ({ ...p, child2To6: p.child2To6 + 1 }))}
-                      >+</button>
-                    </div>
+                    <NumberStepper
+                      value={actualGuests.child2To6}
+                      min={0}
+                      onChange={val => setActualGuests(p => ({ ...p, child2To6: val }))}
+                      ariaLabel="Trẻ 2 đến 6 tuổi"
+                    />
                   </div>
 
                   <div className="guest-tier-card">
@@ -2155,17 +2324,12 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
                       <strong>Trẻ 6 - &lt;10 tuổi</strong>
                       <small>+50% phụ thu</small>
                     </header>
-                    <div className="guest-counter-ctrl">
-                      <button
-                        type="button"
-                        onClick={() => setActualGuests(p => ({ ...p, child6To10: Math.max(0, p.child6To10 - 1) }))}
-                      >-</button>
-                      <span>{actualGuests.child6To10}</span>
-                      <button
-                        type="button"
-                        onClick={() => setActualGuests(p => ({ ...p, child6To10: p.child6To10 + 1 }))}
-                      >+</button>
-                    </div>
+                    <NumberStepper
+                      value={actualGuests.child6To10}
+                      min={0}
+                      onChange={val => setActualGuests(p => ({ ...p, child6To10: val }))}
+                      ariaLabel="Trẻ 6 đến 10 tuổi"
+                    />
                   </div>
 
                   <div className="guest-tier-card">
@@ -2173,17 +2337,12 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
                       <strong>Trẻ 10 - &lt;12 tuổi</strong>
                       <small>+70% phụ thu</small>
                     </header>
-                    <div className="guest-counter-ctrl">
-                      <button
-                        type="button"
-                        onClick={() => setActualGuests(p => ({ ...p, child10To12: Math.max(0, p.child10To12 - 1) }))}
-                      >-</button>
-                      <span>{actualGuests.child10To12}</span>
-                      <button
-                        type="button"
-                        onClick={() => setActualGuests(p => ({ ...p, child10To12: p.child10To12 + 1 }))}
-                      >+</button>
-                    </div>
+                    <NumberStepper
+                      value={actualGuests.child10To12}
+                      min={0}
+                      onChange={val => setActualGuests(p => ({ ...p, child10To12: val }))}
+                      ariaLabel="Trẻ 10 đến 12 tuổi"
+                    />
                   </div>
                 </div>
 
@@ -2269,7 +2428,7 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
                     disabled={checkInSaving}
                   >
                     <HostIcon name="key" size={16} />
-                    <span>{checkInSaving ? 'Đang xử lý nhận phòng...' : 'Xác nhận đối chiếu & Cho nhận phòng (Check-in)'}</span>
+                    <span>{checkInSaving ? 'Đang xử lý nhận phòng...' : 'Xác nhận Check-in'}</span>
                   </button>
                 </div>
               </div>
@@ -2318,54 +2477,64 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
               </div>
             </div>
 
-            {/* 3 NÚT THAO TÁC NGHIỆP VỤ RIÊNG BIỆT */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '20px' }}>
-              <button
-                type="button"
-                className="btn-op-action incidental"
-                style={{ padding: '12px 16px', borderRadius: '10px', fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                onClick={() => {
-                  setIncidentalCategory('service');
-                  setShowIncidentalModal(true);
-                }}
-              >
-                <HostIcon name="plus" size={16} />
-                <span>+ Thêm khoản phát sinh</span>
-              </button>
-
-              {['Confirmed', 'CheckedIn'].includes(item.status) && (
+            {/* THANH THAO TÁC GIAI ĐOẠN 2: SECONDARY ACTIONS & PRIMARY CTA CHECK-OUT */}
+            <div className="staying-actions-bar">
+              <div className="staying-secondary-group">
                 <button
                   type="button"
-                  className="btn-op-action room-change"
-                  style={{ padding: '12px 16px', borderRadius: '10px', fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                  className="btn-op-secondary"
                   onClick={() => {
-                    loadAvailableRooms();
-                    setShowRoomChangeModal(true);
+                    setIncidentalCategory('service');
+                    setShowIncidentalModal(true);
                   }}
                 >
-                  <HostIcon name="key" size={16} />
-                  <span>Đổi phòng lưu trú</span>
+                  <HostIcon name="plus" size={15} />
+                  <span>Thêm khoản phát sinh</span>
                 </button>
-              )}
 
-              {['Confirmed', 'CheckedIn'].includes(item.status) && (
+                {['Confirmed', 'CheckedIn'].includes(item.status) && (
+                  <button
+                    type="button"
+                    className="btn-op-secondary"
+                    onClick={() => {
+                      loadAvailableRooms();
+                      setShowRoomChangeModal(true);
+                    }}
+                  >
+                    <HostIcon name="key" size={15} />
+                    <span>Đổi phòng lưu trú</span>
+                  </button>
+                )}
+
+                {['Confirmed', 'CheckedIn'].includes(item.status) && (
+                  <button
+                    type="button"
+                    className="btn-op-secondary"
+                    onClick={() => {
+                      const nextDay = new Date(item.checkOutDate);
+                      nextDay.setDate(nextDay.getDate() + 1);
+                      const nextStr = nextDay.toISOString().slice(0, 10);
+                      setExtendNewDate(nextStr);
+                      setExtendReason('');
+                      setExtendMessage('');
+                      fetchExtendQuote(nextStr);
+                      setShowExtendModal(true);
+                    }}
+                  >
+                    <HostIcon name="clock" size={15} />
+                    <span>Gia hạn lưu trú</span>
+                  </button>
+                )}
+              </div>
+
+              {item.status === 'CheckedIn' && (
                 <button
                   type="button"
-                  className="btn-op-action extend-stay"
-                  style={{ padding: '12px 16px', borderRadius: '10px', fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                  onClick={() => {
-                    const nextDay = new Date(item.checkOutDate);
-                    nextDay.setDate(nextDay.getDate() + 1);
-                    const nextStr = nextDay.toISOString().slice(0, 10);
-                    setExtendNewDate(nextStr);
-                    setExtendReason('');
-                    setExtendMessage('');
-                    fetchExtendQuote(nextStr);
-                    setShowExtendModal(true);
-                  }}
+                  className="btn-proceed-checkout"
+                  onClick={() => setActiveStage('CHECK_OUT')}
                 >
-                  <HostIcon name="clock" size={16} />
-                  <span>Gia hạn lưu trú</span>
+                  <HostIcon name="calendar" size={16} />
+                  <span>Tiến hành Check-out</span>
                 </button>
               )}
             </div>
@@ -2384,7 +2553,7 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
                   }}
                 >
                   <HostIcon name="plus" size={13} />
-                  <span>+ Thêm phát sinh</span>
+                  <span>Thêm phát sinh</span>
                 </button>
               </div>
 
@@ -2445,8 +2614,8 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
               )}
 
               <div className="stage-actions-row" style={{ marginTop: '20px' }}>
-                <button type="button" className="btn-lifecycle-next" onClick={() => setActiveTab('checkout')}>
-                  <span>Chuyển sang Trả phòng & Quyết toán (Giai đoạn 3)</span>
+                <button type="button" className="btn-lifecycle-next" onClick={() => setActiveStage('CHECK_OUT')}>
+                  <span>Tiến hành Check-out & Quyết toán (Giai đoạn 3)</span>
                   <HostIcon name="chevronRight" size={16} />
                 </button>
               </div>
@@ -2580,7 +2749,7 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
                         checked={inspectionStatus === 'intact'}
                         onChange={() => setInspectionStatus('intact')}
                       />
-                      <span>✓ Phòng nguyên vẹn, đầy đủ tài sản (Không hư hại)</span>
+                      <span>Phòng nguyên vẹn, đầy đủ tài sản (Không hư hại)</span>
                     </label>
                     <label className={`inspection-radio-label ${inspectionStatus === 'damaged' ? 'active' : ''}`}>
                       <input
@@ -2590,7 +2759,7 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
                         checked={inspectionStatus === 'damaged'}
                         onChange={() => setInspectionStatus('damaged')}
                       />
-                      <span>⚠️ Phát hiện hư hỏng / mất mát tài sản</span>
+                      <span>Phát hiện hư hỏng / mất mát tài sản</span>
                     </label>
                   </div>
 
@@ -2621,28 +2790,26 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
                       </div>
 
                       {/* Form nhập món hư hỏng */}
-                      <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', gap: '10px', marginTop: '14px', alignItems: 'center', flexWrap: 'wrap' }}>
                         <input
                           type="text"
                           className="form-input"
-                          style={{ flex: 2, minWidth: '200px' }}
+                          style={{ flex: 2, minWidth: '180px' }}
                           placeholder="Tên tài sản hư hỏng / mất mát..."
                           value={damageItemName}
                           onChange={e => setDamageItemName(e.target.value)}
                         />
-                        <input
-                          type="number"
-                          min="1"
-                          className="form-input"
-                          style={{ width: '80px' }}
+                        <NumberStepper
                           value={damageItemQty}
-                          onChange={e => setDamageItemQty(Math.max(1, Number(e.target.value) || 1))}
+                          min={1}
+                          onChange={setDamageItemQty}
+                          ariaLabel="Số lượng tài sản hư hại"
                         />
                         <input
                           type="number"
                           step="10000"
                           className="form-input"
-                          style={{ width: '130px' }}
+                          style={{ width: '150px' }}
                           placeholder="Số tiền bồi thường"
                           value={damageItemPrice}
                           onChange={e => setDamageItemPrice(e.target.value)}
@@ -2666,7 +2833,8 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
                             setDamageItemQty(1);
                           }}
                         >
-                          + Ghi nhận hư hại
+                          <HostIcon name="plus" size={15} />
+                          <span>Ghi nhận hư hại</span>
                         </button>
                       </div>
 
@@ -2850,7 +3018,16 @@ function BookingDetail({ item: initialItem, initialTab = 'overview', close, run,
                   </div>
                 )}
 
-                <div className="stage-actions-row">
+                <div className="stage-actions-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className="btn-modal-cancel"
+                    style={{ margin: 0, padding: '12px 20px', borderRadius: '10px' }}
+                    onClick={() => setActiveStage('STAYING')}
+                  >
+                    ← Quay lại quản lý lưu trú
+                  </button>
+
                   <button
                     type="button"
                     className="btn-lifecycle-action checkout"
