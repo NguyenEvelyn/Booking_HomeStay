@@ -96,8 +96,8 @@ export default function CustomerNav({
               type="button"
               className="customer-icon-btn"
               onClick={onBookings}
-              title="Phòng đã đặt"
-              aria-label="Phòng đã đặt"
+              title="Chuyến đi của tôi"
+              aria-label="Chuyến đi của tôi"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <rect width="18" height="18" x="3" y="4" rx="2" />

@@ -454,3 +454,440 @@
     height: 160px;
   }
 }
+
+/* Refined inventory experience: clearer hierarchy, denser controls and WCAG focus. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.inventory-section {
+  border-radius: 20px;
+  box-shadow: 0 18px 44px rgba(9, 39, 95, 0.07);
+}
+
+.inventory-header {
+  align-items: center;
+  padding: 28px 30px 24px;
+  background:
+    radial-gradient(circle at 100% 0, rgba(11, 74, 230, 0.08), transparent 34%),
+    #ffffff;
+}
+
+.inventory-heading {
+  max-width: 540px;
+}
+
+.inventory-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--tripio-gold, #9a6700);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+}
+
+.inventory-eyebrow::before {
+  content: "";
+  width: 18px;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.inventory-header h2 {
+  margin-top: 8px;
+  font-size: clamp(23px, 2vw, 28px);
+}
+
+.inventory-header p {
+  max-width: 520px;
+  line-height: 1.55;
+}
+
+.inventory-toolbar {
+  max-width: 720px;
+}
+
+.inventory-search-field,
+.inventory-filter-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 44px;
+  box-sizing: border-box;
+  border: 1px solid #cbd8e8;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #64748b;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.inventory-search-field {
+  min-width: 260px;
+  padding-left: 14px;
+}
+
+.inventory-search-field:focus-within,
+.inventory-filter-field:focus-within {
+  border-color: #0b4ae6;
+  box-shadow: 0 0 0 3px rgba(11, 74, 230, 0.12);
+}
+
+.inventory-toolbar .inventory-search-field input,
+.inventory-toolbar .inventory-filter-field select {
+  height: 42px;
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+.inventory-toolbar .inventory-search-field input {
+  width: 100%;
+  min-width: 0;
+  padding: 0 12px 0 10px;
+}
+
+.inventory-filter-field {
+  min-width: 180px;
+}
+
+.inventory-toolbar .inventory-filter-field select {
+  width: 100%;
+  padding: 0 36px 0 14px;
+  appearance: none;
+  cursor: pointer;
+}
+
+.inventory-filter-field > svg {
+  position: absolute;
+  right: 13px;
+  pointer-events: none;
+}
+
+.inventory-view {
+  min-height: 44px;
+  box-sizing: border-box;
+  align-items: center;
+}
+
+.inventory-view button {
+  min-height: 34px;
+}
+
+.inventory-create {
+  height: 44px;
+  padding-inline: 19px;
+}
+
+.inventory-toolbar :is(button, input, select):focus-visible,
+.inventory-actions button:focus-visible {
+  outline: 3px solid rgba(11, 74, 230, 0.3);
+  outline-offset: 2px;
+}
+
+.inventory-kpis {
+  gap: 0;
+  background: #eef2f7;
+}
+
+.inventory-kpis article {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  padding: 18px 22px;
+  background: #fbfdff;
+}
+
+.inventory-kpis article + article {
+  border-left: 1px solid #e2e8f0;
+}
+
+.inventory-kpi-icon {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: #e8f0ff;
+  color: #0b4ae6;
+}
+
+.inventory-kpi-icon.is-success {
+  background: #e7f8ef;
+  color: #087a45;
+}
+
+.inventory-kpi-icon.is-violet {
+  background: #f1ecff;
+  color: #6d3fd6;
+}
+
+.inventory-kpi-icon.is-warning {
+  background: #fff3d8;
+  color: #996000;
+}
+
+.inventory-kpis article > div {
+  min-width: 0;
+}
+
+.inventory-kpis b {
+  margin-top: 2px;
+  font-size: 26px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+}
+
+.inventory-kpis article > div > span {
+  display: block;
+  margin-top: 2px;
+  overflow: hidden;
+  color: #718096;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inventory-results-bar {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 11px 18px;
+  border-bottom: 1px solid #e7edf5;
+  background: #ffffff;
+  color: #52627a;
+  font-size: 12px;
+}
+
+.inventory-results-bar b {
+  color: #09275f;
+  font-size: 13px;
+}
+
+.inventory-results-bar small {
+  margin-left: 3px;
+  color: #8290a4;
+}
+
+.inventory-table th {
+  padding-block: 13px;
+  background: #f7f9fc;
+  color: #53647b;
+}
+
+.inventory-table td {
+  padding-block: 13px;
+  transition: background-color 0.15s ease;
+}
+
+.inventory-table tbody tr {
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.inventory-table tbody tr:hover {
+  background: #f5f8ff;
+  box-shadow: inset 3px 0 0 #0b4ae6;
+}
+
+.inventory-numeric,
+.inventory-price {
+  font-variant-numeric: tabular-nums;
+}
+
+.inventory-price b {
+  white-space: nowrap;
+}
+
+.inventory-status {
+  gap: 7px;
+  border: 1px solid transparent;
+}
+
+.inventory-status i {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.inventory-status.status-approved {
+  border-color: #ccefdc;
+}
+
+.inventory-status.status-pending {
+  border-color: #f7dfa5;
+}
+
+.inventory-status.status-rejected,
+.inventory-status.status-suspended {
+  border-color: #f7cfcb;
+}
+
+.inventory-actions button {
+  min-height: 36px;
+  border-radius: 9px;
+}
+
+.inventory-empty {
+  grid-column: 1 / -1;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 54px 24px;
+}
+
+.inventory-empty > span {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 3px;
+  border-radius: 13px;
+  background: #edf3ff;
+  color: #0b4ae6;
+}
+
+.inventory-empty b {
+  color: #193455;
+  font-size: 14px;
+}
+
+.inventory-empty small {
+  color: #718096;
+  font-size: 12px;
+}
+
+.inventory-card {
+  border-radius: 18px;
+}
+
+.inventory-card footer b {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 1280px) {
+  .inventory-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .inventory-heading,
+  .inventory-toolbar {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .inventory-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .inventory-kpis article:nth-child(3) {
+    border-left: 0;
+    border-top: 1px solid #e2e8f0;
+  }
+  .inventory-kpis article:nth-child(4) {
+    border-top: 1px solid #e2e8f0;
+  }
+  .inventory-table-wrap {
+    scrollbar-width: thin;
+    scrollbar-color: #b8c7db #eef3f8;
+  }
+}
+
+@media (max-width: 700px) {
+  .inventory-section {
+    border-radius: 16px;
+  }
+  .inventory-header {
+    padding: 20px 18px;
+  }
+  .inventory-header h2 {
+    font-size: 23px;
+  }
+  .inventory-toolbar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .inventory-search-field {
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+  .inventory-filter-field {
+    min-width: 0;
+  }
+  .inventory-create {
+    grid-column: 1 / -1;
+    justify-content: center;
+  }
+  .inventory-view {
+    justify-content: stretch;
+  }
+  .inventory-view button {
+    flex: 1;
+    justify-content: center;
+  }
+  .inventory-kpis article {
+    gap: 10px;
+    padding: 15px 13px;
+  }
+  .inventory-kpi-icon {
+    width: 34px;
+    height: 34px;
+    flex-basis: 34px;
+  }
+  .inventory-kpis b {
+    font-size: 22px;
+  }
+  .inventory-grid {
+    gap: 14px;
+    padding: 14px;
+  }
+  .inventory-card footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 430px) {
+  .inventory-toolbar {
+    grid-template-columns: 1fr;
+  }
+  .inventory-search-field,
+  .inventory-create {
+    grid-column: 1;
+  }
+  .inventory-kpis {
+    grid-template-columns: 1fr;
+  }
+  .inventory-kpis article + article,
+  .inventory-kpis article:nth-child(3) {
+    border-left: 0;
+    border-top: 1px solid #e2e8f0;
+  }
+  .inventory-card-body {
+    padding: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .inventory-section *,
+  .inventory-section *::before,
+  .inventory-section *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

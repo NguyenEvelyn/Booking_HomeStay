@@ -8,6 +8,10 @@ public class Room
     public int? FloorNumber { get; set; }
     public required string Status { get; set; }
     public string? Note { get; set; }
+    public string CleaningStatus { get; set; } = "Clean";
+    public DateTime? CleaningStartedAt { get; set; }
+    public DateTime? CleaningCompletedAt { get; set; }
+    public string? CleaningChecklistJson { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public RoomType RoomType { get; set; } = null!;

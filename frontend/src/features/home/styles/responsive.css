@@ -200,7 +200,7 @@
   .hero-picks {
     right: 24px;
     width: 270px;
-    height: 214px;
+    height: 248px;
   }
 
   .hero-picks-track {
@@ -216,10 +216,9 @@
     height: 80px;
   }
 
-  .hero-picks article span {
+  .hero-pick-copy {
     left: 122px;
-    width: 130px;
-    font-size: 12px;
+    width: 132px;
   }
 
   .hero-picks article > button {
@@ -447,6 +446,25 @@
     height: 32px;
   }
 
+  .home-user-menu {
+    position: fixed;
+    top: 62px;
+    right: 12px;
+    width: min(350px, calc(100vw - 24px));
+    max-height: calc(100dvh - 76px);
+    border-radius: 18px;
+  }
+
+  .nav-actions .home-user-menu__item {
+    width: 100%;
+    min-height: 52px;
+  }
+
+  .nav-actions .home-user-menu__host-card button {
+    width: 100%;
+    height: 44px;
+  }
+
 
   .hero-content {
     left: 20px;
@@ -475,6 +493,32 @@
     font-size: 11px;
 
     line-height: 1.55;
+  }
+
+  .hero-picks {
+    right: 20px;
+    bottom: 138px;
+    width: calc(100% - 40px);
+    height: 112px;
+  }
+
+  .hero-picks-track,
+  .hero-picks article {
+    width: 100%;
+  }
+
+  .hero-picks article {
+    background: rgba(16, 31, 52, .58);
+  }
+
+  .hero-picks img {
+    width: 96px;
+    height: 90px;
+  }
+
+  .hero-pick-copy {
+    left: 122px;
+    width: calc(100% - 180px);
   }
 
 

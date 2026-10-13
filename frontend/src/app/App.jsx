@@ -9,6 +9,8 @@ import HomestayDetailPage from '../features/homestays/pages/HomestayDetailPage.j
 import HostDashboardPage from '../features/homestays/pages/HostDashboardPage.jsx';
 import MyBookingsPage from '../features/bookings/pages/MyBookingsPage.jsx';
 import AdminDashboardPage from '../features/admin/pages/AdminDashboardPage.jsx';
+import HostListingWizard from '../features/homestays/pages/HostListingWizard.jsx';
+import CustomerProfilePage from '../features/profile/pages/CustomerProfilePage.jsx';
 
 import DevelopmentDialog from '../shared/components/DevelopmentDialog.jsx';
 import ErrorPage from '../shared/components/ErrorPage.jsx';
@@ -469,10 +471,54 @@ export default function App() {
             user={user}
             onHome={() => setView('home')}
             onHomestays={() => setView('catalog')}
+            onOpenHomestay={openHomestay}
             onAccount={() => {
               setMode('change-password');
               setNotice(null);
             }}
+          />
+          {dialog}
+        </>
+      );
+    }
+
+    if (view === 'register-host') {
+      return (
+        <>
+          <HostListingWizard
+            user={user}
+            onBack={() => setView('home')}
+            onSuccess={() => {
+              markCatalogChanged();
+              setView('home');
+            }}
+          />
+          {dialog}
+        </>
+      );
+    }
+
+    if (view === 'profile') {
+      return (
+        <>
+          <CustomerProfilePage
+            user={user}
+            onBack={() => setView('home')}
+            onChangePassword={() => {
+              setMode('change-password');
+              setNotice(null);
+            }}
+            onVerification={(type) => showDeveloping(
+              type === 'email'
+                ? 'Xác thực lại địa chỉ email'
+                : 'Xác thực số điện thoại qua SMS'
+            )}
+            onUserChanged={(profile) => setUser((current) => ({
+              ...current,
+              fullName: profile.fullName ?? current.fullName,
+              phoneNumber: profile.phoneNumber ?? current.phoneNumber,
+              avatarUrl: profile.avatarUrl ?? current.avatarUrl,
+            }))}
           />
           {dialog}
         </>
@@ -537,6 +583,8 @@ export default function App() {
           onBookings={() => setView('bookings')}
           onHostPortal={() => setView('host')}
           onAdminPortal={() => setView('admin')}
+          onRegisterHomestay={() => setView('register-host')}
+          onProfile={() => setView('profile')}
           onDeveloping={showDeveloping}
         />
 

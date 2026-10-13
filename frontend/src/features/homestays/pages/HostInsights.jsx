@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { homestayApi } from '../api/homestayApi.js';
 import HostIcon from './HostIcon.jsx';
 import { confirmDialog, toast } from '../../../shared/feedback/feedback.js';
+import RevenueReport from './RevenueReport.jsx';
 
 const money = v => `${new Intl.NumberFormat('vi-VN').format(Number(v) || 0)}đ`;
 const ms = 86400000;
@@ -157,6 +158,7 @@ export function CalendarBoard({ items, homestays, rooms = [], run }) {
         <Stat name="CHECK-IN HÔM NAY" value={items.filter(x => x.checkInDate === today && !['Cancelled', 'Expired'].includes(x.status)).length} icon="userCheck" iconColor="#0b4ae6" />
         <Stat name="CHECK-OUT HÔM NAY" value={items.filter(x => x.checkOutDate === today && !['Cancelled', 'Expired'].includes(x.status)).length} icon="clock" iconColor="#64748b" />
         <Stat name="CHỜ THANH TOÁN" value={items.filter(x => x.status === 'PendingPayment').length} icon="wallet" iconColor="#b25e00" />
+        <Stat name="ĐANG LƯU TRÚ" value={items.filter(x => x.status === 'CheckedIn').length} icon="bed" iconColor="#7c3aed" />
       </div>
 
       <section className="calendar-shell">
@@ -186,16 +188,16 @@ export function CalendarBoard({ items, homestays, rooms = [], run }) {
         </header>
 
         <div className="calendar-filters">
-          <input value={q} onChange={e => setQ(e.target.value)} placeholder="Tìm mã đơn hoặc tên khách…" />
-          <select value={home} onChange={e => setHome(e.target.value)}>
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder="Tìm mã đơn hoặc tên khách…" aria-label="Tìm mã đơn hoặc tên khách" />
+          <select value={home} onChange={e => setHome(e.target.value)} aria-label="Lọc theo Homestay">
             <option value="">Tất cả homestay</option>
             {homestays.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
           </select>
-          <select value={city} onChange={e => setCity(e.target.value)}>
+          <select value={city} onChange={e => setCity(e.target.value)} aria-label="Lọc theo thành phố">
             <option value="">Tất cả thành phố</option>
             {cities.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
-          <select value={status} onChange={e => setStatus(e.target.value)}>
+          <select value={status} onChange={e => setStatus(e.target.value)} aria-label="Lọc theo trạng thái">
             <option value="">Tất cả trạng thái</option>
             {Object.entries(labels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
@@ -207,6 +209,16 @@ export function CalendarBoard({ items, homestays, rooms = [], run }) {
             <span key={k} className={k.toLowerCase()}>{v}</span>
           ))}
         </div>
+
+        <section hidden className="mobile-calendar-list" aria-label="Danh sách đặt phòng trong tháng">
+          <header><div><small>LỊCH ĐẶT PHÒNG</small><h3>{active.length} booking trong tháng {m + 1}</h3></div><span>Sắp theo ngày nhận phòng</span></header>
+          <div>{[...active].sort((a, b) => String(a.checkInDate).localeCompare(String(b.checkInDate))).map(x => {
+            const roomsText = x.details?.map(d => `${d.roomTypeName || 'Phòng'}${d.roomNumber ? ` · ${d.roomNumber}` : ''}`).join(', ') || 'Chưa xếp phòng';
+            const checkIn = new Date(`${x.checkInDate}T00:00:00`);
+            const checkOut = new Date(`${x.checkOutDate}T00:00:00`);
+            return <button type="button" key={x.id} className={`mobile-calendar-booking is-${String(x.status).toLowerCase()}`} onClick={() => setSelected(x)}><span className="mobile-booking-date"><small>{checkIn.toLocaleDateString('vi-VN', { weekday: 'short' })}</small><b>{String(checkIn.getDate()).padStart(2, '0')}</b><em>Tháng {checkIn.getMonth() + 1}</em></span><span className="mobile-booking-main"><span className="mobile-booking-top"><b>{x.customerName}</b><em>{labels[x.status] || x.status}</em></span><strong><HostIcon name="home" size={15}/>{x.homestayName}</strong><small><HostIcon name="bed" size={14}/>{roomsText}</small><span className="mobile-booking-stay"><HostIcon name="calendar" size={14}/><b>{checkIn.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}</b><i>→</i><b>{checkOut.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}</b><em>{x.nights} đêm</em></span><span className="mobile-booking-code">{x.bookingCode}<HostIcon name="chevronRight" size={15}/></span></span></button>;
+          })}{!active.length && <div className="mobile-calendar-empty"><HostIcon name="calendar" size={28}/><b>Chưa có booking phù hợp</b><span>Thử đổi tháng hoặc bộ lọc để xem lịch đặt phòng.</span></div>}</div>
+        </section>
 
         <div className="calendar-scroll" ref={scroll}>
           <div className="calendar-grid host-calendar-days" style={{ '--days': days }}>
@@ -321,49 +333,6 @@ function BookingPopup({ item, close, action }) {
   );
 }
 
-export function FinanceReport({ bookings, homestays }) {
-  const valid = bookings.filter(x => ['Confirmed', 'Completed'].includes(x.status));
-  const total = valid.reduce((s, x) => s + Number(x.totalAmount || 0), 0);
-  const byStay = homestays.map(h => ({
-    name: h.name,
-    value: valid.filter(x => x.homestayName === h.name).reduce((s, x) => s + Number(x.totalAmount || 0), 0)
-  })).sort((a, b) => b.value - a.value);
-  const max = Math.max(...byStay.map(x => x.value), 1);
-
-  return (
-    <div className="finance-page">
-      <div className="host-stats">
-        <Stat name="DOANH THU XÁC NHẬN" value={money(total)} icon="wallet" iconColor="#0b4ae6" />
-        <Stat name="ĐƠN CÓ DOANH THU" value={valid.length} icon="bookings" iconColor="#0d8244" />
-        <Stat name="GIÁ TRỊ TRUNG BÌNH" value={money(valid.length ? total / valid.length : 0)} icon="dollar" iconColor="#0b4ae6" />
-        <Stat name="HOMESTAY HOẠT ĐỘNG" value={homestays.filter(x => x.status === 'Approved').length} icon="home" iconColor="#b25e00" />
-      </div>
-
-      <div className="finance-layout">
-        <Panel title="Tổng hợp doanh thu theo Homestay">
-          <div className="revenue-table">
-            {byStay.map((x, i) => (
-              <div key={x.name}>
-                <span>#{i + 1}</span>
-                <b>{x.name}</b>
-                <i><em style={{ width: `${x.value / max * 100}%` }} /></i>
-                <strong>{money(x.value)}</strong>
-              </div>
-            ))}
-          </div>
-        </Panel>
-
-        <Panel title="Cơ cấu trạng thái đơn">
-          <div className="status-breakdown">
-            {Object.keys(labels).map(s => (
-              <div key={s}>
-                <span className={`status status-${s.toLowerCase()}`}>{labels[s]}</span>
-                <b>{bookings.filter(x => x.status === s).length}</b>
-              </div>
-            ))}
-          </div>
-        </Panel>
-      </div>
-    </div>
-  );
+export function FinanceReport({ homestays, onOpenBookings }) {
+  return <RevenueReport homestays={homestays} onOpenBookings={onOpenBookings}/>;
 }

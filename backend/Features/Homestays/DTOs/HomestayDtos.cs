@@ -75,6 +75,7 @@ public sealed record RoomTypeDetailResponse(
     string Name,
     string Description,
     decimal BasePrice,
+    decimal MinimumPrice,
     int MaxAdults,
     int MaxChildren,
     int BaseCapacity,

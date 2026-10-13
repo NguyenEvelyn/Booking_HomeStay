@@ -1,0 +1,27 @@
+{
+  "id": "/",
+  "name": "Tripio - Đặt phòng Homestay",
+  "short_name": "Tripio",
+  "description": "Tìm kiếm và đặt phòng homestay cùng Tripio.",
+  "lang": "vi",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#061f4e",
+  "theme_color": "#061f4e",
+  "icons": [
+    {
+      "src": "/icons/tripio-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/tripio-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

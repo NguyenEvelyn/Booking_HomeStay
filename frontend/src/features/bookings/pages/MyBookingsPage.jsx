@@ -93,6 +93,7 @@ export default function MyBookingsPage({
   user,
   onHome,
   onHomestays,
+  onOpenHomestay,
   onAccount,
 }) {
   const [items, setItems] = useState([]),
@@ -106,6 +107,35 @@ export default function MyBookingsPage({
     [review, setReview] = useState(null),
     [query, setQuery] = useState(""),
     [detailLoading, setDetailLoading] = useState(false);
+
+  const handleRebook = async (booking) => {
+    if (!booking) return;
+    let homestayId = booking.homestayId;
+    let roomTypeId =
+      booking.roomTypeId ||
+      booking.details?.[0]?.roomTypeId ||
+      booking.details?.[0]?.room_type_id;
+
+    if (booking.id && (!homestayId || !roomTypeId)) {
+      try {
+        const full = await bookingApi.detail(booking.id);
+        homestayId = homestayId || full.homestayId;
+        roomTypeId = roomTypeId || full.roomTypeId || full.details?.[0]?.roomTypeId;
+      } catch {
+        // ignore fallback
+      }
+    }
+
+    if (onOpenHomestay && homestayId) {
+      onOpenHomestay(homestayId, {
+        roomTypeId: roomTypeId || null,
+        adults: booking.adultCount || 2,
+        children: booking.childCount || 0,
+      });
+      return;
+    }
+    onHomestays?.();
+  };
   const load = async () => {
     setLoading(true);
     try {
@@ -233,7 +263,7 @@ export default function MyBookingsPage({
                 pay={() => pay(x)}
                 cancel={() => setCancel(x)}
                 review={() => openReview(x)}
-                rebook={onHomestays}
+                rebook={() => handleRebook(x)}
               />
             ))}
             {!filtered.length && (
@@ -260,7 +290,7 @@ export default function MyBookingsPage({
             openReview(detail);
             setDetail(null);
           }}
-          rebook={onHomestays}
+          rebook={() => handleRebook(detail)}
         />
       )}{" "}
       {cancel && (
@@ -401,6 +431,18 @@ function BookingCard({ item, detail, pay, cancel, review, rebook }) {
               }}
             >
               Hủy đơn
+            </button>
+          )}
+          {status === "Completed" && (
+            <button
+              className="card-cancel"
+              style={{ background: "#f0fdf4", color: "#166534", borderColor: "#bbf7d0" }}
+              onClick={(e) => {
+                e.stopPropagation();
+                rebook();
+              }}
+            >
+              Đặt lại
             </button>
           )}
         </aside>

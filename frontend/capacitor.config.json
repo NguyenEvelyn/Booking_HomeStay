@@ -1,9 +1,27 @@
 {
-  "appId": "vn.edu.huit.tripio",
+  "appId": "com.tripio.homestay",
   "appName": "Tripio",
   "webDir": "dist",
   "backgroundColor": "#061f4e",
   "android": {
-    "backgroundColor": "#061f4e"
+    "backgroundColor": "#061f4e",
+    "allowMixedContent": false
+  },
+  "plugins": {
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#ffffff",
+      "overlaysWebView": false
+    },
+    "SplashScreen": {
+      "launchShowDuration": 1200,
+      "launchAutoHide": true,
+      "backgroundColor": "#061f4e",
+      "showSpinner": false
+    },
+    "Keyboard": {
+      "resize": "body",
+      "resizeOnFullScreen": true
+    }
   }
 }

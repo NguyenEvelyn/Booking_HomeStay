@@ -1,4 +1,4 @@
-package vn.edu.huit.tripio;
+package com.tripio.homestay;
 
 import com.getcapacitor.BridgeActivity;
 

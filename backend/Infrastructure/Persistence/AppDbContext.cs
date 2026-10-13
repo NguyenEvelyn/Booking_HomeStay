@@ -44,9 +44,20 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<CheckInOut> CheckInOuts => Set<CheckInOut>();
     public DbSet<BookingDateChange> BookingDateChanges => Set<BookingDateChange>();
     public DbSet<BookingExtension> BookingExtensions => Set<BookingExtension>();
+    public DbSet<HostRegistration> HostRegistrations => Set<HostRegistration>();
+    public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        var systemSetting = modelBuilder.Entity<SystemSetting>();
+        systemSetting.ToTable("system_settings");
+        systemSetting.HasKey(x => x.Key);
+        systemSetting.Property(x => x.Key).HasColumnName("setting_key").HasMaxLength(80);
+        systemSetting.Property(x => x.ValueJson).HasColumnName("value_json").HasColumnType("jsonb");
+        systemSetting.Property(x => x.UpdatedBy).HasColumnName("updated_by");
+        systemSetting.Property(x => x.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+        systemSetting.HasOne<User>().WithMany().HasForeignKey(x => x.UpdatedBy).OnDelete(DeleteBehavior.SetNull);
+
         var conflictEvent = modelBuilder.Entity<BookingConflictEvent>();
         conflictEvent.ToTable("booking_conflict_events");
         conflictEvent.HasKey(x => x.Id);
@@ -183,6 +194,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         room.Property(x => x.FloorNumber).HasColumnName("floor_number");
         room.Property(x => x.Status).HasColumnName("status").HasMaxLength(30).IsRequired();
         room.Property(x => x.Note).HasColumnName("note").HasMaxLength(500);
+        room.Property(x => x.CleaningStatus).HasColumnName("cleaning_status").HasMaxLength(30).HasDefaultValue("Clean");
+        room.Property(x => x.CleaningStartedAt).HasColumnName("cleaning_started_at");
+        room.Property(x => x.CleaningCompletedAt).HasColumnName("cleaning_completed_at");
+        room.Property(x => x.CleaningChecklistJson).HasColumnName("cleaning_checklist").HasColumnType("jsonb");
         room.Property(x => x.CreatedAt).HasColumnName("created_at");
         room.Property(x => x.UpdatedAt).HasColumnName("updated_at");
         room.HasOne(x => x.RoomType).WithMany(x => x.Rooms).HasForeignKey(x => x.RoomTypeId);
@@ -298,6 +313,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         booking.Property(x => x.ContactUpdatedAt).HasColumnName("contact_updated_at");
         booking.Property(x => x.CreatedAt).HasColumnName("created_at");
         booking.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+        booking.HasIndex(x => new { x.HomestayId, x.Status, x.CheckInDate }).HasDatabaseName("ix_bookings_homestay_status_check_in");
         booking.HasOne(x => x.Homestay).WithMany().HasForeignKey(x => x.HomestayId).OnDelete(DeleteBehavior.Restrict);
 
         var bookingGuest = modelBuilder.Entity<BookingGuest>();
@@ -546,5 +562,24 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         extension.Property(x => x.ExtendedBy).HasColumnName("extended_by");
         extension.Property(x => x.CreatedAt).HasColumnName("created_at");
         extension.HasOne(x => x.Booking).WithMany().HasForeignKey(x => x.BookingId).OnDelete(DeleteBehavior.Restrict);
+
+        var hostReg = modelBuilder.Entity<HostRegistration>();
+        hostReg.ToTable("host_registrations");
+        hostReg.HasKey(x => x.Id);
+        hostReg.Property(x => x.Id).HasColumnName("id");
+        hostReg.Property(x => x.UserId).HasColumnName("user_id");
+        hostReg.Property(x => x.PhoneNumber).HasColumnName("phone_number").HasMaxLength(50);
+        hostReg.Property(x => x.IdCardNumber).HasColumnName("id_card_number").HasMaxLength(50);
+        hostReg.Property(x => x.BankName).HasColumnName("bank_name").HasMaxLength(100);
+        hostReg.Property(x => x.BankAccountNumber).HasColumnName("bank_account_number").HasMaxLength(50);
+        hostReg.Property(x => x.BankAccountName).HasColumnName("bank_account_name").HasMaxLength(100);
+        hostReg.Property(x => x.HomestayDataJson).HasColumnName("homestay_data").HasColumnType("jsonb");
+        hostReg.Property(x => x.Status).HasColumnName("status").HasMaxLength(30).HasDefaultValue("Pending");
+        hostReg.Property(x => x.RejectionReason).HasColumnName("rejection_reason").HasMaxLength(500);
+        hostReg.Property(x => x.ReviewedBy).HasColumnName("reviewed_by");
+        hostReg.Property(x => x.ReviewedAt).HasColumnName("reviewed_at");
+        hostReg.Property(x => x.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+        hostReg.Property(x => x.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+        hostReg.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
     }
 }

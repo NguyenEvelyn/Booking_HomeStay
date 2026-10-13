@@ -10,8 +10,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HomestayAuth.Api.Features.Admin.Controllers;
 
-[ApiController, Route("api/admin/payments"), Authorize(Policy = AdminPolicies.Access)]
 public sealed record PaymentSyncRequest(string Reason);
+
+[ApiController, Route("api/admin/payments"), Authorize(Policy = AdminPolicies.Access)]
 public sealed class AdminPaymentsController(AppDbContext db, VnPayService vnPay, IAuditLogService audit) : ControllerBase
 {
     [HttpPost("{id:long}/sync"), Authorize(Policy = AdminPolicies.FullAccess)]

@@ -28,6 +28,10 @@ const honSon = '/assets/figma/destination-honson.jpg';
 const canTho = '/assets/figma/destination-cantho.jpg';
 const phuQuy = '/assets/figma/destination-phuquy.png';
 const logoWhite = '/assets/figma/tripio-logo-white.png';
+const localIsoDate = (date = new Date()) => {
+  const offset = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 10);
+};
 
 function Icon({ name }) {
   const icons = {
@@ -65,6 +69,39 @@ function Icon({ name }) {
     ),
     heart: (
       <path d="M19.5 12.6 12 20l-7.5-7.4A5 5 0 0 1 12 6a5 5 0 0 1 7.5 6.6Z" />
+    ),
+    suitcase: (
+      <>
+        <rect x="3" y="7" width="18" height="13" rx="2" />
+        <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M8 12v3M16 12v3M3 13h18" />
+      </>
+    ),
+    star: (
+      <path d="m12 2.8 2.8 5.7 6.3.9-4.6 4.4 1.1 6.3-5.6-3-5.6 3 1.1-6.3-4.6-4.4 6.3-.9L12 2.8Z" />
+    ),
+    profile: (
+      <>
+        <circle cx="12" cy="8" r="4" />
+        <path d="M4.5 21a7.5 7.5 0 0 1 15 0" />
+      </>
+    ),
+    lock: (
+      <>
+        <rect x="4" y="10" width="16" height="11" rx="2" />
+        <path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3" />
+      </>
+    ),
+    homePlus: (
+      <>
+        <path d="m3 11 9-8 9 8M5 10v11h14V10M9 21v-6h6v6" />
+        <path d="M18 3v5M15.5 5.5h5" />
+      </>
+    ),
+    logout: (
+      <>
+        <path d="M10 17l5-5-5-5M15 12H3" />
+        <path d="M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5" />
+      </>
     ),
     phone: (
       <path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2Z" />
@@ -181,13 +218,6 @@ const posts = [
   ['Những trải nghiệm không thể bỏ lỡ trong hành trình', blogThree],
 ];
 
-const heroStays = [
-  ['The Whispering Pines Retreat', heroImage],
-  ['Ocean Breeze Private Retreat', oceanImage],
-  ['The Coastal Haven', coastalImage],
-  ['Azure Bay Private Retreat', azureImage],
-];
-
 const offers = [
   voucherWeek,
   voucherHotDeal,
@@ -206,6 +236,9 @@ export default function HomePage({
   onBookings,
   onHostPortal,
   onAdminPortal,
+  onRegisterHomestay,
+  onRegisterHost,
+  onProfile,
 }) {
   const [menuScrolled, setMenuScrolled] = useState(false);
   const [activeNav, setActiveNav] = useState('home');
@@ -214,6 +247,7 @@ export default function HomePage({
   const [heroDragOffset, setHeroDragOffset] = useState(0);
   const [navPill, setNavPill] = useState({ left: 0, width: 0 });
   const navRef = useRef(null);
+  const userMenuRef = useRef(null);
   const navItemRefs = useRef({});
   const stayGridRef = useRef(null);
   const stayDrag = useRef({ active: false, startX: 0, scrollLeft: 0 });
@@ -233,15 +267,32 @@ export default function HomePage({
   const [searchCheckOut, setSearchCheckOut] = useState('');
   const [guestsConfig, setGuestsConfig] = useState({ adults: 2, children: 0, rooms: 1 });
   const [apiStays, setApiStays] = useState([]);
+  const [heroPicks, setHeroPicks] = useState([]);
+  const [heroPicksLoading, setHeroPicksLoading] = useState(true);
+
+  useEffect(() => {
+    if (!userMenuOpen) return undefined;
+
+    const closeMenu = (event) => {
+      if (!userMenuRef.current?.contains(event.target)) {
+        setUserMenuOpen(false);
+      }
+    };
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') setUserMenuOpen(false);
+    };
+
+    document.addEventListener('pointerdown', closeMenu);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeMenu);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [userMenuOpen]);
 
   useEffect(() => {
     let mounted = true;
-    homestayApi
-      .list({ pageSize: 6 })
-      .then((res) => {
-        if (mounted && res?.items?.length) {
-          setApiStays(
-            res.items.map((item, idx) => ({
+    const mapStay = (item, idx) => ({
               id: item.id,
               name: item.name,
               location: `${item.district || ''}, ${item.province || ''}`.replace(/^,\s*/, '') || 'Việt Nam',
@@ -251,15 +302,50 @@ export default function HomePage({
               rating: item.averageRating ? Number(item.averageRating).toFixed(1).replace('.', ',') : '4,8',
               image: item.thumbnailUrl || stays[idx % stays.length].image,
               description: item.description || null,
-            }))
-          );
-        }
-      })
-      .catch(() => {});
+            });
+
+    Promise.allSettled([
+      homestayApi.list({ pageSize: 8, sort: 'rating_desc' }),
+      homestayApi.recommendations({ topK: 4, guests: 2, adults: 2, children: 0, rooms: 1 }),
+    ]).then(([listResult, recommendationResult]) => {
+      if (!mounted) return;
+      const realStays = listResult.status === 'fulfilled'
+        ? (listResult.value?.items || []).map(mapStay)
+        : [];
+      setApiStays(realStays);
+
+      if (recommendationResult.status === 'fulfilled' && recommendationResult.value?.items?.length) {
+        setHeroPicks(recommendationResult.value.items.map((item, index) => ({
+          id: item.id,
+          name: item.name,
+          location: [item.district, item.province].filter(Boolean).join(', '),
+          image: item.thumbnailUrl || realStays.find((stay) => stay.id === item.id)?.image || heroImage,
+          score: Math.round(Number(item.score || 0)),
+          reason: item.reasons?.[0] || 'Phù hợp với nhu cầu của bạn',
+          isTop: index === 0,
+        })));
+      } else {
+        setHeroPicks(realStays.slice(0, 4).map((item, index) => ({
+          ...item,
+          score: Math.round(Number(String(item.rating).replace(',', '.')) * 20),
+          reason: item.location,
+          isTop: index === 0,
+        })));
+      }
+      setHeroPicksLoading(false);
+    }).catch(() => {
+      if (mounted) {
+        setHeroPicksLoading(false);
+      }
+    });
     return () => {
       mounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    setActiveHero(0);
+  }, [heroPicks.length]);
 
   const displayStays = apiStays.length > 0 ? apiStays : stays;
 
@@ -294,7 +380,8 @@ export default function HomePage({
   };
 
   const changeHero = (index) => {
-    const total = heroStays.length;
+    const total = heroPicks.length;
+    if (!total) return;
     const nextIndex = (index + total) % total;
 
     setActiveHero(nextIndex);
@@ -401,6 +488,14 @@ export default function HomePage({
     setTimeout(checkDestScroll, 350);
   };
 
+  const openDestination = (name) => {
+    if (typeof onBrowseHomestays === 'function') {
+      onBrowseHomestays({ location: name });
+    } else {
+      onDeveloping(`Điểm đến ${name}`);
+    }
+  };
+
   const onDestMouseDown = (e) => {
     if (e.button !== 0) return;
     const el = destTrackRef.current;
@@ -412,13 +507,13 @@ export default function HomePage({
       scrollLeft: el.scrollLeft,
       moved: false,
     };
-    el.classList.add('is-dragging');
 
     const onMouseMove = (moveEvent) => {
       if (!destDrag.current.active) return;
       const dx = moveEvent.clientX - destDrag.current.startX;
       if (Math.abs(dx) > 4) {
         destDrag.current.moved = true;
+        el.classList.add('is-dragging');
       }
       el.scrollLeft = destDrag.current.scrollLeft - dx;
       checkDestScroll();
@@ -428,6 +523,11 @@ export default function HomePage({
       destDrag.current.active = false;
       el.classList.remove('is-dragging');
       checkDestScroll();
+      // Giữ cờ moved đến hết sự kiện click hiện tại, sau đó mở lại
+      // khả năng bấm cho lần tương tác tiếp theo.
+      setTimeout(() => {
+        destDrag.current.moved = false;
+      }, 0);
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
     };
@@ -528,10 +628,10 @@ export default function HomePage({
           ===================================================== */}
       <section className="hero" id="home">
         <div className="hero-background" aria-hidden="true">
-          {heroStays.map(([name, image], index) => (
+          {(heroPicks.length ? heroPicks : [{ id: 'fallback', name: 'Tripio', image: heroImage }]).map((item, index) => (
             <img
-              key={name}
-              src={image}
+              key={item.id}
+              src={item.image}
               alt=""
               className={`hero-background-image ${
                 activeHero === index ? 'is-active' : ''
@@ -575,10 +675,12 @@ export default function HomePage({
             ))}
           </div>
 
-          <div className="nav-actions" style={{ position: 'relative' }}>
+          <div className="nav-actions" ref={userMenuRef} style={{ position: 'relative' }}>
             <button
               type="button"
               aria-label="Tài khoản"
+              aria-expanded={userMenuOpen}
+              aria-haspopup="menu"
               title={user?.fullName ? `Tài khoản (${user.fullName})` : 'Đăng nhập'}
               onClick={() => {
                 if (user && user.fullName && user.fullName !== 'Khách') {
@@ -592,87 +694,115 @@ export default function HomePage({
             </button>
 
             {userMenuOpen && user && user.fullName !== 'Khách' && (
-              <div
-                className="home-user-menu"
-                style={{
-                  position: 'absolute',
-                  top: 'calc(100% + 10px)',
-                  right: 0,
-                  minWidth: '220px',
-                  background: '#ffffff',
-                  borderRadius: '12px',
-                  boxShadow: '0 12px 36px rgba(0,0,0,0.18)',
-                  padding: '8px 0',
-                  zIndex: 250,
-                  color: '#071f52',
-                  display: 'flex',
-                  flexDirection: 'column',
-                }}
-              >
-                <div style={{ padding: '10px 16px', borderBottom: '1px solid #edf0f4' }}>
-                  <div style={{ fontWeight: '700', fontSize: '14px' }}>{user.fullName}</div>
-                  <div style={{ color: '#6b7b93', fontSize: '11px', marginTop: '2px' }}>{user.email || user.role}</div>
+              <div className="home-user-menu" role="menu" aria-label="Menu tài khoản">
+                <div className="home-user-menu__identity">
+                  <span className="home-user-menu__avatar" aria-hidden="true">
+                    {user.fullName?.charAt(0).toUpperCase() || 'U'}
+                  </span>
+                  <div>
+                    <strong>{user.fullName}</strong>
+                    <span>{user.email || user.role}</span>
+                  </div>
                 </div>
 
                 {user.role === 'Host' && (
                   <button
                     type="button"
-                    style={{ width: '100%', textAlign: 'left', padding: '10px 16px', background: 'transparent', border: 0, fontSize: '13px', fontWeight: '600', color: '#0b4ae6', cursor: 'pointer' }}
+                    className="home-user-menu__item is-primary"
+                    role="menuitem"
                     onClick={() => {
                       setUserMenuOpen(false);
                       onHostPortal?.();
                     }}
                   >
-                    ⌂ Quản lý Homestay (Host)
+                    <i><Icon name="homePlus" /></i>
+                    <span><b>Quản lý Homestay</b><small>Đi đến trung tâm đối tác</small></span>
                   </button>
                 )}
 
                 {user.role === 'Admin' && (
                   <button
                     type="button"
-                    style={{ width: '100%', textAlign: 'left', padding: '10px 16px', background: 'transparent', border: 0, fontSize: '13px', fontWeight: '600', color: '#0b4ae6', cursor: 'pointer' }}
+                    className="home-user-menu__item is-primary"
+                    role="menuitem"
                     onClick={() => {
                       setUserMenuOpen(false);
                       onAdminPortal?.();
                     }}
                   >
-                    ⚙ Trang quản trị Admin
+                    <i><Icon name="profile" /></i>
+                    <span><b>Trang quản trị</b><small>Quản lý hệ thống Tripio</small></span>
                   </button>
                 )}
 
                 <button
                   type="button"
-                  style={{ width: '100%', textAlign: 'left', padding: '10px 16px', background: 'transparent', border: 0, fontSize: '13px', color: '#1a2744', cursor: 'pointer' }}
+                  className="home-user-menu__item"
+                  role="menuitem"
                   onClick={() => {
                     setUserMenuOpen(false);
                     onBookings?.();
                   }}
                 >
-                  📅 Phòng đã đặt
+                  <i><Icon name="suitcase" /></i>
+                  <span><b>Chuyến đi của tôi</b><small>Xem và quản lý các kỳ lưu trú</small></span>
                 </button>
 
                 <button
                   type="button"
-                  style={{ width: '100%', textAlign: 'left', padding: '10px 16px', background: 'transparent', border: 0, fontSize: '13px', color: '#1a2744', cursor: 'pointer' }}
+                  className="home-user-menu__item"
+                  role="menuitem"
                   onClick={() => {
                     setUserMenuOpen(false);
-                    onChangePassword?.();
+                    onDeveloping('Danh sách yêu thích');
                   }}
                 >
-                  🔒 Đổi mật khẩu
+                  <i><Icon name="heart" /></i>
+                  <span><b>Danh sách yêu thích</b><small>Những nơi bạn đã lưu</small></span>
                 </button>
 
-                <div style={{ borderTop: '1px solid #edf0f4', margin: '4px 0' }} />
+                <button type="button" className="home-user-menu__item" role="menuitem" onClick={() => { setUserMenuOpen(false); onDeveloping('Nhận xét của tôi'); }}>
+                  <i><Icon name="star" /></i>
+                  <span><b>Nhận xét của tôi</b><small>Quản lý đánh giá đã viết</small></span>
+                </button>
+
+                <button type="button" className="home-user-menu__item" role="menuitem" onClick={() => { setUserMenuOpen(false); onProfile?.(); }}>
+                  <i><Icon name="profile" /></i>
+                  <span><b>Hồ sơ của tôi</b><small>Thông tin và tùy chọn cá nhân</small></span>
+                </button>
+
+                <button type="button" className="home-user-menu__item" role="menuitem" onClick={() => { setUserMenuOpen(false); onChangePassword?.(); }}>
+                  <i><Icon name="lock" /></i>
+                  <span><b>Đổi mật khẩu</b><small>Bảo mật tài khoản của bạn</small></span>
+                </button>
+
+                {user.role !== 'Host' && user.role !== 'Admin' && (
+                  <section className="home-user-menu__host-card" aria-label="Đăng ký cơ sở lưu trú">
+                    <span className="home-user-menu__host-orbit" aria-hidden="true" />
+                    <small>TRỞ THÀNH ĐỐI TÁC TRIPIO</small>
+                    <strong>Biến không gian của bạn thành một hành trình đáng nhớ.</strong>
+                    <button type="button" role="menuitem" onClick={() => {
+                      setUserMenuOpen(false);
+                      if (onRegisterHomestay) onRegisterHomestay();
+                      else onRegisterHost?.();
+                    }}>
+                      <span>Đăng ký cho thuê nhà</span>
+                      <Icon name="arrowUpRight" />
+                    </button>
+                  </section>
+                )}
 
                 <button
                   type="button"
-                  style={{ width: '100%', textAlign: 'left', padding: '10px 16px', background: 'transparent', border: 0, fontSize: '13px', color: '#b42318', cursor: 'pointer' }}
+                  className="home-user-menu__item is-logout"
+                  role="menuitem"
                   onClick={() => {
                     setUserMenuOpen(false);
                     onLogout();
                   }}
                 >
-                  🚪 Đăng xuất
+                  <i><Icon name="logout" /></i>
+                  <span><b>Đăng xuất</b></span>
                 </button>
               </div>
             )}
@@ -706,7 +836,7 @@ export default function HomePage({
 
         <div
           className={`hero-picks${heroDragStart ? ' is-dragging' : ''}`}
-          aria-label="Gợi ý homestay nổi bật"
+          aria-label="Homestay hot do AI Tripio gợi ý"
           onPointerDown={handleHeroPointerDown}
           onPointerMove={handleHeroPointerMove}
           onPointerUp={handleHeroPointerUp}
@@ -716,12 +846,22 @@ export default function HomePage({
           <div
             className="hero-picks-track"
             style={{
-              transform: `translateY(calc(-${activeHero * 122}px + ${heroDragOffset}px))`,
+              transform: `translateY(calc(-${activeHero * 132}px + ${heroDragOffset}px))`,
             }}
           >
-            {heroStays.map(([name, image], index) => (
+            {heroPicksLoading && (
+              <article className="hero-pick-loading" aria-live="polite">
+                <span>AI đang chọn Homestay phù hợp…</span>
+              </article>
+            )}
+            {!heroPicksLoading && heroPicks.length === 0 && (
+              <article className="hero-pick-empty">
+                <span>Chưa có Homestay nổi bật</span>
+              </article>
+            )}
+            {heroPicks.map((item, index) => (
               <article
-                key={`${name}-${index}`}
+                key={item.id}
                 className={index === activeHero ? 'is-active' : ''}
                 onClick={() => {
                   if (Math.abs(heroDragOffset) < 10) {
@@ -729,19 +869,25 @@ export default function HomePage({
                   }
                 }}
               >
-                <img src={image} alt="" draggable="false" />
+                <img src={item.image} alt={`Ảnh ${item.name}`} draggable="false" />
 
-                <span>{name}</span>
+                <div className="hero-pick-copy">
+                  <small className={item.isTop ? 'is-hot' : ''}>
+                    {item.isTop ? 'HOT NHẤT · AI GỢI Ý' : `${item.score}% PHÙ HỢP`}
+                  </small>
+                  <strong>{item.name}</strong>
+                  <em>{item.location || item.reason}</em>
+                </div>
 
                 <button
                   type="button"
-                  aria-label={`Hiển thị ${name}`}
+                  aria-label={`Xem chi tiết ${item.name}`}
                   onPointerDown={(event) => {
                     event.stopPropagation();
                   }}
                   onClick={(event) => {
                     event.stopPropagation();
-                    changeHero(index);
+                    onOpenHomestay?.(item.id);
                   }}
                 >
                   <Icon name="arrowUpRight" />
@@ -790,46 +936,31 @@ export default function HomePage({
         <label>
           Ngày nhận
 
-          <span className="search-control">
+          <span className="search-control date-control">
             <input
-              type="text"
-              placeholder="Chọn ngày nhận"
+              type="date"
+              aria-label="Ngày nhận phòng"
+              min={localIsoDate()}
               value={searchCheckIn}
-              onChange={(e) => setSearchCheckIn(e.target.value)}
-              onFocus={(event) => {
-                event.currentTarget.type = 'date';
-              }}
-              onBlur={(event) => {
-                if (!event.currentTarget.value) {
-                  event.currentTarget.type = 'text';
-                }
+              onChange={(e) => {
+                setSearchCheckIn(e.target.value);
+                if (searchCheckOut && searchCheckOut < e.target.value) setSearchCheckOut('');
               }}
             />
-
-            <i><Icon name="calendar" /></i>
           </span>
         </label>
 
         <label>
           Ngày trả
 
-          <span className="search-control">
+          <span className="search-control date-control">
             <input
-              type="text"
-              placeholder="Chọn ngày trả"
+              type="date"
+              aria-label="Ngày trả phòng"
+              min={searchCheckIn || localIsoDate()}
               value={searchCheckOut}
               onChange={(e) => setSearchCheckOut(e.target.value)}
-              onFocus={(event) => {
-                event.currentTarget.type = 'date';
-              }}
-              onBlur={(event) => {
-                if (!event.currentTarget.value) {
-                  event.currentTarget.type = 'text';
-                }
-              }}
             />
-
-            <i><Icon name="calendar" /></i>
           </span>
         </label>
 
@@ -1159,14 +1290,17 @@ export default function HomePage({
               <article
                 className="dest-card"
                 key={name}
-                style={{ cursor: 'pointer' }}
+                role="link"
+                tabIndex={0}
+                aria-label={`Xem homestay và đặt phòng tại ${name}`}
                 onClick={() => {
                   if (destDrag.current.moved) return;
-                  if (typeof onBrowseHomestays === 'function') {
-                    onBrowseHomestays({ search: name });
-                  } else {
-                    onDeveloping(`Điểm đến ${name}`);
-                  }
+                  openDestination(name);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key !== 'Enter' && event.key !== ' ') return;
+                  event.preventDefault();
+                  openDestination(name);
                 }}
               >
                 <img

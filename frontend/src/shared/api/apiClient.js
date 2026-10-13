@@ -19,17 +19,55 @@ function localApiUrl(value) {
 
 export const API_URL = localApiUrl(configuredApiUrl);
 
+const ACCESS_TOKEN_KEY = 'tripio-access-token';
+
+export function getAccessToken() {
+  if (typeof window === 'undefined') return null;
+  return window.sessionStorage.getItem(ACCESS_TOKEN_KEY)
+    || window.localStorage.getItem(ACCESS_TOKEN_KEY);
+}
+
+export function saveAccessToken(token, remember = false) {
+  if (typeof window === 'undefined' || !token) return;
+  clearAccessToken();
+  const storage = remember ? window.localStorage : window.sessionStorage;
+  storage.setItem(ACCESS_TOKEN_KEY, token);
+}
+
+export function clearAccessToken() {
+  if (typeof window === 'undefined') return;
+  window.sessionStorage.removeItem(ACCESS_TOKEN_KEY);
+  window.localStorage.removeItem(ACCESS_TOKEN_KEY);
+}
+
 export async function apiClient(path, options = {}) {
   const isForm = options.body instanceof FormData;
   const method = String(options.method || 'GET').toUpperCase();
-  const response = await fetch(`${API_URL}${path}`, {
-    credentials: 'include',
-    cache: method === 'GET' ? 'no-store' : undefined,
-    headers: { ...(isForm ? {} : { 'Content-Type': 'application/json' }), ...options.headers },
-    ...options
-  });
+  const accessToken = getAccessToken();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), Number(options.timeoutMs) || 20000);
+  let response;
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      credentials: 'include',
+      cache: method === 'GET' ? 'no-store' : undefined,
+      headers: {
+        ...(isForm ? {} : { 'Content-Type': 'application/json' }),
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        ...options.headers
+      },
+      ...options,
+      signal: options.signal || controller.signal
+    });
+  } catch (error) {
+    if (error?.name === 'AbortError') throw new Error('Máy chủ phản hồi quá lâu. Vui lòng kiểm tra kết nối và thử lại.');
+    throw new Error('Không thể kết nối máy chủ Tripio. Hãy kiểm tra mạng hoặc địa chỉ API.');
+  } finally {
+    clearTimeout(timeout);
+  }
   const data = await response.json().catch(() => ({}));
   if (response.status === 401 && typeof window !== 'undefined') {
+    clearAccessToken();
     window.dispatchEvent(new CustomEvent('tripio:unauthorized', { detail: { path } }));
   }
   if (!response.ok) throw new Error(data.message || data.title || `Yêu cầu thất bại (HTTP ${response.status}).`);
