@@ -2,8 +2,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import { homestayApi } from '../api/homestayApi.js';
 import { recommendationSessionId, recordRecommendationEvent } from '../api/recommendationEvents.js';
 import CustomerNav from '../../../shared/components/CustomerNav.jsx';
+import CustomerFooter from '../../../shared/components/CustomerFooter.jsx';
 import GuestPickerDropdown from '../../../shared/components/GuestPickerDropdown.jsx';
 import { freshImageUrl } from '../../../shared/utils/freshImageUrl.js';
+import { readFavoriteIds, toggleFavoriteId } from '../../../shared/utils/favorites.js';
 import { bookingApi } from '../../bookings/api/bookingApi.js';
 import { findMissingCompanionIndex } from './bookingGuestValidation.js';
 import pineHomestayImage from '../../../../assets/f6cd6879081dc8e8d4ff18669308ea86.jpg';
@@ -133,6 +135,8 @@ function Icon({ name, size = 16, className = '', color = 'currentColor', fill = 
     kitchen: (
       <path d="M18 2v20M6 2v20M2 6h8M2 10h8M14 6h8M14 10h8" />
     ),
+    bath: <path d="M4 12h16v3a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5v-3Zm2 0V7a3 3 0 0 1 6 0M3 12h18M7 20v2M17 20v2" />,
+    tv: <><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m8 2 4 3 4-3"/></>,
     sparkles: (
       <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z" />
     ),
@@ -182,12 +186,21 @@ function getAmenitySvg(name = '', category = '') {
   if (lower.includes('vật nuôi') || lower.includes('pet') || lower.includes('chó') || lower.includes('mèo')) return <Icon name="paw" size={20} />;
   if (lower.includes('bơi') || lower.includes('hồ')) return <Icon name="pool" size={20} />;
   if (lower.includes('bếp') || lower.includes('ăn')) return <Icon name="kitchen" size={20} />;
+  if (lower.includes('tắm') || lower.includes('nước nóng')) return <Icon name="bath" size={20} />;
+  if (lower.includes('tv') || lower.includes('tivi') || lower.includes('truyền hình')) return <Icon name="tv" size={20} />;
   if (lower.includes('lễ tân') || lower.includes('24h') || lower.includes('reception') || lower.includes('hỗ trợ')) return <Icon name="clock" size={20} />;
   return <Icon name="sparkles" size={20} />;
 }
 
 const toDateStr = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 const formatDateVN = (value) => value ? value.split('-').reverse().join('/') : '';
+const splitProfilePhone = (value = '') => {
+  const compact = String(value).replace(/[\s.()-]/g, '');
+  if (compact.startsWith('+84')) return { countryCode: '+84', phone: compact.slice(3).replace(/^0/, '') };
+  if (compact.startsWith('84') && compact.length > 10) return { countryCode: '+84', phone: compact.slice(2).replace(/^0/, '') };
+  if (compact.startsWith('0')) return { countryCode: '+84', phone: compact.slice(1) };
+  return { countryCode: '+84', phone: compact };
+};
 const shortNightDate = (value, includeWeekday = true) => {
   const date = new Date(`${value}T00:00:00`);
   const weekday = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][date.getDay()];
@@ -224,7 +237,7 @@ const calendarDays = (year, month) => {
   });
 };
 
-export default function HomestayDetailPage({ id, initialSearch, user, onHome, onBack, onBookings, onAccount, onDeveloping, refreshKey = 0 }) {
+export default function HomestayDetailPage({ id, initialSearch, user, onHome, onBack, onBookings, onFavorites, onAccount, onChangePassword, onLogout, onDeveloping, refreshKey = 0 }) {
   const [data, setData] = useState(null);
   const [policy, setPolicy] = useState(null);
   const [error, setError] = useState('');
@@ -235,6 +248,7 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
   const [roomQuantity, setRoomQuantity] = useState(initialSearch?.rooms || 1);
   const [dayUseHours, setDayUseHours] = useState(3);
   const [selectedRoom, setSelectedRoom] = useState(null);
+  const [roomDetailLoading, setRoomDetailLoading] = useState(false);
   const [activeRoomImage, setActiveRoomImage] = useState(0);
   const [showPaymentPage, setShowPaymentPage] = useState(false);
   const [bookingBusy, setBookingBusy] = useState(false);
@@ -265,9 +279,10 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const nameParts = (user?.fullName || '').trim().split(/\s+/).filter(Boolean);
+  const profilePhone = splitProfilePhone(user?.phoneNumber);
   const [guestInfo, setGuestInfo] = useState({
     firstName: nameParts.slice(0, -1).join(' '), lastName: nameParts.at(-1) || '',
-    email: user?.email || '', country: 'Việt Nam', countryCode: '+84', phone: '', arrivalTime: '',
+    email: user?.email || '', country: 'Việt Nam', countryCode: profilePhone.countryCode, phone: profilePhone.phone, arrivalTime: '',
     birthDate: '', gender: '', documentType: 'CCCD', documentNumber: '', address: '', note: ''
   });
   const [companions, setCompanions] = useState([]);
@@ -291,27 +306,22 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
     const safeCompanions = companions.map(({ documentNumber: _privateCompanionDocument, ...item }) => item);
     try { localStorage.setItem(`booking_draft_${id}`, JSON.stringify({ guest: safeGuest, companions: safeCompanions, declareLater, paymentOption })); } catch { /* storage may be unavailable */ }
   }, [showPaymentPage, guestInfo, companions, declareLater, paymentOption, id]);
-  const [isSaved, setIsSaved] = useState(() => {
-    try {
-      return localStorage.getItem(`saved_homestay_${id}`) === 'true';
-    } catch {
-      return false;
-    }
-  });
+  const [isSaved, setIsSaved] = useState(() => readFavoriteIds().includes(Number(id)));
   const toggleSave = () => {
-    setIsSaved((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem(`saved_homestay_${id}`, String(next));
-      } catch {
-        // ignore
-      }
-      return next;
-    });
+    setIsSaved(toggleFavoriteId(id).includes(Number(id)));
   };
 
   useEffect(() => {
+    setIsSaved(readFavoriteIds().includes(Number(id)));
+  }, [id]);
+
+  useEffect(() => {
     window.scrollTo(0, 0);
+    setData(null);
+    setPolicy(null);
+    setSelectedRoom(null);
+    setActiveRoomImage(0);
+    setActivePhotoIndex(0);
     setError('');
     Promise.all([homestayApi.detail(id),homestayApi.effectivePolicies(id)]).then(([next,nextPolicy]) => {
       setData(next);
@@ -409,7 +419,6 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
       setQuoteLoading(false);
       return undefined;
     }
-    if (sameDayUse) { setPriceQuote(null); setQuoteLoading(false); setBookingError(''); return undefined; }
     let active = true;
     setQuoteLoading(true);
     const timer = window.setTimeout(() => {
@@ -420,7 +429,9 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
         adultCount,
         childCount,
         quantity: roomQuantity,
-        customerNote: null
+        customerNote: null,
+        dayUseHours: sameDayUse ? dayUseHours : null,
+        paymentOption
       }).then((quote) => {
         if (active) {
           setPriceQuote(quote);
@@ -437,7 +448,7 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
       active = false;
       window.clearTimeout(timer);
     };
-  }, [selectedRoom?.id, arrival, departure, adultCount, childCount, roomQuantity, dayUseHours, policy?.document?.dayUse?.enabled, refreshKey]);
+  }, [selectedRoom?.id, arrival, departure, adultCount, childCount, roomQuantity, dayUseHours, paymentOption, policy?.document?.dayUse?.enabled, refreshKey]);
 
   useEffect(() => {
     if (!selectedRoom?.id) { setRoomCalendarData(null); return undefined; }
@@ -463,11 +474,11 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
   const openRoomDetail = async (room) => {
     const availableQuantity = Math.max(1, Math.min(roomQuantity, room.availableRoomCount || 1));
     const capacityPerRoom = room.extraGuestAllowed ? room.maxCapacity : room.baseCapacity;
-    setSelectedRoom(room); setShowPaymentPage(false); setActiveRoomImage(0); setRoomQuantity(availableQuantity); setCalendarOpen(true);
+    setRoomDetailLoading(true); setSelectedRoom(room); setShowPaymentPage(false); setActiveRoomImage(0); setRoomQuantity(availableQuantity); setCalendarOpen(true);
     setAdultCount((value) => Math.max(1, Math.min(value, capacityPerRoom * availableQuantity)));
     setChildCount(0);
     window.setTimeout(() => document.getElementById('room-detail-inline')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
-    try { const detail = await homestayApi.roomTypeDetail(room.id); setSelectedRoom((current) => current?.id === room.id ? { ...current, ...detail, availableRoomCount: current.availableRoomCount } : current); } catch { /* giữ dữ liệu danh sách nếu tải gallery thất bại */ }
+    try { const detail = await homestayApi.roomTypeDetail(room.id); setSelectedRoom((current) => current?.id === room.id ? { ...current, ...detail, availableRoomCount: current.availableRoomCount } : current); } catch (roomError) { setBookingError(roomError.message || 'Không tải được chi tiết phòng.'); } finally { setRoomDetailLoading(false); }
   };
   const autoSelectedRoomRef = useRef(false);
   useEffect(() => {
@@ -646,9 +657,14 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
     }
     setDeparture(value); setCalendarOpen(false); setBookingError('');
   };
-  const selectedRoomImages = selectedRoom?.rooms?.flatMap((room) => room.images.map((image) => ({ ...image, caption: image.caption || `Phòng ${room.roomNumber}` })))?.length
-    ? selectedRoom.rooms.flatMap((room) => room.images.map((image) => ({ ...image, caption: image.caption || `Phòng ${room.roomNumber}` })))
-    : selectedRoom?.images?.length ? selectedRoom.images : eloraImages.map((url, index) => ({ id: `fallback-${index}`, url, caption: selectedRoom?.name || 'Ảnh phòng' }));
+  const physicalRoomImages = selectedRoom?.rooms?.flatMap((room) => room.images.map((image) => ({ ...image, caption: image.caption || `Phòng ${room.roomNumber}` }))) || [];
+  const selectedRoomImages = physicalRoomImages.length
+    ? physicalRoomImages
+    : selectedRoom?.images?.length
+      ? selectedRoom.images
+      : selectedRoom?.thumbnailUrl
+        ? [{ id: `room-thumb-${selectedRoom.id}`, url: selectedRoom.thumbnailUrl, caption: selectedRoom.name }]
+        : [];
   const openPaymentPage = async () => {
     if (!user) { setBookingError('Vui lòng đăng nhập tài khoản khách hàng trước khi đặt phòng.'); return; }
     if (!arrival || !departure) { setBookingError('Vui lòng chọn ngày nhận và trả phòng.'); return; }
@@ -721,7 +737,7 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
       input?.focus({ preventScroll: true });
     };
     return <main className="payment-page">
-      <CustomerNav active="homestays" user={user} onHome={onHome} onHomestays={onBack} onBookings={onBookings} onAccount={onAccount} />
+      <CustomerNav active="homestays" user={user} onHome={onHome} onHomestays={onBack} onBookings={onBookings} onFavorites={onFavorites} onAccount={onAccount} onChangePassword={onChangePassword} onLogout={onLogout} />
       <div className={`payment-countdown ${paymentSecondsLeft <= 60 ? 'urgent' : ''}`} role="timer" aria-live="polite"><span>{paymentSecondsLeft > 0 ? 'Chúng tôi đang giữ giá cho quý khách...' : 'Thời gian giữ giá đã hết'}</span><i>◷</i><strong>{countdown}</strong></div>
       <nav className="room-breadcrumb" aria-label="Đường dẫn trang"><button onClick={onHome}>Trang chủ</button><span>›</span><button onClick={onBack}>Homestay</button><span>›</span><button onClick={() => setShowPaymentPage(false)}>{selectedRoom.name}</button><span>›</span><strong>Thanh toán</strong></nav>
       <section className="payment-shell">
@@ -740,7 +756,8 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
                 <label><span>Quốc gia cư trú *</span><select value={guestInfo.country} onChange={updateGuestInfo('country')}><option>Việt Nam</option><option>Hoa Kỳ</option><option>Hàn Quốc</option><option>Nhật Bản</option><option>Khác</option></select></label>
               </div>
               <span className="payment-phone-title">Số điện thoại di động</span>
-              <div className="payment-phone-row"><label><span>Mã quốc gia/vùng</span><select value={guestInfo.countryCode} onChange={updateGuestInfo('countryCode')}><option>+84</option><option>+1</option><option>+81</option><option>+82</option></select></label><label><span>Số điện thoại</span><input type="tel" maxLength={20} autoComplete="tel" value={guestInfo.phone} onChange={updateGuestInfo('phone')} placeholder="Số điện thoại di động" /></label></div>
+              <div className="payment-phone-row"><label><span>Mã quốc gia/vùng</span><select value={guestInfo.countryCode} onChange={updateGuestInfo('countryCode')}><option>+84</option><option>+1</option><option>+81</option><option>+82</option></select></label><label><span>Số điện thoại</span><input type="tel" inputMode="numeric" maxLength={20} autoComplete="tel-national" value={guestInfo.phone} onChange={updateGuestInfo('phone')} placeholder="Số điện thoại di động" /></label></div>
+              {user?.phoneNumber && <p className="payment-profile-prefill">✓ Đã điền từ hồ sơ của bạn. Bạn vẫn có thể sửa số dùng cho đơn đặt phòng này.</p>}
               <div className="payment-form-grid payment-identity-grid">
                 <label><span>Ngày sinh *</span><input type="date" value={guestInfo.birthDate} onChange={updateGuestInfo('birthDate')} /></label>
                 <label><span>Giới tính *</span><select value={guestInfo.gender} onChange={updateGuestInfo('gender')}><option value="">Chọn giới tính</option><option>Nam</option><option>Nữ</option><option>Khác</option></select></label>
@@ -780,6 +797,7 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
             <div><span>{selectedRoom.name} · {isDayUse?`${dayUseHours<=6?dayUseHours:'trên 6'} giờ`:`${bookingNights} đêm`}</span><strong>{money(quotedRoomTotal)}</strong></div>
             {(quotedExtraAdultTotal+quotedChildFeeTotal)>0&&<div><span>Phụ thu khách</span><strong>{money(quotedExtraAdultTotal+quotedChildFeeTotal)}</strong></div>}
             <div><span>Phí dịch vụ</span><strong>0 đ</strong></div>
+            {Number(priceQuote?.taxAmount)>0&&<div><span>Thuế khách hàng ({priceQuote.customerTaxPercent}%)</span><strong>{money(priceQuote.taxAmount)}</strong></div>}
             <hr/>
             <div><span>Tổng tiền</span><strong>{money(quotedGrandTotal)}</strong></div>
             <div className="payment-due"><span>Cần thanh toán hôm nay</span><strong>{money(paymentOption==='Full'?quotedGrandTotal:(priceQuote?.depositAmount??quotedGrandTotal*.3))}</strong>{paymentOption==='Deposit'&&<small>Còn lại trả tại homestay: {money(quotedGrandTotal-(priceQuote?.depositAmount??quotedGrandTotal*.3))}</small>}</div>
@@ -811,7 +829,10 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
         onHome={onHome}
         onHomestays={onBack}
         onBookings={onBookings}
+        onFavorites={onFavorites}
         onAccount={onAccount}
+        onChangePassword={onChangePassword}
+        onLogout={onLogout}
         transparentAtTop={true}
       />
 
@@ -1132,23 +1153,25 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
               <button type="button" onClick={closeRoomDetail}>Thu gọn ×</button>
             </header>
             <div className="room-page-gallery">
-              <img
-                className="room-page-main-image"
-                src={selectedRoomImages[Math.min(activeRoomImage, selectedRoomImages.length - 1)]?.url}
-                alt={selectedRoomImages[Math.min(activeRoomImage, selectedRoomImages.length - 1)]?.caption || selectedRoom.name}
-              />
-              <div className="room-page-thumbs">
-                {selectedRoomImages.map((image, index) => (
-                  <button
-                    type="button"
-                    className={index === activeRoomImage ? 'active' : ''}
-                    key={`${image.id}-${image.url}`}
-                    onClick={() => setActiveRoomImage(index)}
-                  >
-                    <img src={image.url} alt={image.caption || `Xem ảnh ${index + 1}`} />
-                  </button>
-                ))}
-              </div>
+              {roomDetailLoading ? <div className="room-gallery-loading" role="status"><i />Đang tải ảnh phòng…</div> : selectedRoomImages.length ? <>
+                <img
+                  className="room-page-main-image"
+                  src={selectedRoomImages[Math.min(activeRoomImage, selectedRoomImages.length - 1)]?.url}
+                  alt={selectedRoomImages[Math.min(activeRoomImage, selectedRoomImages.length - 1)]?.caption || selectedRoom.name}
+                />
+                <div className="room-page-thumbs">
+                  {selectedRoomImages.map((image, index) => (
+                    <button
+                      type="button"
+                      className={index === activeRoomImage ? 'active' : ''}
+                      key={`${image.id}-${image.url}`}
+                      onClick={() => setActiveRoomImage(index)}
+                    >
+                      <img src={image.url} alt={image.caption || `Xem ảnh ${index + 1}`} />
+                    </button>
+                  ))}
+                </div>
+              </> : <div className="room-gallery-empty">Phòng này chưa cập nhật hình ảnh.</div>}
             </div>
             <div className="room-page-layout">
               <article className="room-page-info modern-room-info">
@@ -1173,7 +1196,9 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
                 <div className="room-amenities-block">
                   <h3 className="room-block-title">Tiện nghi trong phòng</h3>
                   <ul className="room-amenities-checklist">
-                    {['WiFi tốc độ cao miễn phí', 'Máy điều hòa', 'Phòng tắm riêng & nước nóng', 'TV màn hình phẳng', 'Ấm đun nước và minibar', selectedRoom.name.toLowerCase().includes('ban công') ? 'Ban công riêng, nhìn ra thành phố' : 'Dọn phòng hằng ngày'].map((amenity) => <li key={amenity}><i className="amenity-icon-check"><Icon name="check" size={14} color="#10b981" /></i><span>{amenity}</span></li>)}
+                    {roomDetailLoading ? <li className="room-amenities-loading">Đang tải tiện ích phòng…</li> : selectedRoom.amenities?.length
+                      ? selectedRoom.amenities.map((amenity) => <li key={amenity.id}><i className="amenity-icon-check">{getAmenitySvg(amenity.name, amenity.category)}</i><span>{amenity.name}</span></li>)
+                      : <li className="room-amenities-empty">Phòng chưa cập nhật tiện ích riêng.</li>}
                   </ul>
                 </div>
                 <hr className="room-info-sep" />
@@ -1251,9 +1276,10 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
                     {Number(priceQuote?.discountAmount) > 0 && <div><span>Ưu đãi {priceQuote?.promotionPercent}%</span><strong>− {money(priceQuote.discountAmount)}</strong></div>}
                     {(priceQuote?.extraAdults ?? extraAdultCount) > 0 && <div><span>Phụ thu người lớn: {money(selectedRoom.extraGuestFee)} × {priceQuote?.extraAdults ?? extraAdultCount} người × {isDayUse?'1 lượt':`${bookingNights} đêm`}</span><strong>+ {money(quotedExtraAdultTotal)}</strong></div>}
                     {(priceQuote?.extraChildren ?? extraChildCount) > 0 && <div><span>Phụ thu trẻ em: {money(selectedRoom.extraChildFee)} × {priceQuote?.extraChildren ?? extraChildCount} trẻ × {isDayUse?'1 lượt':`${bookingNights} đêm`}</span><strong>+ {money(quotedChildFeeTotal)}</strong></div>}
+                    {Number(priceQuote?.taxAmount) > 0 && <div><span>Thuế khách hàng ({priceQuote.customerTaxPercent}%)</span><strong>+ {money(priceQuote.taxAmount)}</strong></div>}
                     <div className="booking-total"><span>Tổng cộng{averageNightlyPrice > 0 && <small>Trung bình ~{money(Math.round(averageNightlyPrice))}/đêm</small>}</span><strong>{money(quotedGrandTotal)}</strong></div>
                     <small>Đã bao gồm các khoản phí hiển thị</small>
-                    <div className="guest-tax-note"><i aria-hidden="true">i</i><span>Thuế của Host được Tripio đối soát riêng, không cộng thêm vào số tiền bạn thanh toán.</span></div>
+                    <div className="guest-tax-note"><i aria-hidden="true">i</i><span>Thuế khách hàng được tính theo tỷ lệ do Admin cấu hình và đã bao gồm trong tổng tiền.</span></div>
                     <button type="button" className="cancellation-policy-link" onClick={()=>document.getElementById('policy')?.scrollIntoView({behavior:'smooth'})}>Chính sách hủy phòng</button>
                   </div>
                 )}
@@ -1279,7 +1305,7 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
             <h2>Chính sách homestay</h2>
           </header>
           <div className="policy-grid">
-            <article>
+            <article className="policy-time-card policy-checkin-card">
               <i><Icon name="clock" size={24} /></i>
               <div>
                 <b>Nhận phòng</b>
@@ -1287,7 +1313,7 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
                 <small>Vui lòng xuất trình giấy tờ tùy thân</small>
               </div>
             </article>
-            <article>
+            <article className="policy-time-card policy-checkout-card">
               <i><Icon name="clock" size={24} /></i>
               <div>
                 <b>Trả phòng</b>
@@ -1295,15 +1321,24 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
                 <small>Hỗ trợ trả phòng linh hoạt (khi có thể)</small>
               </div>
             </article>
-            <article>
+            <article className="policy-cancellation-card">
               <i><Icon name="fileText" size={24} /></i>
               <div>
                 <b>Hủy phòng</b>
-                <strong>{policy?.cancellationTiers?.map((tier) => `${tier.maximumDays == null ? `≥${tier.minimumDays}` : `${tier.minimumDays}–${tier.maximumDays}`} ngày: hoàn ${tier.refundPercent}%`).join(' · ') || 'Xem điều kiện đặt phòng'}</strong>
+                {policy?.cancellationTiers?.length ? (
+                  <div className="policy-refund-tiers" aria-label="Các mức hoàn tiền khi hủy phòng">
+                    {policy.cancellationTiers.map((tier, index) => (
+                      <span className={tier.refundPercent === 0 ? 'no-refund' : ''} key={`${tier.minimumDays}-${tier.maximumDays ?? 'plus'}-${index}`}>
+                        <b>{tier.maximumDays == null ? `Từ ${tier.minimumDays} ngày` : `${tier.minimumDays}–${tier.maximumDays} ngày`}</b>
+                        <strong>{tier.refundPercent === 0 ? 'Không hoàn' : `Hoàn ${tier.refundPercent}%`}</strong>
+                      </span>
+                    ))}
+                  </div>
+                ) : <strong>Xem điều kiện đặt phòng</strong>}
                 <small>Khoản hoàn được tính theo chính sách đã lưu tại thời điểm đặt phòng</small>
               </div>
             </article>
-            <article>
+            <article className="policy-rules-card">
               <i><Icon name="shield" size={24} /></i>
               <div>
                 <b>Quy định chung</b>
@@ -1410,6 +1445,7 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
           )}
         </section>
       </div>
+      <CustomerFooter onHome={onHome} onDeveloping={onDeveloping} />
       {showAllReviews && <div className="reviews-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowAllReviews(false); }}>
         <section className="reviews-modal" role="dialog" aria-modal="true" aria-label="Tất cả đánh giá">
           <button className="reviews-modal-close" onClick={() => setShowAllReviews(false)} aria-label="Đóng">×</button>

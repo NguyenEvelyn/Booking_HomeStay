@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import './styles/home.css';
 import { homestayApi } from '../homestays/api/homestayApi.js';
 import GuestPickerDropdown from '../../shared/components/GuestPickerDropdown.jsx';
+import { readFavoriteIds, toggleFavoriteId } from '../../shared/utils/favorites.js';
 
 const heroImage = '/assets/figma/hero.png';
 const aboutImage = '/assets/figma/about.jpg';
@@ -234,6 +235,7 @@ export default function HomePage({
   onOpenHomestay,
   onChangePassword,
   onBookings,
+  onFavorites,
   onHostPortal,
   onAdminPortal,
   onRegisterHomestay,
@@ -269,6 +271,7 @@ export default function HomePage({
   const [apiStays, setApiStays] = useState([]);
   const [heroPicks, setHeroPicks] = useState([]);
   const [heroPicksLoading, setHeroPicksLoading] = useState(true);
+  const [favoriteIds, setFavoriteIds] = useState(readFavoriteIds);
 
   useEffect(() => {
     if (!userMenuOpen) return undefined;
@@ -810,9 +813,7 @@ export default function HomePage({
             <button
               type="button"
               aria-label="Yêu thích"
-              onClick={() =>
-                onDeveloping('Danh sách yêu thích')
-              }
+              onClick={() => onFavorites?.()}
             >
               <Icon name="heart" />
             </button>
@@ -1148,12 +1149,13 @@ export default function HomePage({
 
                   <button
                     type="button"
-                    className="stay-heart-btn"
+                    className={`stay-heart-btn ${stay.id && favoriteIds.includes(Number(stay.id)) ? 'active' : ''}`}
                     aria-label="Yêu thích"
                     onMouseUp={(e) => {
                       e.stopPropagation();
                       if (stayDrag.current.moved) return;
-                      onDeveloping('Yêu thích homestay');
+                      if (!stay.id) return onDeveloping('Yêu thích homestay');
+                      setFavoriteIds(toggleFavoriteId(stay.id));
                     }}
                   >
                     <Icon name="heart" />
@@ -1203,7 +1205,7 @@ export default function HomePage({
           ===================================================== */}
       <section
         className="cta-section"
-        id="offers"
+        id="booking-cta"
       >
         <img
           className="cta-bg-image"

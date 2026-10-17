@@ -8,6 +8,9 @@ import pineHomestayImage from '../../../../assets/f6cd6879081dc8e8d4ff18669308ea
 import azureHomestayImage from '../../../../assets/ecf184f6b6cd2b6e2aa898ff3195ab7e.jpg';
 import sunsetHomestayImage from '../../../../assets/2fc6b619bb0af3dc94971c099d25bbae.jpg';
 import listHomeBanner from '../../../../assets/figma/listhome_banner.jpg';
+import { FAVORITES_CHANGED_EVENT, readFavoriteIds, toggleFavoriteId } from '../../../shared/utils/favorites.js';
+import './CustomerHomestaysMobile.css';
+import './CustomerHomestaysMobilePolish.css';
 
 const money = (value) => value == null ? 'Liên hệ' : `${new Intl.NumberFormat('vi-VN').format(value)} ₫`;
 const covers = [pineHomestayImage, azureHomestayImage, sunsetHomestayImage];
@@ -57,6 +60,7 @@ function Icon({ name, filled = false, size }) {
         stroke="#FFB700"
       />
     ),
+    filter: (<><path d="M4 6h16M7 12h10M10 18h4"/><circle cx="7" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="12" cy="18" r="1"/></>),
   };
 
   const defaultSize = name === 'location' ? 13 : name === 'heart' ? 16 : 15;
@@ -80,7 +84,7 @@ function Icon({ name, filled = false, size }) {
   );
 }
 
-export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings, onAccount, refreshKey = 0, initialSearch }) {
+export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings, onFavorites, onAccount, onChangePassword, onLogout, refreshKey = 0, initialSearch, favoritesOnly = false }) {
   const [search, setSearch] = useState(initialSearch?.search || initialSearch?.location || '');
   const [location, setLocation] = useState(initialSearch?.location || '');
   const [result, setResult] = useState({ items: [], total: 0 });
@@ -101,9 +105,10 @@ export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings
   const [recommendationError, setRecommendationError] = useState('');
   const latestRequest = useRef(0);
   const [page, setPage] = useState(1);
-  const [favorites, setFavorites] = useState(() => JSON.parse(localStorage.getItem('tripio-favorites') || '[]'));
+  const [favorites, setFavorites] = useState(readFavoriteIds);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const totalGuests = guestsConfig.adults + guestsConfig.children;
   const isDayUseSearch = Boolean(checkIn && checkOut && checkIn === checkOut);
@@ -136,7 +141,7 @@ export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings
       const availabilityCheckOut = isDayUseSearch ? dateAfter(checkIn) : checkOut;
 
       const [catalogResult, recommendationResult] = await Promise.allSettled([
-        homestayApi.list({ ...criteria(targetPage), checkOut: availabilityCheckOut }),
+        homestayApi.list({ ...criteria(targetPage), checkOut: availabilityCheckOut, page: favoritesOnly ? 1 : targetPage, pageSize: favoritesOnly ? 100 : 12 }),
         homestayApi.recommendations({
               search,
               location,
@@ -157,7 +162,14 @@ export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings
       if (requestId !== latestRequest.current) return;
       if (catalogResult.status === 'rejected') throw catalogResult.reason;
 
-      const response = catalogResult.value;
+      const rawResponse = catalogResult.value;
+      const favoriteIds = readFavoriteIds();
+      const favoriteItems = favoritesOnly
+        ? rawResponse.items.filter((item) => favoriteIds.includes(Number(item.id)))
+        : rawResponse.items;
+      const response = favoritesOnly
+        ? { ...rawResponse, items: favoriteItems, total: favoriteItems.length, pageSize: 100 }
+        : rawResponse;
       const imageVersion = `${Date.now()}-${refreshKey}`;
       setResult({
         ...response,
@@ -217,7 +229,25 @@ export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings
 
   useEffect(() => {
     load(1);
-  }, [maxPrice, roomType, minRating, sort, preferredAmenities, refreshKey]);
+  }, [maxPrice, roomType, minRating, sort, preferredAmenities, refreshKey, favoritesOnly]);
+
+  useEffect(() => {
+    if (!filtersOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const close = (event) => { if (event.key === 'Escape') setFiltersOpen(false); };
+    document.addEventListener('keydown', close);
+    return () => { document.body.style.overflow = previous; document.removeEventListener('keydown', close); };
+  }, [filtersOpen]);
+
+  useEffect(() => {
+    const syncFavorites = (event) => {
+      setFavorites(event.detail || readFavoriteIds());
+      if (favoritesOnly) load(1);
+    };
+    window.addEventListener(FAVORITES_CHANGED_EVENT, syncFavorites);
+    return () => window.removeEventListener(FAVORITES_CHANGED_EVENT, syncFavorites);
+  }, [favoritesOnly]);
 
   const resetFilters = () => {
     setMaxPrice(3000000);
@@ -233,9 +263,7 @@ export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings
   };
 
   const toggleFavorite = (id) => {
-    const next = favorites.includes(id) ? favorites.filter((item) => item !== id) : [...favorites, id];
-    setFavorites(next);
-    localStorage.setItem('tripio-favorites', JSON.stringify(next));
+    setFavorites(toggleFavoriteId(id));
   };
 
   const openItem = (id) => onOpen(id, criteria(page));
@@ -244,12 +272,15 @@ export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings
   return (
     <main className="catalog-page catalog-redesign">
       <CustomerNav
-        active="homestays"
+        active={favoritesOnly ? 'favorites' : 'homestays'}
         user={user}
         onHome={onBack}
         onHomestays={() => {}}
         onBookings={onBookings}
+        onFavorites={onFavorites}
         onAccount={onAccount}
+        onChangePassword={onChangePassword}
+        onLogout={onLogout}
         transparentAtTop={true}
       />
 
@@ -327,14 +358,20 @@ export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings
 
       {/* Workspace: Bộ lọc bên trái + Danh sách homestay bên phải */}
       <section className="catalog-workspace">
+        <div className="catalog-mobile-tools">
+          <div><small>KẾT QUẢ TÌM KIẾM</small><strong>{result.total} homestay phù hợp</strong></div>
+          <button type="button" onClick={() => setFiltersOpen(true)} aria-expanded={filtersOpen}><Icon name="filter" /> Bộ lọc</button>
+        </div>
+        <button className="catalog-filter-scrim" type="button" aria-label="Đóng bộ lọc" onClick={() => setFiltersOpen(false)} hidden={!filtersOpen}/>
         {/* Bộ lọc bên trái */}
-        <aside className="catalog-filters">
+        <aside className={`catalog-filters${filtersOpen ? ' mobile-open' : ''}`}>
           <header>
             <div>
               <small>BỘ LỌC</small>
               <h2>Tìm nơi phù hợp</h2>
             </div>
             <button type="button" onClick={resetFilters}>Đặt lại</button>
+            <button className="catalog-filter-close" type="button" onClick={() => setFiltersOpen(false)} aria-label="Đóng bộ lọc">×</button>
           </header>
 
           <div className="filter-group">
@@ -408,6 +445,7 @@ export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings
               </label>
             ))}
           </div>
+          <footer className="catalog-filter-footer"><button type="button" onClick={() => setFiltersOpen(false)}>Xem {result.total} homestay</button></footer>
         </aside>
 
         {/* Danh sách kết quả bên phải */}
@@ -425,7 +463,7 @@ export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings
           </header>
 
           {/* Top-K homestay cá nhân hóa phù hợp */}
-          {!loading && recommendations.length > 0 && (
+          {!favoritesOnly && !loading && recommendations.length > 0 && (
             <section className="recommendation-strip" aria-label="Top 5 homestay phù hợp">
               <div className="recommendation-heading">
                 <div>
@@ -468,12 +506,12 @@ export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings
               </div>
             </section>
           )}
-          {!loading && recommendationError && <p className="recommendation-note">{recommendationError}</p>}
+          {!favoritesOnly && !loading && recommendationError && <p className="recommendation-note">{recommendationError}</p>}
 
           {loading && <p className="state-message">Đang tải danh sách homestay...</p>}
           {error && <p className="state-message error">{error}</p>}
           {!loading && !error && result.items.length === 0 && (
-            <p className="state-message">Không tìm thấy homestay phù hợp với bộ lọc.</p>
+            <p className="state-message">{favoritesOnly ? 'Bạn chưa lưu homestay yêu thích nào.' : 'Không tìm thấy homestay phù hợp với bộ lọc.'}</p>
           )}
 
           {/* Grid thẻ homestay — đồng bộ 100% với stay-card trang chủ */}

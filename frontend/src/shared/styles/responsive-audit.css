@@ -1,0 +1,23 @@
+/* Cross-page responsive safety layer. Component-specific rules remain authoritative. */
+@media(max-width:768px){
+  html{width:100%;max-width:100%;overflow-x:hidden;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+  body,#root{width:100%;max-width:100%;overflow-x:hidden;overscroll-behavior-x:none}
+  :where(main,section,article,aside,header,footer,nav,form,fieldset,div){min-width:0}
+  :where(img,video,canvas){max-width:100%;height:auto}
+  :where(svg){max-width:100%}
+  :where(input,select,textarea){width:100%;font-size:16px}
+  :where(button,a,[role="button"]){touch-action:manipulation}
+  :where(.customer-action-modal,.review-dialog,.cancel-modal,.room-detail-modal,.booking-modal>section,.host-service-form,.reject-dialog){max-width:100vw;max-height:100dvh;overflow-y:auto;overscroll-behavior:contain}
+  :where(.admin-table-wrap,.table-wrap,.booking-table-wrap,.inventory-table-wrap,.room-table-wrap){max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  :where(.payment-layout,.booking-detail-layout,.customer-profile-grid,.profile-commercial-grid){min-width:0}
+  :where(.customer-profile-page,.my-bookings-page,.catalog-page,.room-page,.payment-page,.host-page,.admin-shell){overflow-x:clip}
+  :where(.modal-x,[aria-label^="Đóng"],[aria-label="Mở menu"]){min-width:44px;min-height:44px}
+}
+@media(max-width:430px){
+  :where(h1){font-size:clamp(25px,8vw,32px);line-height:1.18}
+  :where(h2){line-height:1.25}
+  :where(.payment-card,.payment-summary,.detail-card,.profile-card,.host-panel,.admin-card){padding:14px;border-radius:14px}
+  :where(.form-actions,.detail-actions){gap:8px}
+  :where(.form-actions button,.detail-actions button){min-height:44px}
+}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto!important}*,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}

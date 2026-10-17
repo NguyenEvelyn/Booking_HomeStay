@@ -86,14 +86,20 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
         var periods = await db.RoomPricePeriods.AsNoTracking().Where(x => x.RoomTypeId == roomType.Id && x.StartDate < inventoryCheckOut && x.EndDate >= request.CheckInDate).ToListAsync();
         var price = pricingService.Calculate(roomType, request.CheckInDate, request.CheckOutDate, request.AdultCount, request.ChildCount,
             request.Quantity, request.ChildAges, request.PaymentOption, periods, policy, BookingRules.Today, request.DayUseHours);
+        var customerTaxPercent = await CustomerTaxSettings.ReadPercent(db);
+        var taxAmount = CustomerTaxSettings.Amount(price.TotalAmount, customerTaxPercent);
+        var totalWithTax = price.TotalAmount + taxAmount;
+        var amountDueNow = price.PaymentOption == "Full"
+            ? totalWithTax
+            : Math.Round(totalWithTax * price.DepositPercent / 100m, 0, MidpointRounding.AwayFromZero);
         var extraChildren = request.ChildAges is { Count: > 0 } ? request.ChildAges.Count(x => x >= 2) :
             Math.Max(0, request.ChildCount - Math.Max(0, roomType.BaseCapacity * request.Quantity - request.AdultCount));
         return Ok(new { price.Nights, quantity = request.Quantity, roomTotal = price.RoomAmount, extraGuestCount = price.ExtraAdults + extraChildren,
             extraAdults = price.ExtraAdults, extraChildren, price.ExtraAdultFee, extraChildFee = price.ChildSurcharge,
             extraGuestFee = price.ExtraAdultFee + price.ChildSurcharge, extraFee = price.ExtraAdultFee + price.ChildSurcharge,
-            total = price.TotalAmount, availableRooms = available, price.BaseRoomAmount, price.SeasonalSurchargeAmount,
+            subtotal = price.TotalAmount, customerTaxPercent, taxAmount, total = totalWithTax, availableRooms = available, price.BaseRoomAmount, price.SeasonalSurchargeAmount,
             price.RoomAmountBeforeDiscount, price.PromotionCode, price.PromotionPercent, price.DiscountAmount,
-            price.DepositPercent, price.DepositAmount, price.AmountDueNow, price.PaymentOption,
+            price.DepositPercent, depositAmount = amountDueNow, amountDueNow, price.PaymentOption,
             price.MinNightlyPrice, price.MaxNightlyPrice, price.NightlyRoomTotal, price.NightsBreakdown,
             price.ChildrenBreakdown, isDayUse, dayUseHours = isDayUse ? request.DayUseHours : null, policyVersion = policy.Version });
     }
@@ -115,6 +121,7 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
                 Rooms = x.Details.Select(d => d.RoomId == null ? db.RoomTypes.Where(t => t.Id == d.RoomTypeId).Select(t => t.Name).First() : db.Rooms.Where(r => r.Id == d.RoomId).Select(r => r.RoomNumber).First()).ToList(),
                 RoomTypeId = x.Details.Select(d => (long?)d.RoomTypeId).FirstOrDefault(),
                 Details = x.Details.Select(d => new { d.RoomTypeId, d.RoomId }).ToList(),
+                ActiveServiceRequestCount = db.GuestServiceRequests.Count(r => r.BookingId == x.Id && (r.Status == "Pending" || r.Status == "Approved" || r.Status == "ChangeProposed" || r.Status == "InProgress" || r.Status == "HostCompleted")),
                 Status = x.Status == BookingStatus.Hold && x.HoldExpiresAt <= DateTime.UtcNow ? "Expired" : x.Status, x.CreatedAt,
                 CanReview = x.Status == BookingStatus.CheckedOut && x.ReviewCreateUntil >= BookingRules.Today && !db.Reviews.Any(r => r.BookingId == x.Id),
                 Review = db.Reviews.Where(r => r.BookingId == x.Id).Select(r => new { r.Id, r.Rating, r.Comment, r.CleanlinessRating, r.LocationRating, r.HostRating, r.ValueRating, r.HostReply, r.HostRepliedAt, r.CreatedAt, CanEdit = x.ReviewEditUntil >= BookingRules.Today }).FirstOrDefault(),
@@ -348,11 +355,16 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
         var extraFee = price.ExtraAdultFee + price.ChildSurcharge;
         var extraGuestCount = price.ExtraAdults + (request.ChildAges is { Count: > 0 } ? request.ChildAges.Count(x => x >= 2) : 0);
         var subtotal = price.TotalAmount;
-        var depositAmount = price.AmountDueNow;
+        var customerTaxPercent = await CustomerTaxSettings.ReadPercent(db);
+        var taxAmount = CustomerTaxSettings.Amount(subtotal, customerTaxPercent);
+        var totalAmount = subtotal + taxAmount;
+        var depositAmount = price.PaymentOption == "Full"
+            ? totalAmount
+            : Math.Round(totalAmount * price.DepositPercent / 100m, 0, MidpointRounding.AwayFromZero);
         var now = DateTime.UtcNow;
         var bookingCode = $"TRP{now:yyMMddHHmmss}{Guid.NewGuid():N}"[..24].ToUpperInvariant();
         var transactionCode = $"{now:yyyyMMddHHmmss}{Guid.NewGuid():N}"[..30].ToUpperInvariant();
-        var booking = new Booking { BookingCode = bookingCode, CustomerId = userId, HomestayId = roomType.HomestayId, CheckInDate = request.CheckInDate, CheckOutDate = inventoryCheckOut, AdultCount = request.AdultCount, ChildCount = request.ChildCount, RoomAmount = roomTotal, DepositAmount = depositAmount, PaymentStatus = PaymentStatus.Unpaid, HoldExpiresAt = now.AddMinutes(policy.HoldMinutes), Subtotal = subtotal, DiscountAmount = price.DiscountAmount, ServiceFee = 0, TaxAmount = 0, TotalAmount = subtotal, CommissionRate = policy.CommissionRate, Status = BookingStatus.Hold, CustomerNote = request.CustomerNote, RecommendationSessionId = recommendationSessionId, PricingSnapshotJson = JsonSerializer.Serialize(new { roomType.Id, roomType.Name, nightlyPrice = roomType.BasePrice, roomAmount = roomTotal, nights, isDayUse, dayUseHours = isDayUse ? request.DayUseHours : null, displayCheckOutDate = request.CheckOutDate, roomType.BaseCapacity, roomType.MaxCapacity, adultExtraFee = roomType.ExtraGuestFee, roomType.ExtraChildFee, roomType.ChildMaxAge, roomType.DepositPercent, request.ChildAges, price }), PolicySnapshotJson = PolicyService.Serialize(policy), ReviewCreateUntil = inventoryCheckOut.AddDays(policy.ReviewCreateDays), ReviewEditUntil = inventoryCheckOut.AddDays(policy.ReviewEditDays), CreatedAt = now, UpdatedAt = now };
+        var booking = new Booking { BookingCode = bookingCode, CustomerId = userId, HomestayId = roomType.HomestayId, CheckInDate = request.CheckInDate, CheckOutDate = inventoryCheckOut, AdultCount = request.AdultCount, ChildCount = request.ChildCount, RoomAmount = roomTotal, DepositAmount = depositAmount, PaymentStatus = PaymentStatus.Unpaid, HoldExpiresAt = now.AddMinutes(policy.HoldMinutes), Subtotal = subtotal, DiscountAmount = price.DiscountAmount, ServiceFee = 0, TaxAmount = taxAmount, TotalAmount = totalAmount, CommissionRate = policy.CommissionRate, Status = BookingStatus.Hold, CustomerNote = request.CustomerNote, RecommendationSessionId = recommendationSessionId, PricingSnapshotJson = JsonSerializer.Serialize(new { roomType.Id, roomType.Name, nightlyPrice = roomType.BasePrice, roomAmount = roomTotal, nights, isDayUse, dayUseHours = isDayUse ? request.DayUseHours : null, displayCheckOutDate = request.CheckOutDate, roomType.BaseCapacity, roomType.MaxCapacity, adultExtraFee = roomType.ExtraGuestFee, roomType.ExtraChildFee, roomType.ChildMaxAge, roomType.DepositPercent, request.ChildAges, customerTaxPercent, taxAmount, totalAmount, price }), PolicySnapshotJson = PolicyService.Serialize(policy), ReviewCreateUntil = inventoryCheckOut.AddDays(policy.ReviewCreateDays), ReviewEditUntil = inventoryCheckOut.AddDays(policy.ReviewEditDays), CreatedAt = now, UpdatedAt = now };
         booking.Guests.Add(new BookingGuest { IsPrimary = true, GuestType = request.PrimaryGuest.Type, FullName = request.PrimaryGuest.FullName.Trim(), BirthDate = request.PrimaryGuest.BirthDate, Gender = request.PrimaryGuest.Gender, Nationality = request.PrimaryGuest.Nationality, DocumentType = request.PrimaryGuest.DocumentType, DocumentNumber = request.PrimaryGuest.DocumentNumber?.Trim(), Address = request.PrimaryGuest.Address?.Trim(), DeclarationStatus = "Completed", CreatedAt = now, UpdatedAt = now });
         if (request.DeclareCompanionsLater)
         {
@@ -379,7 +391,7 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
         await transaction.CommitAsync();
         return Ok(new { bookingCode, amount = depositAmount, depositAmount, paymentUrl, paymentOption = price.PaymentOption,
             priceBreakdown = new { roomTotal, extraGuestCount, extraGuestFee = extraFee, extraFee, price.BaseRoomAmount,
-                price.SeasonalSurchargeAmount, price.DiscountAmount, price.PromotionCode, total = price.TotalAmount,
+                price.SeasonalSurchargeAmount, price.DiscountAmount, price.PromotionCode, subtotal, customerTaxPercent, taxAmount, total = totalAmount,
                 price.DepositPercent, price.NightsBreakdown, price.ChildrenBreakdown } });
     }
 
@@ -584,7 +596,20 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
     [HttpGet("vnpay-return")]
     public async Task<IActionResult> VnPayReturn()
     {
-        var clientUrl = Environment.GetEnvironmentVariable("CLIENT_URL") ?? "http://localhost:5173";
+        const string productionClientUrl = "https://booking-home-stay-omega.vercel.app";
+        var configuredClientUrl = Environment.GetEnvironmentVariable("CLIENT_URL")?.Trim().TrimEnd('/');
+        var clientUrl = string.IsNullOrWhiteSpace(configuredClientUrl)
+            ? productionClientUrl
+            : configuredClientUrl;
+
+        // Migrate callbacks away from the retired preview site even when the
+        // deployment still has its former CLIENT_URL value cached.
+        if (Uri.TryCreate(clientUrl, UriKind.Absolute, out var configuredUri)
+            && configuredUri.Host.EndsWith("chatgpt.site", StringComparison.OrdinalIgnoreCase))
+        {
+            clientUrl = productionClientUrl;
+        }
+
         var outcome = await ProcessGatewayResult();
         return Redirect($"{clientUrl}/?payment={outcome.Result}&bookingCode={Uri.EscapeDataString(outcome.BookingCode ?? "")}");
     }

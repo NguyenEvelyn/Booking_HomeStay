@@ -1359,6 +1359,115 @@
   line-height: 1.6;
 }
 
+.policy-refund-tiers {
+  display: flex !important;
+  flex-flow: row wrap !important;
+  gap: 8px !important;
+  margin: 4px 0 3px;
+}
+
+.policy-refund-tiers span {
+  min-width: 88px;
+  padding: 8px 10px;
+  border: 1px solid #bfe7d4;
+  border-radius: 10px;
+  background: #effbf5;
+}
+
+.policy-refund-tiers span b,
+.policy-refund-tiers span strong {
+  display: block;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.policy-refund-tiers span b { color: #53647d; font-weight: 600; }
+.policy-refund-tiers span strong { color: #087a52; margin-top: 2px; }
+.policy-refund-tiers span.no-refund { border-color: #f1d0cd; background: #fff5f4; }
+.policy-refund-tiers span.no-refund strong { color: #b5352c; }
+
+@media(max-width:700px) {
+  .detail-content > .policy-section {
+    padding: 28px 16px 30px;
+  }
+
+  .policy-section .section-title {
+    margin-bottom: 18px;
+  }
+
+  .policy-section .section-title h2 {
+    font-size: 25px;
+  }
+
+  .policy-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .policy-grid article {
+    min-width: 0;
+    padding: 14px;
+    gap: 10px;
+    border: 1px solid #dce6f4;
+    border-radius: 14px;
+    background: rgba(255,255,255,.8);
+  }
+
+  .policy-grid article:first-child,
+  .policy-grid article:last-child {
+    padding: 14px;
+  }
+
+  .policy-grid .policy-time-card {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 168px;
+    text-align: center;
+  }
+
+  .policy-grid .policy-time-card > div {
+    align-items: center;
+    width: 100%;
+  }
+
+  .policy-grid .policy-cancellation-card,
+  .policy-grid .policy-rules-card,
+  .policy-grid .day-use-policy-card {
+    grid-column: 1 / -1;
+  }
+
+  .policy-grid i {
+    width: 36px;
+    height: 36px;
+  }
+
+  .policy-grid b { font-size: 14px; }
+  .policy-grid strong { font-size: 14px; }
+  .policy-grid small,
+  .policy-grid ul { font-size: 12px; }
+
+  .policy-grid .policy-cancellation-card,
+  .policy-grid .policy-rules-card {
+    align-items: flex-start;
+  }
+
+  .policy-refund-tiers {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .policy-refund-tiers span {
+    min-width: 0;
+  }
+}
+
+@media(max-width:360px) {
+  .policy-grid { grid-template-columns: 1fr; }
+  .policy-grid .policy-time-card { grid-column: 1; }
+}
+
 /* 5. Vị trí thuận tiện */
 .location-section {
   display: grid;
@@ -2296,7 +2405,7 @@
 .room-page { min-height:100vh; color:#0a2e75; background:#f7f9fc; }.room-page .customer-nav { position:relative; }
 .room-breadcrumb { height:74px; display:flex; align-items:center; padding:0 max(24px,calc((100% - 1180px)/2)); overflow-x:auto; border-bottom:1px solid #e1e6ed; background:#fff; }.room-breadcrumb button,.room-breadcrumb strong { height:74px; display:flex; align-items:center; padding:0 22px; border:0; color:#17336b; background:transparent; font-size:12px; white-space:nowrap; }.room-breadcrumb button { cursor:pointer; }.room-breadcrumb button:hover,.room-breadcrumb strong { color:#e4a800; }.room-breadcrumb span { color:#929db0; font-size:22px; }
 .room-page-shell { width:min(1180px,calc(100% - 48px)); margin:0 auto; padding:28px 0 80px; }.room-back-button { margin-bottom:18px; padding:0; border:0; color:#183f93; background:transparent; font-size:12px; font-weight:600; cursor:pointer; }
-.room-page-gallery { padding:14px; border-radius:16px; background:#fff; box-shadow:0 7px 28px rgba(5,31,78,.07); }.room-page-main-image { display:block; width:100%; height:510px; border-radius:11px; object-fit:cover; }.room-page-thumbs { display:flex; gap:10px; padding-top:11px; overflow-x:auto; }.room-page-thumbs button { flex:0 0 100px; height:68px; overflow:hidden; padding:0; border:2px solid transparent; border-radius:7px; background:#fff; cursor:pointer; }.room-page-thumbs button.active { border-color:#0b4ae6; }.room-page-thumbs img { width:100%; height:100%; object-fit:cover; }
+.room-page-gallery { padding:14px; border-radius:16px; background:#fff; box-shadow:0 7px 28px rgba(5,31,78,.07); }.room-page-main-image { display:block; width:100%; height:min(680px,70vh); border-radius:11px; object-fit:contain; background:#f3f5f8; }.room-page-thumbs { display:flex; gap:10px; padding-top:11px; overflow-x:auto; }.room-page-thumbs button { flex:0 0 100px; height:68px; overflow:hidden; padding:0; border:2px solid transparent; border-radius:7px; background:#fff; cursor:pointer; }.room-page-thumbs button.active { border-color:#0b4ae6; }.room-page-thumbs img { width:100%; height:100%; object-fit:cover; }.room-gallery-loading,.room-gallery-empty{min-height:380px;display:grid;place-items:center;align-content:center;gap:12px;border-radius:11px;color:#62718a;background:#f3f5f8;font-weight:700}.room-gallery-loading i{width:34px;height:34px;border:3px solid #d6dfeb;border-top-color:#0b4ae6;border-radius:50%;animation:tripio-spin .8s linear infinite}.room-amenities-checklist .amenity-icon-check svg{width:19px;height:19px}.room-amenities-checklist .room-amenities-loading,.room-amenities-checklist .room-amenities-empty{grid-column:1/-1;color:#718096}
 .room-page-layout { display:grid; grid-template-columns:1fr 350px; gap:34px; margin-top:28px; align-items:start; }.room-page-info,.room-page-booking { padding:30px; border-radius:14px; background:#fff; box-shadow:0 7px 28px rgba(5,31,78,.07); }.room-page-info>small,.room-page-booking>small { color:#e1a600; font-size:10px; font-weight:800; letter-spacing:.13em; }.room-page-info h1 { margin:8px 0 18px; font-family:'Be Vietnam Pro',Arial,sans-serif; font-size:38px; }.room-page-facts { display:flex; flex-wrap:wrap; gap:30px; margin-bottom:24px; color:#0b42ae; font-size:13px; }.room-page-info>p { color:#65748f; font-size:13px; line-height:1.8; }.room-page-info hr { height:1px; margin:27px 0; border:0; background:#e1e7ef; }.room-page-info h2 { margin:0 0 20px; font-family:'Be Vietnam Pro',Arial,sans-serif; font-size:24px; }
 .room-page-amenities { display:grid; grid-template-columns:1fr 1fr; gap:15px 30px; padding:0; color:#5e6f8b; font-size:12px; list-style:none; }.room-page-amenities li::before { content:'✓'; margin-right:10px; color:#0b4ae6; font-weight:800; }.room-page-policy { display:grid; grid-template-columns:repeat(3,1fr); }.room-page-policy p { display:grid; gap:7px; margin:0; padding:0 18px; border-right:1px solid #e0e6ef; font-size:12px; }.room-page-policy p:first-child { padding-left:0; }.room-page-policy p:last-child { border:0; }.room-page-policy span { color:#75839c; }
 .room-page-booking { position:sticky; top:20px; }.room-page-booking>div { margin:8px 0 15px; }.room-page-booking>div strong { font-family:'Be Vietnam Pro',Arial,sans-serif; font-size:29px; }.room-page-booking>div span { margin-left:6px; font-size:12px; }.room-page-booking>p { padding:10px 12px; border-radius:6px; color:#16733b; background:#ebf8ef; font-size:11px; }.room-page-booking label { display:block; margin-top:13px; color:#586984; font-size:11px; font-weight:600; }.room-page-booking input,.room-page-booking select { height:44px; margin-top:7px; border:1px solid #dbe2ed; background:#fff; }.room-page-booking>button { width:100%; height:50px; margin-top:20px; border:0; border-radius:7px; color:#09295f; background:#ffbd00; font-weight:800; cursor:pointer; }.room-page-booking>button:disabled { color:#fff; background:#abb4c1; }.room-page-booking em { display:block; margin-top:14px; color:#75839a; font-size:9px; font-style:normal; text-align:center; }
@@ -2311,6 +2420,7 @@
 .payment-form-grid input:focus,.payment-form-grid select:focus,.payment-phone-row input:focus,.payment-phone-row select:focus,.payment-extra-card select:focus { border-color:#1853c7; box-shadow:0 0 0 3px rgba(24,83,199,.12); }
 .payment-phone-title { display:block; margin:18px 0 8px; color:#64728a; font-size:11px; }
 .payment-phone-row { display:grid; grid-template-columns:155px minmax(0,1fr); gap:16px; max-width:520px; }
+.payment-profile-prefill { margin:8px 0 0; color:#15805f; font-size:11px; line-height:1.45; }
 .payment-form-help { margin:18px 0 0; color:#718098; font-size:11px; line-height:1.55; }
 .payment-extra-card>p { margin:-10px 0 22px; color:#596980; font-size:12px; }
 .payment-extra-card label>span { color:#263956; font-size:12px; }
@@ -2418,7 +2528,7 @@
 /* Các khối nội dung lớn tràn ngang như banner */
 .detail-content>.inline-room-detail,.detail-content>.policy-section,.detail-content>.location-section { width:100vw; box-sizing:border-box; margin-left:calc(50% - 50vw); margin-right:calc(50% - 50vw); border-left:0; border-right:0; border-radius:0; box-shadow:none; }
 .detail-content>.inline-room-detail { padding:28px max(28px,calc((100vw - 1200px)/2)); background:#fff; border-block:1px solid #e0e6ee; }
-.detail-content>.inline-room-detail .room-page-main-image { height:min(380px,40vw); border-radius:0; }
+.detail-content>.inline-room-detail .room-page-main-image { height:min(680px,70vh); border-radius:0; }
 .detail-content>.inline-room-detail .room-page-gallery { overflow:hidden; border-radius:14px; }
 .detail-content>.policy-section { padding:58px max(80px,calc((100vw - 1280px)/2)); background:#edf3fb; }
 .detail-content>.location-section { display:grid; grid-template-columns:minmax(360px,calc((100vw - 1280px)/2 + 430px)) 1fr; background:#fff; }
@@ -3491,3 +3601,6 @@
 .policy-grid .day-use-policy-card{grid-column:1/-1;margin-top:14px;padding:22px 24px;border:1px solid #e3e8f0;border-radius:14px;background:#fff8e1}.policy-grid .day-use-policy-card strong{color:#0b2a5b;font-size:16px}.policy-grid .day-use-policy-card ul{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 24px}.policy-grid .day-use-policy-card i{color:#8a6100}
 @media(max-width:520px){.inline-room-detail .booking-card-redesign{padding:16px}.booking-card-redesign .booking-base-price strong{font-size:28px}.booking-card-redesign .booking-base-price.has-range strong{font-size:23px!important}.day-use-duration{grid-template-columns:1fr}.booking-stepper-row{padding:10px}.booking-stepper{grid-template-columns:44px 34px 44px}.booking-card-redesign .booking-price-breakdown>div{font-size:13px}.booking-card-redesign .booking-price-breakdown>div>span{max-width:64%}.booking-card-redesign .booking-price-breakdown>.nightly-price-list{display:grid}.nightly-price-row>span{max-width:68%!important}.booking-card-redesign .booking-price-breakdown>.booking-total strong{font-size:22px!important}}
 @media(max-width:700px){.policy-grid .day-use-policy-card{padding:18px}.policy-grid .day-use-policy-card ul{grid-template-columns:1fr}}
+.host-service-page{display:grid;gap:20px}.host-service-heading{display:flex;align-items:end;justify-content:space-between;gap:20px;padding:24px;border-radius:20px;background:#fff}.host-service-heading small{color:#d59600;font-weight:900;letter-spacing:.1em}.host-service-heading h2{margin:7px 0;color:#08275e}.host-service-heading p{margin:0;color:#64748b}.host-service-heading>button{padding:11px 15px;border:0;border-radius:11px;background:#0b4ae6;color:#fff;font-weight:800}.host-request-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}.host-request-grid>article{padding:20px;border:1px solid #e2e8f0;border-radius:18px;background:#fff}.host-request-grid article>header{display:flex;justify-content:space-between;gap:14px}.host-request-grid h3{margin:5px 0;color:#08275e}.host-request-grid p,.host-request-grid small{color:#64748b}.host-request-grid dl{display:grid;grid-template-columns:auto 1fr;gap:8px 14px;padding:13px;border-radius:12px;background:#f8fafc}.host-request-grid dt{color:#64748b}.host-request-grid dd{margin:0;text-align:right;color:#1e293b;font-weight:700}.host-request-grid footer{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}.host-request-grid footer button{padding:8px 11px;border:1px solid #bfd4ff;border-radius:9px;background:#eef4ff;color:#0b4ae6;font-weight:800}.host-request-grid footer .danger{border-color:#fecaca;background:#fff1f2;color:#dc2626}.host-request-empty{grid-column:1/-1;padding:50px;text-align:center;border-radius:18px;background:#fff;color:#64748b}.host-service-catalog{display:grid;gap:9px;padding:22px;border-radius:20px;background:#fff}.host-service-catalog h2{margin:0;color:#08275e}.host-service-catalog>div p{margin:5px 0 12px;color:#64748b}.host-service-catalog>button{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:18px;padding:13px;border:1px solid #e2e8f0;border-radius:12px;background:#fff;text-align:left}.host-service-catalog span{display:grid;gap:3px}.host-service-catalog small{color:#64748b}.host-service-catalog em{color:#047857;font-style:normal}.host-service-form{display:grid;gap:13px;width:min(560px,94vw);padding:22px;border-radius:18px;background:#fff}.host-service-form header{display:flex;justify-content:space-between}.host-service-form label{display:grid;gap:6px;color:#475569;font-weight:700}.host-service-form input:not([type=checkbox]),.host-service-form select,.host-service-form textarea{padding:10px;border:1px solid #cbd5e1;border-radius:10px}.host-service-form>div{display:grid;grid-template-columns:1fr 1fr;gap:12px}.host-service-form .service-active{display:flex;align-items:center}.host-service-form footer{display:flex;justify-content:flex-end;gap:9px}.host-service-form footer button{padding:10px 15px;border:1px solid #cbd5e1;border-radius:10px;background:#fff}.host-service-form footer button:last-child{border-color:#0b4ae6;background:#0b4ae6;color:#fff}@media(max-width:800px){.host-request-grid{grid-template-columns:1fr}.host-service-catalog>button{grid-template-columns:1fr}.host-service-form>div{grid-template-columns:1fr}}
+.host-request-bookings{display:grid;gap:12px}.host-request-booking{display:grid;grid-template-columns:56px minmax(0,1fr) 150px;align-items:center;gap:17px;width:100%;padding:18px 20px;border:1px solid #e0e7ef;border-radius:18px;background:#fff;text-align:left;box-shadow:0 5px 18px rgba(8,39,94,.05);cursor:pointer;transition:border-color .2s,box-shadow .2s}.host-request-booking:hover{border-color:#a9c5ff;box-shadow:0 10px 28px rgba(8,39,94,.1)}.request-guest-avatar{display:grid;width:56px;height:56px;place-items:center;border-radius:16px;background:linear-gradient(145deg,#0b4ae6,#083593);color:#fff;font-size:22px;font-weight:900}.request-booking-copy{min-width:0}.request-booking-copy>small{color:#d08b00;font-size:11px;font-weight:900;letter-spacing:.06em}.request-booking-copy h3{margin:5px 0;color:#09275f;font-size:20px}.request-booking-copy p{display:flex;flex-wrap:wrap;gap:7px 15px;margin:0;color:#64748b}.request-booking-copy p strong{color:#334155}.request-preview{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}.request-preview span{padding:5px 8px;border-radius:999px;background:#f1f5f9;color:#475569;font-size:11px;font-weight:700}.request-booking-summary{position:relative;display:grid;justify-items:end;gap:2px;padding-right:22px}.request-booking-summary>b{color:#09275f;font-size:24px}.request-booking-summary>span{color:#64748b;font-size:11px}.request-booking-summary>em{margin:5px 0;padding:5px 8px;border-radius:999px;background:#fef3c7;color:#92400e;font-size:11px;font-style:normal;font-weight:800}.request-booking-summary>em.done{background:#d1fae5;color:#047857}.request-booking-summary>strong{color:#0b4ae6}.request-booking-summary>i{position:absolute;right:0;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:28px;font-style:normal}.host-request-drawer-backdrop{position:fixed;z-index:160;inset:0;display:flex;justify-content:flex-end;background:rgba(8,25,51,.54);backdrop-filter:blur(3px)}.host-request-drawer{width:min(620px,100vw);height:100%;padding:24px;overflow:auto;background:#f6f8fb;box-shadow:-20px 0 60px #05142d40}.host-request-drawer>header{display:flex;justify-content:space-between;gap:16px;padding-bottom:18px}.host-request-drawer>header small{color:#d08b00;font-weight:900}.host-request-drawer>header h2{margin:5px 0;color:#09275f}.host-request-drawer>header p{margin:0;color:#64748b}.host-request-drawer>header button{width:44px;height:44px;border:1px solid #dbe3ed;border-radius:50%;background:#fff;color:#334155;font-size:25px;cursor:pointer}.request-stay-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:16px}.request-stay-summary>div{display:grid;gap:5px;padding:13px;border:1px solid #e2e8f0;border-radius:13px;background:#fff}.request-stay-summary span{color:#64748b;font-size:11px}.request-stay-summary strong{color:#09275f;font-size:13px}.request-detail-list{display:grid;gap:12px}.request-detail-list>article{padding:17px;border:1px solid #e2e8f0;border-radius:16px;background:#fff}.request-detail-list article>header{display:flex;justify-content:space-between;gap:12px}.request-detail-list h3{margin:0 0 5px;color:#09275f}.request-detail-list h3 span{color:#0b4ae6}.request-detail-list small,.request-detail-list p{color:#64748b}.request-detail-price{display:flex;justify-content:space-between;margin:13px 0;padding:10px;border-radius:10px;background:#f8fafc}.request-detail-price strong{color:#09275f}.request-detail-list footer{display:flex;flex-wrap:wrap;gap:8px}.request-detail-list footer button{min-height:42px;padding:8px 12px;border:1px solid #bfd4ff;border-radius:10px;background:#eef4ff;color:#0b4ae6;font-weight:800;cursor:pointer}.request-detail-list footer .danger{border-color:#fecaca;background:#fff1f2;color:#dc2626}@media(max-width:700px){.host-request-booking{grid-template-columns:48px minmax(0,1fr);padding:14px}.request-guest-avatar{width:48px;height:48px}.request-booking-summary{grid-column:1/-1;display:flex;align-items:center;justify-content:flex-start;gap:8px;padding:10px 0 0;border-top:1px solid #e2e8f0}.request-booking-summary>i{right:0}.request-stay-summary{grid-template-columns:1fr}.host-request-drawer{padding:18px}}
+.host-request-drawer{width:min(680px,100vw);padding:0;background:#f4f7fb}.request-drawer-head{position:sticky;z-index:2;top:0;align-items:center!important;padding:20px 24px!important;border-bottom:1px solid #e2e8f0;background:rgba(255,255,255,.96);backdrop-filter:blur(12px)}.request-drawer-identity{display:flex;align-items:center;gap:13px}.request-drawer-identity>span{display:grid;width:48px;height:48px;place-items:center;border-radius:14px;background:#0b4ae6;color:#fff;font-size:19px;font-weight:900}.request-drawer-identity h2{font-size:23px}.request-drawer-identity p{font-size:13px}.request-stay-strip{display:grid;grid-template-columns:1fr auto;gap:10px;margin:18px 24px 10px;padding:15px 17px;border-radius:15px;background:#09275f;color:#fff}.request-stay-strip>div{display:grid;gap:4px}.request-stay-strip>div:last-child{text-align:right}.request-stay-strip span{color:#cbdaf6;font-size:11px}.request-stay-strip strong{font-size:14px}.request-progress{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 24px 18px}.request-progress>div{display:grid;gap:2px;padding:12px;border:1px solid #e2e8f0;border-radius:13px;background:#fff}.request-progress b{color:#09275f;font-size:19px}.request-progress span{color:#64748b;font-size:11px}.request-list-heading{display:flex;align-items:end;justify-content:space-between;gap:15px;margin:0 24px 10px}.request-list-heading h3{margin:0;color:#09275f}.request-list-heading p{margin:4px 0 0;color:#64748b;font-size:12px}.request-list-heading>strong{padding:5px 9px;border-radius:999px;background:#e7efff;color:#0b4ae6;font-size:12px}.host-request-drawer .request-detail-list{padding:0 24px 30px}.request-detail-list>article{position:relative;padding:18px}.request-detail-list>article.needs-action{border-color:#a9c5ff;box-shadow:0 5px 18px rgba(11,74,230,.08)}.request-detail-list>article.needs-action:before{position:absolute;top:16px;bottom:16px;left:0;width:4px;border-radius:0 4px 4px 0;background:#0b4ae6;content:''}.request-detail-list>article.is-resolved{background:#fbfcfe}.request-item-title{display:flex;gap:11px}.request-item-title>i{display:grid;width:29px;height:29px;flex:none;place-items:center;border-radius:9px;background:#e7efff;color:#0b4ae6;font-size:12px;font-style:normal;font-weight:900}.request-item-title h3{font-size:17px}.request-item-meta{display:grid;grid-template-columns:1fr 1.5fr;gap:8px;margin:14px 0}.request-item-meta>span{display:grid;gap:3px;padding:10px 12px;border-radius:10px;background:#f5f7fa}.request-item-meta small{font-size:10px}.request-item-meta strong{color:#263957;font-size:12px}.request-host-response{display:grid;gap:4px;margin:10px 0!important;padding:10px 12px;border-left:3px solid #94a3b8;background:#f8fafc}.request-host-response b{color:#334155;font-size:11px}.request-detail-list footer .primary{border-color:#0b4ae6;background:#0b4ae6;color:#fff}.request-detail-list footer .danger{margin-left:auto}.request-no-action{display:inline-flex;align-items:center;min-height:42px;color:#64748b!important}@media(max-width:700px){.request-drawer-head{padding:16px 18px!important}.request-drawer-identity>span{display:none}.request-stay-strip,.request-progress,.request-list-heading{margin-left:16px;margin-right:16px}.host-request-drawer .request-detail-list{padding:0 16px 24px}.request-stay-strip{grid-template-columns:1fr}.request-stay-strip>div:last-child{text-align:left}.request-item-meta{grid-template-columns:1fr}.request-detail-list footer .danger{margin-left:0}}

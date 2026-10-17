@@ -285,7 +285,7 @@ public class AuthService(AppDbContext db, IEmailOtpSender emailSender, IWebHostE
         return user is null || user.Status != "Active" ? null : ToResponse(user);
     }
 
-    private static UserResponse ToResponse(User user) => new(user.Id, user.FullName, user.Email, user.Role);
+    private static UserResponse ToResponse(User user) => new(user.Id, user.FullName, user.Email, user.Role, user.PhoneNumber);
 
     private static string NormalizePhone(string phone)
     {

@@ -14,6 +14,7 @@ import CustomerProfilePage from '../features/profile/pages/CustomerProfilePage.j
 
 import DevelopmentDialog from '../shared/components/DevelopmentDialog.jsx';
 import ErrorPage from '../shared/components/ErrorPage.jsx';
+import '../shared/styles/responsive-audit.css';
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -99,6 +100,16 @@ export default function App() {
         }
       });
   }, []);
+
+  useEffect(() => {
+    if (!paymentResult) return undefined;
+
+    const timeoutId = window.setTimeout(() => {
+      setPaymentResult(null);
+    }, 6000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [paymentResult]);
 
   useEffect(() => {
     const refreshCatalog = (event) => {
@@ -472,10 +483,9 @@ export default function App() {
             onHome={() => setView('home')}
             onHomestays={() => setView('catalog')}
             onOpenHomestay={openHomestay}
-            onAccount={() => {
-              setMode('change-password');
-              setNotice(null);
-            }}
+            onAccount={() => setView('profile')}
+            onChangePassword={() => { setMode('change-password'); setNotice(null); }}
+            onLogout={logout}
           />
           {dialog}
         </>
@@ -535,10 +545,30 @@ export default function App() {
             onBack={() => setView('home')}
             onOpen={openHomestay}
             onBookings={() => setView('bookings')}
-            onAccount={() => {
-              setMode('change-password');
-              setNotice(null);
-            }}
+            onFavorites={() => setView('favorites')}
+            onAccount={() => setView('profile')}
+            onChangePassword={() => { setMode('change-password'); setNotice(null); }}
+            onLogout={logout}
+          />
+          {dialog}
+        </>
+      );
+    }
+
+    if (view === 'favorites') {
+      return (
+        <>
+          <CustomerHomestaysPage
+            refreshKey={catalogVersion}
+            user={user}
+            favoritesOnly
+            onBack={() => setView('home')}
+            onOpen={openHomestay}
+            onBookings={() => setView('bookings')}
+            onFavorites={() => setView('favorites')}
+            onAccount={() => setView('profile')}
+            onChangePassword={() => { setMode('change-password'); setNotice(null); }}
+            onLogout={logout}
           />
           {dialog}
         </>
@@ -556,10 +586,10 @@ export default function App() {
             onHome={() => setView('home')}
             onBack={() => setView('catalog')}
             onBookings={() => setView('bookings')}
-            onAccount={() => {
-              setMode('change-password');
-              setNotice(null);
-            }}
+            onFavorites={() => setView('favorites')}
+            onAccount={() => setView('profile')}
+            onChangePassword={() => { setMode('change-password'); setNotice(null); }}
+            onLogout={logout}
             onDeveloping={showDeveloping}
           />
           {dialog}
@@ -581,6 +611,7 @@ export default function App() {
           onBrowseHomestays={openCatalog}
           onOpenHomestay={openHomestay}
           onBookings={() => setView('bookings')}
+          onFavorites={() => setView('favorites')}
           onHostPortal={() => setView('host')}
           onAdminPortal={() => setView('admin')}
           onRegisterHomestay={() => setView('register-host')}
@@ -615,10 +646,28 @@ export default function App() {
             user={null}
             onBack={() => setView('home')}
             onOpen={openHomestay}
+            onFavorites={() => setView('favorites')}
             onAccount={() => {
               setShowHome(false);
               setMode('login');
             }}
+          />
+          {dialog}
+        </>
+      );
+    }
+
+    if (view === 'favorites') {
+      return (
+        <>
+          <CustomerHomestaysPage
+            refreshKey={catalogVersion}
+            user={null}
+            favoritesOnly
+            onBack={() => setView('home')}
+            onOpen={openHomestay}
+            onFavorites={() => setView('favorites')}
+            onAccount={() => { setShowHome(false); setMode('login'); }}
           />
           {dialog}
         </>
@@ -639,6 +688,7 @@ export default function App() {
               setShowHome(false);
               setMode('login');
             }}
+            onFavorites={() => setView('favorites')}
             onDeveloping={showDeveloping}
           />
           {dialog}
@@ -657,6 +707,7 @@ export default function App() {
           }}
           onBrowseHomestays={openCatalog}
           onOpenHomestay={openHomestay}
+          onFavorites={() => setView('favorites')}
           onDeveloping={showDeveloping}
         />
         {dialog}

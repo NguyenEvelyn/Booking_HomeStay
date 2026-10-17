@@ -9,6 +9,13 @@
   padding: 60px max(80px, calc((100% - 1280px) / 2)) 20px;
 }
 
+.footer-logo-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
 /* =========================================================
    NEWSLETTER
    ========================================================= */

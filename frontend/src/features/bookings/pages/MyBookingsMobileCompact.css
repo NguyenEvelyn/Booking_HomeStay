@@ -1,0 +1,67 @@
+@media(max-width:430px){
+  .my-bookings-shell{width:calc(100% - 24px);padding:20px 0 56px}
+  .booking-page-head{gap:14px}
+  .booking-page-head h1{font-size:26px}
+  .customer-booking-tabs{gap:8px;margin:18px 0 14px;padding-bottom:3px;scrollbar-width:none}
+  .customer-booking-tabs::-webkit-scrollbar{display:none}
+  .customer-booking-tabs button{min-height:44px;padding:8px 13px;font-size:13px}
+  .customer-booking-card{grid-template-columns:1fr;border-radius:18px}
+  .customer-booking-image{height:118px;min-height:118px;margin:12px 12px 0;border-radius:13px}
+  .customer-booking-main{gap:12px;padding:12px}
+  .booking-card-copy{gap:9px}
+  .booking-card-title h2{font-size:17px;line-height:1.25}
+  .booking-card-title p,.booking-card-meta span{margin-top:2px;font-size:13px}
+  .booking-card-meta{gap:3px}
+  .booking-card-meta b{font-size:13px;line-height:1.4}
+  .booking-card-chips{gap:6px}
+  .customer-status,.countdown-chip,.hold-chip{padding:5px 8px;font-size:10px}
+  .booking-card-copy>small{max-width:100%;overflow:hidden;font-size:10px;text-overflow:ellipsis;white-space:nowrap}
+  .customer-booking-main>aside{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:100%;padding-top:10px}
+  .customer-booking-main>aside>strong{grid-column:1/-1;font-size:16px}
+  .customer-booking-main>aside button{width:100%;min-width:0;min-height:44px;padding:8px 9px;font-size:12px;line-height:1.2}
+  .customer-booking-main>aside .card-cancel{grid-column:1/-1;min-height:38px}
+}
+
+@media(max-width:360px){
+  .my-bookings-shell{width:calc(100% - 20px)}
+  .customer-booking-image{height:106px;min-height:106px;margin:10px 10px 0}
+  .customer-booking-main{padding:10px}
+  .customer-booking-main>aside{grid-template-columns:1fr}
+  .customer-booking-main>aside>strong,.customer-booking-main>aside .card-cancel{grid-column:1}
+}
+
+@media(max-width:600px){
+  .service-request-backdrop{align-items:stretch!important}
+  .service-request-dialog{width:100vw;max-height:100dvh;padding:18px 14px calc(18px + env(safe-area-inset-bottom));border-radius:0}
+  .service-request-dialog>.modal-x{top:12px;right:12px;width:44px;height:44px}
+  .service-request-dialog>small{font-size:9px}
+  .service-request-dialog>h2{margin:5px 48px 3px 0;font-size:23px}
+  .service-request-dialog>p{margin:0 44px 12px 0;overflow:hidden;font-size:11px;text-overflow:ellipsis;white-space:nowrap}
+  .service-marketplace{gap:10px;margin:12px 0 18px}
+  .service-category-tabs{gap:6px;padding-bottom:8px;scrollbar-width:none}
+  .service-category-tabs::-webkit-scrollbar{display:none}
+  .service-category-tabs button{min-height:40px;padding:7px 11px;font-size:11px}
+  .service-choice-fieldset legend{margin-bottom:7px;font-size:14px}
+  .service-choice-grid{gap:8px;margin-right:-14px;padding-right:14px;max-height:190px}
+  .service-choice-card{flex-basis:205px;min-height:92px;border-radius:13px}
+  .service-card-pick{min-height:92px;grid-template-columns:64px minmax(0,1fr);gap:8px}
+  .service-choice-art svg{width:29px;height:29px}
+  .service-choice-copy{gap:2px;padding:8px 7px 8px 0}
+  .service-choice-copy b{font-size:12px}
+  .service-choice-copy small,.service-choice-copy strong{font-size:10px}
+  .service-form-row.single input,.service-marketplace textarea{min-height:44px;padding:9px;font-size:16px}
+  .service-marketplace textarea{height:68px}
+  .service-check{min-height:44px;font-size:13px}
+  .service-submit{min-height:46px;padding:10px;font-size:14px}
+  .service-history{gap:7px}
+  .service-history h3{margin:2px 0 5px;font-size:18px}
+  .service-history article{grid-template-columns:minmax(0,1fr) auto;gap:5px 9px;padding:11px 12px;border-radius:12px}
+  .service-history article>div:first-child{display:contents}
+  .service-history article strong{align-self:center;min-width:0;font-size:13px;line-height:1.3}
+  .service-history .service-status{align-self:center;justify-self:end;padding:4px 7px;font-size:9px;white-space:nowrap}
+  .service-history article>small,.service-history article>p{grid-column:1/-1;font-size:10px;line-height:1.35}
+  .service-history article>button,.service-history .service-proposal-actions{grid-column:1/-1}
+  .service-history article>button{justify-self:start;min-height:40px;padding:7px 11px;font-size:11px}
+  .service-proposal-actions{display:grid!important;grid-template-columns:1fr 1fr;gap:8px}
+  .service-proposal-actions button{width:100%;min-height:40px}
+}

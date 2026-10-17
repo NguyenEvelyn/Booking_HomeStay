@@ -46,9 +46,52 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<BookingExtension> BookingExtensions => Set<BookingExtension>();
     public DbSet<HostRegistration> HostRegistrations => Set<HostRegistration>();
     public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
+    public DbSet<HomestayService> HomestayServices => Set<HomestayService>();
+    public DbSet<GuestServiceRequest> GuestServiceRequests => Set<GuestServiceRequest>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        var homestayService = modelBuilder.Entity<HomestayService>();
+        homestayService.ToTable("homestay_services");
+        homestayService.HasKey(x => x.Id);
+        homestayService.Property(x => x.Id).HasColumnName("service_id");
+        homestayService.Property(x => x.HomestayId).HasColumnName("homestay_id");
+        homestayService.Property(x => x.Name).HasColumnName("name").HasMaxLength(150);
+        homestayService.Property(x => x.Category).HasColumnName("category").HasMaxLength(40);
+        homestayService.Property(x => x.Description).HasColumnName("description").HasMaxLength(500);
+        homestayService.Property(x => x.Unit).HasColumnName("unit").HasMaxLength(30);
+        homestayService.Property(x => x.Price).HasColumnName("price").HasPrecision(18, 2);
+        homestayService.Property(x => x.IsActive).HasColumnName("is_active");
+        homestayService.Property(x => x.SortOrder).HasColumnName("sort_order");
+        homestayService.Property(x => x.CreatedAt).HasColumnName("created_at");
+        homestayService.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+        homestayService.HasIndex(x => new { x.HomestayId, x.Name }).IsUnique();
+
+        var serviceRequest = modelBuilder.Entity<GuestServiceRequest>();
+        serviceRequest.ToTable("guest_service_requests");
+        serviceRequest.HasKey(x => x.Id);
+        serviceRequest.Property(x => x.Id).HasColumnName("request_id");
+        serviceRequest.Property(x => x.BookingId).HasColumnName("booking_id");
+        serviceRequest.Property(x => x.HomestayServiceId).HasColumnName("service_id");
+        serviceRequest.Property(x => x.CustomerId).HasColumnName("customer_id");
+        serviceRequest.Property(x => x.RequestType).HasColumnName("request_type").HasMaxLength(40);
+        serviceRequest.Property(x => x.Title).HasColumnName("title").HasMaxLength(150);
+        serviceRequest.Property(x => x.DetailsJson).HasColumnName("details_json").HasColumnType("jsonb");
+        serviceRequest.Property(x => x.Quantity).HasColumnName("quantity");
+        serviceRequest.Property(x => x.RequestedFor).HasColumnName("requested_for");
+        serviceRequest.Property(x => x.EstimatedAmount).HasColumnName("estimated_amount").HasPrecision(18, 2);
+        serviceRequest.Property(x => x.ApprovedAmount).HasColumnName("approved_amount").HasPrecision(18, 2);
+        serviceRequest.Property(x => x.Status).HasColumnName("status").HasMaxLength(30);
+        serviceRequest.Property(x => x.HostResponse).HasColumnName("host_response").HasMaxLength(1000);
+        serviceRequest.Property(x => x.RejectReasonCode).HasColumnName("reject_reason_code").HasMaxLength(40);
+        serviceRequest.Property(x => x.RejectReasonNote).HasColumnName("reject_reason_note").HasMaxLength(1000);
+        serviceRequest.Property(x => x.ResponseDueAt).HasColumnName("response_due_at");
+        serviceRequest.Property(x => x.RespondedAt).HasColumnName("responded_at");
+        serviceRequest.Property(x => x.CompletedAt).HasColumnName("completed_at");
+        serviceRequest.Property(x => x.CreatedAt).HasColumnName("created_at");
+        serviceRequest.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+        serviceRequest.HasIndex(x => new { x.BookingId, x.CreatedAt });
+
         var systemSetting = modelBuilder.Entity<SystemSetting>();
         systemSetting.ToTable("system_settings");
         systemSetting.HasKey(x => x.Key);

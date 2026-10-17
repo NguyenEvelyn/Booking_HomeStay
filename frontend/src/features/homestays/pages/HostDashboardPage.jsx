@@ -9,6 +9,7 @@ import CapacityEditor from'./CapacityEditor.jsx';
 import HostBookings from'./HostBookings.jsx';
 import HostOverview from'./HostOverview.jsx';
 import HostReviewsPage from'./HostReviewsPage.jsx';
+import HostServiceRequests from'./HostServiceRequests.jsx';
 import PolicyEditor from'./PolicyEditor.jsx';
 import HostPropertyDetail from'./HostPropertyDetail.jsx';
 import{HostDemandForecast}from'../../demand-forecast/DemandForecastDashboard.jsx';
@@ -27,6 +28,7 @@ const navItems=[
   {key:'calendar',icon:'calendar',label:'Lịch đặt phòng'},
   {key:'homestays',icon:'home',label:'Homestay & phòng'},
   {key:'bookings',icon:'bookings',label:'Đơn đặt phòng'},
+  {key:'requests',icon:'bookings',label:'Yêu cầu từ khách'},
   {key:'reviews',icon:'reviews',label:'Khách & đánh giá'},
   {key:'finance',icon:'finance',label:'Doanh thu & báo cáo'},
   {key:'forecast',icon:'sparkles',label:'AI Dự báo nhu cầu'},
@@ -50,6 +52,7 @@ export default function HostDashboardPage({user,onLogout,onChangePassword,onCust
  {tab==='homestays'&&<>{detail?<HostPropertyDetail data={detail} amenities={amenities} back={()=>{const url=new URL(window.location.href);url.searchParams.delete('tab');url.searchParams.delete('homestay');window.history.pushState({},'',url);setDetail(null)}} run={run}/>:<HomestayInventory items={items} open={open} run={run} onCreate={()=>{setDetail(null);setForm(empty);setShowForm(true)}}/>}{showForm&&<Modal title={detail?'Sửa thông tin Homestay':'Đăng ký niêm yết Homestay'} close={()=>setShowForm(false)}><PropertyForm value={form} set={setForm} save={save}/></Modal>}</>}
  {tab==='homestays'&&!detail&&<RoomManagement data={roomData} run={run}/>}
  {tab==='bookings'&&<HostBookings items={bookings} homestays={items} run={run} sort={bookingSort} onSortChange={changeBookingSort}/>}
+ {tab==='requests'&&<HostServiceRequests homestays={items}/>}
  {tab==='reviews'&&<HostReviewsPage homestays={items} onBooking={()=>setTab('bookings')}/>}
  {tab==='finance'&&<FinanceReport homestays={items} onOpenBookings={()=>setTab('bookings')}/>}
  {tab==='forecast'&&<HostDemandForecast homestays={items}/>}</section>

@@ -3,6 +3,7 @@ import CustomerNav from "../../../shared/components/CustomerNav.jsx";
 import { toast } from "../../../shared/feedback/feedback.js";
 import { bookingApi } from "../api/bookingApi.js";
 import "./MyBookingsEnhancements.css";
+import "./MyBookingsMobileCompact.css";
 
 const money = (v) =>
     `${new Intl.NumberFormat("vi-VN").format(Number(v) || 0)} đ`,
@@ -95,6 +96,8 @@ export default function MyBookingsPage({
   onHomestays,
   onOpenHomestay,
   onAccount,
+  onChangePassword,
+  onLogout,
 }) {
   const [items, setItems] = useState([]),
     [status, setStatus] = useState(
@@ -105,6 +108,7 @@ export default function MyBookingsPage({
     [detail, setDetail] = useState(null),
     [cancel, setCancel] = useState(null),
     [review, setReview] = useState(null),
+    [serviceBooking, setServiceBooking] = useState(null),
     [query, setQuery] = useState(""),
     [detailLoading, setDetailLoading] = useState(false);
 
@@ -212,6 +216,8 @@ export default function MyBookingsPage({
         onHomestays={onHomestays}
         onBookings={() => {}}
         onAccount={onAccount}
+        onChangePassword={onChangePassword}
+        onLogout={onLogout}
       />
       <section className="my-bookings-shell">
         <header className="booking-page-head">
@@ -264,6 +270,7 @@ export default function MyBookingsPage({
                 cancel={() => setCancel(x)}
                 review={() => openReview(x)}
                 rebook={() => handleRebook(x)}
+                service={() => setServiceBooking(x)}
               />
             ))}
             {!filtered.length && (
@@ -307,6 +314,7 @@ export default function MyBookingsPage({
           reload={load}
         />
       )}
+      {serviceBooking && <ServiceRequestDialog booking={serviceBooking} close={() => setServiceBooking(null)} reload={load} />}
     </main>
   );
 }
@@ -340,7 +348,7 @@ function Empty({ status, query, explore }) {
     </div>
   );
 }
-function BookingCard({ item, detail, pay, cancel, review, rebook }) {
+function BookingCard({ item, detail, pay, cancel, review, rebook, service }) {
   const status = uiStatus(item.status),
     days = daysUntil(item.checkInDate),
     action = (e) => {
@@ -422,6 +430,11 @@ function BookingCard({ item, detail, pay, cancel, review, rebook }) {
           >
             {text}
           </button>
+          {["Confirmed", "CheckedIn"].includes(status) && (
+            <button className="card-service" onClick={(e) => { e.stopPropagation(); service(); }}>
+              {item.activeServiceRequestCount > 0 ? `Yêu cầu đang xử lý (${item.activeServiceRequestCount})` : "Yêu cầu dịch vụ"}
+            </button>
+          )}
           {["PendingPayment", "Confirmed"].includes(status) && (
             <button
               className="card-cancel"
@@ -449,6 +462,40 @@ function BookingCard({ item, detail, pay, cancel, review, rebook }) {
       </div>
     </article>
   );
+}
+
+function ServiceRequestDialog({ booking, close, reload }) {
+  const ref = useDialog(close);
+  const [data, setData] = useState(null), [error, setError] = useState(""), [busy, setBusy] = useState(false);
+  const [cart, setCart] = useState({}), [category, setCategory] = useState("all");
+  const [form, setForm] = useState({ requestedFor: "", note: "", doNotDisturb: false });
+  const load = async () => { try { setData(await bookingApi.serviceRequests(booking.id)); } catch (e) { setError(e.message); } };
+  useEffect(() => { load(); const timer=window.setInterval(load,20000); return()=>window.clearInterval(timer); }, [booking.id]);
+  const submit = async (e) => { e.preventDefault(); const choices=Object.entries(cart).filter(([,qty])=>qty>0); if(!choices.length){setError("Vui lòng chọn ít nhất một tiện ích.");return} setBusy(true); setError(""); try { await Promise.all(choices.map(([serviceId,quantity])=>bookingApi.createServiceRequest(booking.id,{...form,serviceId:Number(serviceId),quantity,requestedFor:form.requestedFor?new Date(form.requestedFor).toISOString():null}))); toast.success(`Đã gửi ${choices.length} tiện ích đến Host.`); setCart({}); setForm({requestedFor:"",note:"",doNotDisturb:false}); await load(); await reload(); } catch (x) { setError(x.message); } finally { setBusy(false); } };
+  const confirmDone = async (id) => { try { await bookingApi.confirmServiceCompleted(id); toast.success("Đã xác nhận hoàn thành."); await load(); } catch (e) { toast.error(e.message); } };
+  const respondProposal = async (id,accepted) => { try { await bookingApi.respondServiceProposal(id,accepted); toast.success(accepted?"Đã chấp nhận đề xuất.":"Đã từ chối đề xuất."); await load(); } catch(e){toast.error(e.message);} };
+  const statusText = { Pending:"Chờ Host xác nhận", Approved:"Host đã xác nhận", Rejected:"Host từ chối", ChangeProposed:"Host đề xuất thay đổi", InProgress:"Đang thực hiện", HostCompleted:"Chờ bạn xác nhận", Completed:"Đã hoàn thành", Cancelled:"Đã hủy" };
+  const serviceVisual = (service) => {
+    const key = `${service.name} ${service.category}`.toLocaleLowerCase("vi");
+    if (key.includes("dọn")) return ["M4 18h16M6 18l2-9h8l2 9M9 9V5h6v4", "cleaning"];
+    if (key.includes("khăn") || key.includes("giặt")) return ["M5 4h14v16H5zM8 8h8M8 12h8M8 16h5", "laundry"];
+    if (key.includes("ga") || key.includes("nệm") || key.includes("giường")) return ["M3 18V8m0 7h18m0 3V9a3 3 0 0 0-3-3h-6v9M3 11h9", "bed"];
+    if (key.includes("nước")) return ["M12 3s6 6.4 6 11a6 6 0 1 1-12 0c0-4.6 6-11 6-11Z", "water"];
+    if (key.includes("ăn") || key.includes("bbq")) return ["M7 3v8m-3-8v5a3 3 0 0 0 6 0V3m7 0v18m0-18c3 2 3 7 0 9", "food"];
+    if (key.includes("xe") || key.includes("đón")) return ["M3 16V8h18v8M5 16v2m14-2v2M7 12h.01M17 12h.01M6 8l2-4h8l2 4", "transport"];
+    return ["M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3Z", "amenity"];
+  };
+  const categories = [{key:"all",label:"Tất cả"},...Array.from(new Set((data?.services||[]).map(x=>x.category))).map(key=>({key,label:{Cleaning:"Dọn phòng",Amenity:"Tiện ích",Food:"Ăn uống",Transport:"Di chuyển",Other:"Khác"}[key]||key}))];
+  const visibleServices=(data?.services||[]).filter(x=>category==="all"||x.category===category);
+  const selectedItems=(data?.services||[]).filter(x=>(cart[x.id]||0)>0);
+  const total=selectedItems.reduce((sum,x)=>sum+Number(x.price)*(cart[x.id]||0),0);
+  const setQuantity=(id,value)=>setCart(current=>({...current,[id]:Math.max(0,Math.min(20,value))}));
+  return <div className="customer-modal-backdrop service-request-backdrop" onMouseDown={(e) => e.target === e.currentTarget && close()}><section ref={ref} className="customer-action-modal service-request-dialog" role="dialog" aria-modal="true" aria-labelledby="service-request-title"><button className="modal-x" onClick={close}>×</button><small>DỊCH VỤ TRONG KỲ NGHỈ</small><h2 id="service-request-title">Yêu cầu dịch vụ</h2><p>{booking.homestayName} · Mã đơn {booking.bookingCode}</p>
+    {!data ? <div className="modal-skeleton" /> : <>
+      {data.canRequest && data.services.length > 0 && <form className="service-request-form service-marketplace" onSubmit={submit}><nav className="service-category-tabs" aria-label="Danh mục tiện ích">{categories.map(x=><button type="button" key={x.key} className={category===x.key?'active':''} onClick={()=>setCategory(x.key)}>{x.label}</button>)}</nav><fieldset className="service-choice-fieldset"><legend>Chọn thêm tiện ích</legend><div className="service-choice-grid">{visibleServices.map((x)=>{const[path,tone]=serviceVisual(x),quantity=cart[x.id]||0;return <article key={x.id} className={`service-choice-card ${tone} ${quantity?'selected':''}`}><button type="button" className="service-card-pick" aria-label={`Thêm ${x.name}`} onClick={()=>setQuantity(x.id,quantity?0:1)}><span className="service-choice-art" aria-hidden="true"><svg viewBox="0 0 24 24"><path d={path}/></svg></span><span className="service-choice-copy"><b>{x.name}</b><small>{x.description||'Yêu cầu thêm cho kỳ lưu trú'}</small><strong>{x.price?`${money(x.price)} / ${x.unit}`:'Miễn phí'}</strong></span></button>{quantity>0&&<div className="service-quantity" aria-label={`Số lượng ${x.name}`}><button type="button" aria-label="Giảm số lượng" onClick={()=>setQuantity(x.id,quantity-1)}>−</button><output>{quantity}</output><button type="button" aria-label="Tăng số lượng" onClick={()=>setQuantity(x.id,quantity+1)}>+</button></div>}</article>})}</div></fieldset>{selectedItems.length>0&&<div className="service-cart-summary"><div><span>Đã chọn {selectedItems.length} tiện ích</span><strong>{money(total)}</strong></div><p>{selectedItems.map(x=>`${x.name} × ${cart[x.id]}`).join(' · ')}</p></div>}<div className="service-form-row single"><label><span>Thời gian mong muốn cho các tiện ích</span><input type="datetime-local" value={form.requestedFor} onChange={(e)=>setForm({...form,requestedFor:e.target.value})}/></label></div><label><span>Ghi chú chung cho Host</span><textarea maxLength="1000" rows="3" value={form.note} onChange={(e)=>setForm({...form,note:e.target.value})} placeholder="Ví dụ: vui lòng chuẩn bị trước 14:00…"/></label><label className="service-check"><input type="checkbox" checked={form.doNotDisturb} onChange={(e)=>setForm({...form,doNotDisturb:e.target.checked})}/><span>Không vào phòng khi tôi vắng mặt</span></label><button className="service-submit" disabled={busy||!selectedItems.length}>{busy?"Đang gửi…":`Gửi ${selectedItems.length||''} tiện ích đến Host`}</button></form>}
+      {!data.canRequest&&<p className="service-unavailable">Trạng thái đơn hiện tại chưa hỗ trợ gửi thêm yêu cầu.</p>}
+      <div className="service-history"><h3>Yêu cầu của tôi</h3>{data.requests.map((x)=><article key={x.id}><div><strong>{x.title} × {x.quantity}</strong><span className={`service-status ${x.status.toLowerCase()}`}>{statusText[x.status] || x.status}</span></div><small>{x.requestedFor ? `Mong muốn: ${new Date(x.requestedFor).toLocaleString("vi-VN",{hour:"2-digit",minute:"2-digit",day:"2-digit",month:"2-digit",year:"numeric"})} · ` : ""}{money(x.approvedAmount ?? x.estimatedAmount)}</small>{x.hostResponse&&<p>Phản hồi Host: {x.hostResponse}</p>}{x.status==="ChangeProposed"&&<div className="service-proposal-actions"><button onClick={()=>respondProposal(x.id,true)}>Chấp nhận</button><button onClick={()=>respondProposal(x.id,false)}>Từ chối</button></div>}{x.status==="HostCompleted"&&<button className="service-confirm-done" onClick={()=>confirmDone(x.id)}>✓ Xác nhận hoàn tất</button>}</article>)}{!data.requests.length&&<p>Chưa có yêu cầu nào cho kỳ lưu trú này.</p>}</div>
+    </>}{error&&<p className="modal-error">{error}</p>}</section></div>;
 }
 
 function BookingDetail({ data, close, cancel, pay, review, rebook }) {

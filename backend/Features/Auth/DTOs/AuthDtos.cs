@@ -63,4 +63,4 @@ public sealed class ChangePasswordRequest
     public string ConfirmPassword { get; init; } = "";
 }
 
-public sealed record UserResponse(long Id, string FullName, string Email, string Role);
+public sealed record UserResponse(long Id, string FullName, string Email, string Role, string? PhoneNumber);
