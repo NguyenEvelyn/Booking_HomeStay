@@ -43,8 +43,10 @@ public sealed class PartnerRevenueController(AppDbContext db) : ControllerBase
             .Include(x => x.Payments).Include(x => x.Details).ToListAsync();
         var homestays = await db.Homestays.AsNoTracking().Where(x => x.HostId == HostId && (!homestayId.HasValue || x.Id == homestayId))
             .Select(x => new { x.Id, x.Name, x.Status }).ToListAsync();
-        var roomCounts = await db.Rooms.AsNoTracking().Where(x => x.RoomType.Homestay.HostId == HostId && (!homestayId.HasValue || x.RoomType.HomestayId == homestayId))
-            .GroupBy(x => x.RoomType.HomestayId).Select(g => new { HomestayId = g.Key, Count = g.Count() }).ToDictionaryAsync(x => x.HomestayId, x => x.Count);
+        var roomInventory = await db.Rooms.AsNoTracking().Where(x => x.RoomType.Homestay.HostId == HostId && (!homestayId.HasValue || x.RoomType.HomestayId == homestayId))
+            .Select(x => new { x.Id, x.RoomNumber, x.Status, x.RoomTypeId, RoomTypeName = x.RoomType.Name, HomestayId = x.RoomType.HomestayId }).ToListAsync();
+        var roomCounts = roomInventory.Where(x => x.Status != "Inactive" && x.Status != "Maintenance")
+            .GroupBy(x => x.HomestayId).ToDictionary(x => x.Key, x => x.Count());
 
         var current = Metrics(bookings, period.From, period.To, paymentMethod, homestays.Select(x => x.Id).ToHashSet(), roomCounts);
         var previous = Metrics(bookings, previousFrom, previousTo, paymentMethod, homestays.Select(x => x.Id).ToHashSet(), roomCounts);
@@ -58,13 +60,27 @@ public sealed class PartnerRevenueController(AppDbContext db) : ControllerBase
             var revenue = rows.Sum(x => NetPaid(x, paymentMethod, period.From, period.To));
             var sold = rows.Sum(x => OverlapNights(x, period.From, period.To) * Math.Max(1, x.Details.Sum(d => d.Quantity)));
             var capacity = Math.Max(0, roomCounts.GetValueOrDefault(h.Id) * days);
-            var rooms = rows.SelectMany(b => b.Details).GroupBy(d => d.RoomId?.ToString() ?? $"type-{d.RoomTypeId}")
-                .Select(g => new { room = g.First().RoomId.HasValue ? $"Phòng #{g.First().RoomId}" : $"Loại phòng #{g.First().RoomTypeId}", revenue = g.Sum(d => d.LineTotal), bookings = g.Select(d => d.BookingId).Distinct().Count() })
-                .OrderByDescending(x => x.revenue).ToList();
+            var rooms = roomInventory.Where(x => x.HomestayId == h.Id).Select(room =>
+            {
+                var assignments = rows.SelectMany(b => b.Details.Where(d => d.RoomId == room.Id).Select(d => new { Booking = b, Detail = d })).ToList();
+                var roomRevenue = assignments.Sum(x => AllocatedAmount(x.Booking, x.Detail, NetPaid(x.Booking, paymentMethod, period.From, period.To)));
+                var roomRefunds = assignments.Sum(x => AllocatedAmount(x.Booking, x.Detail, Refunds(x.Booking, paymentMethod, period.From, period.To)));
+                var roomSold = assignments.Sum(x => OverlapNights(x.Booking, period.From, period.To) * Math.Max(1, x.Detail.Quantity));
+                var roomCapacity = room.Status is "Inactive" or "Maintenance" ? 0 : days;
+                return new
+                {
+                    roomId = room.Id, room = room.RoomNumber, roomType = room.RoomTypeName, room.Status,
+                    revenue = Round(roomRevenue), refunds = Round(roomRefunds), bookings = assignments.Select(x => x.Booking.Id).Distinct().Count(),
+                    soldNights = roomSold, capacityNights = roomCapacity, occupancyRate = Rate(roomSold, roomCapacity),
+                    adr = roomSold == 0 ? 0 : Round(roomRevenue / roomSold), revpar = roomCapacity == 0 ? 0 : Round(roomRevenue / roomCapacity)
+                };
+            }).OrderByDescending(x => x.revenue).ThenBy(x => x.room).ToList();
             return new { id = h.Id, name = h.Name, revenue = Round(revenue), bookings = rows.Count, occupancyRate = Rate(sold, capacity), adr = sold == 0 ? 0 : Round(rows.Sum(x => x.RoomAmount) / sold), rooms };
         }).OrderByDescending(x => x.revenue).ToList();
         var rankingTotal = ranking.Sum(x => x.revenue);
         var rankingMax = ranking.Select(x => x.revenue).DefaultIfEmpty(0).Max();
+        var roomPerformance = ranking.SelectMany(x => x.rooms.Select(room => new { homestayId = x.id, homestay = x.name, room.roomId, room.room, room.roomType, room.Status, room.revenue, room.refunds, room.bookings, room.soldNights, room.capacityNights, room.occupancyRate, room.adr, room.revpar }))
+            .OrderByDescending(x => x.revenue).ThenBy(x => x.homestay).ThenBy(x => x.room).ToList();
 
         var series = Series(current.Bookings, period.From, period.To, grain, paymentMethod);
         var response = new
@@ -85,6 +101,14 @@ public sealed class PartnerRevenueController(AppDbContext db) : ControllerBase
             timeseries = series,
             occupancyMetrics = new { occupancyRate = current.Occupancy, adr = current.Adr, revpar = current.RevPar, averageLos = current.AverageLos, averageLeadTime = current.AverageLead },
             homestayRanking = ranking.Select(x => new { x.id, x.name, x.revenue, x.bookings, x.occupancyRate, x.adr, contribution = Rate(x.revenue, rankingTotal), relative = Rate(x.revenue, rankingMax), x.rooms }),
+            roomPerformance,
+            revenueAlerts = new
+            {
+                roomsWithoutRevenue = roomPerformance.Count(x => x.revenue <= 0 && x.Status is not "Inactive" and not "Maintenance"),
+                lowOccupancyRooms = roomPerformance.Count(x => x.capacityNights > 0 && x.occupancyRate < 30),
+                depositOutstanding = current.Outstanding,
+                refunds = current.Refunds
+            },
             statusBreakdown = statusRows.Select(x => new { x.status, x.count, percentage = Rate(x.count, statusTotal) }),
             cancellationRate = Rate(statusRows.Where(x => x.status == "Cancelled").Sum(x => x.count), statusTotal),
             completionRate = Rate(statusRows.Where(x => x.status == "Completed").Sum(x => x.count), statusTotal)
@@ -169,6 +193,11 @@ public sealed class PartnerRevenueController(AppDbContext db) : ControllerBase
     private static decimal GrossPaid(Booking x, string? method, DateOnly from, DateOnly to) => x.Payments.Where(p => InPeriod(p, from, to) && p.Status == "Success" && p.TransactionType != "Refund" && (string.IsNullOrEmpty(method) || method == "all" || p.TransactionType == method)).Sum(p => p.Amount);
     private static decimal Refunds(Booking x, string? method, DateOnly from, DateOnly to) => x.Payments.Where(p => InPeriod(p, from, to) && p.Status == "Success" && p.TransactionType == "Refund" && (string.IsNullOrEmpty(method) || method == "all" || p.TransactionType == method)).Sum(p => p.Amount);
     private static decimal NetPaid(Booking x, string? method, DateOnly from, DateOnly to) => GrossPaid(x, method, from, to) - Refunds(x, method, from, to);
+    private static decimal AllocatedAmount(Booking booking, BookingDetail detail, decimal amount)
+    {
+        var total = booking.Details.Sum(x => Math.Max(0, x.LineTotal));
+        return total > 0 ? amount * Math.Max(0, detail.LineTotal) / total : amount / Math.Max(1, booking.Details.Count);
+    }
     private static object Kpi(decimal value, decimal previous) => new { value = Round(value), previous = Round(previous), change = previous == 0 ? (decimal?)null : decimal.Round((value - previous) * 100 / Math.Abs(previous), 1), isNew = previous == 0 && value > 0 };
 
     private sealed record MetricResult(List<Booking> Bookings, decimal Revenue, decimal Expected, decimal DepositCollected, decimal Outstanding, decimal Refunds, decimal NetRevenue, decimal Occupancy, decimal Adr, decimal RevPar, decimal AverageLos, decimal AverageLead);

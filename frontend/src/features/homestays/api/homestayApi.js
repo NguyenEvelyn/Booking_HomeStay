@@ -40,6 +40,7 @@ export const homestayApi = {
   hostList: () => apiClient('/host/homestays'),
   hostDemandForecast: ({ homestayId, historyMonths = 24, horizon = 6 }) => apiClient(`/host/ai/demand-forecast?${new URLSearchParams({ homestayId, historyMonths, horizon })}`),
   hostOverview: () => apiClient('/host/homestays/overview'),
+  hostDecisionSupport: () => apiClient('/host/analytics/decision-support'),
   revenueSummary: (filters = {}) => apiClient(`/partner/revenue/summary?${new URLSearchParams(Object.entries(filters).filter(([,v])=>v!==''&&v!=null))}`),
   revenueTransactions: (filters = {}) => apiClient(`/partner/revenue/transactions?${new URLSearchParams(Object.entries(filters).filter(([,v])=>v!==''&&v!=null))}`),
   hostBookings: (sort = 'checkin_asc') => apiClient(`/host/homestays/bookings?${new URLSearchParams({ sort })}`),

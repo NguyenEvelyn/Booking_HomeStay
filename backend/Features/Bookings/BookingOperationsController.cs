@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 namespace HomestayAuth.Api.Features.Bookings;
 
 public sealed record ManualBookingRequest(long RoomId, DateOnly CheckIn, DateOnly CheckOut, int AdultCount, int ChildCount,
-    string GuestName, string GuestEmail, string GuestPhone, string? Note);
+    string GuestName, string GuestEmail, string GuestPhone, string? Note, IReadOnlyList<long>? ServiceIds = null);
 public sealed record DepositRequest(decimal? Amount, string PaymentMethod = "Manual", string? TransactionCode = null);
 public sealed record CheckInRequest(string Notes, object? Evidence = null);
 public sealed record ChargeRequest(string Type, string Description, int Quantity, decimal UnitPrice, object? Evidence = null);
@@ -51,9 +51,13 @@ public sealed class BookingOperationsController(AppDbContext db, RoomInventorySe
         var policy = await policyService.Resolve(room.RoomType.HomestayId, DateTime.UtcNow);
         var price = pricingService.Calculate(room.RoomType, request.CheckIn, request.CheckOut, request.AdultCount, request.ChildCount, 1, null,
             "Deposit", room.RoomType.PricePeriods.ToList(), policy, BookingRules.Today);
+        var requestedServiceIds = request.ServiceIds?.Distinct().Take(20).ToArray() ?? [];
+        var selectedServices = await db.HomestayServices.AsNoTracking().Where(x => requestedServiceIds.Contains(x.Id) &&
+            x.HomestayId == room.RoomType.HomestayId && x.IsActive).ToListAsync();
         var nights = price.Nights;
         var roomAmount = price.RoomAmount;
         var extra = price.ExtraAdultFee;
+        var serviceTotal = selectedServices.Sum(x => x.Price);
         var now = DateTime.UtcNow;
         var email = request.GuestEmail.Trim().ToLowerInvariant();
         var phone = request.GuestPhone.Trim();
@@ -70,15 +74,17 @@ public sealed class BookingOperationsController(AppDbContext db, RoomInventorySe
         var booking = new Booking { BookingCode = $"TRP{now:yyMMddHHmmss}{Guid.NewGuid():N}"[..24].ToUpperInvariant(), CustomerId = customer.Id,
             HomestayId = room.RoomType.HomestayId, CheckInDate = request.CheckIn, CheckOutDate = request.CheckOut, AdultCount = request.AdultCount,
             ChildCount = request.ChildCount, RoomAmount = roomAmount, DepositAmount = price.DepositAmount,
-            Subtotal = price.TotalAmount, TotalAmount = price.TotalAmount, DiscountAmount = price.DiscountAmount, ServiceFee = 0, TaxAmount = 0, CommissionRate = policy.CommissionRate,
+            Subtotal = price.TotalAmount + serviceTotal, TotalAmount = price.TotalAmount + serviceTotal, DiscountAmount = price.DiscountAmount, ServiceFee = serviceTotal, TaxAmount = 0, CommissionRate = policy.CommissionRate,
             Status = BookingStatus.Hold, PaymentStatus = PaymentStatus.Unpaid, HoldExpiresAt = now.AddMinutes(policy.HoldMinutes), CustomerNote = request.Note,
             ContactName = request.GuestName.Trim(), ContactEmail = email, ContactPhone = phone, GuestName = request.GuestName.Trim(),
             PricingSnapshotJson = JsonSerializer.Serialize(new { room.RoomType.Id, room.RoomType.Name, price }), PolicySnapshotJson = PolicyService.Serialize(policy), ReviewCreateUntil = request.CheckOut.AddDays(policy.ReviewCreateDays), ReviewEditUntil = request.CheckOut.AddDays(policy.ReviewEditDays), CreatedAt = now, UpdatedAt = now };
         booking.Details.Add(new BookingDetail { RoomId = room.Id, RoomTypeId = room.RoomTypeId, Quantity = 1, PricePerNight = price.RoomAmountBeforeDiscount / nights, NumberOfNights = nights, ExtraFee = extra, LineTotal = price.TotalAmount });
         inventory.Allocate(booking, room.Id, request.CheckIn, request.CheckOut, price.RoomAmountBeforeDiscount / nights);
         if (extra > 0) booking.AdditionalCharges.Add(chargeService.Create(0, "extra_guest", "Phụ thu khách vượt sức chứa cơ bản", 1, extra, UserId, null));
+        foreach (var service in selectedServices)
+            booking.AdditionalCharges.Add(chargeService.Create(0, "service", $"{service.Name} ({service.Unit})", 1, service.Price, UserId, null));
         db.Bookings.Add(booking); await db.SaveChangesAsync(); await tx.CommitAsync();
-        return CreatedAtAction(nameof(Balance), new { id = booking.Id }, new { booking.Id, booking.BookingCode, booking.RoomAmount, booking.TotalAmount, booking.DepositAmount, booking.HoldExpiresAt, additionalCharge = extra });
+        return CreatedAtAction(nameof(Balance), new { id = booking.Id }, new { booking.Id, booking.BookingCode, booking.RoomAmount, booking.TotalAmount, booking.DepositAmount, booking.HoldExpiresAt, additionalCharge = extra, serviceTotal });
     }
 
     [HttpPost("bookings/{id:long}/pay-deposit")]

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { homestayApi } from '../api/homestayApi.js';
 import { confirmDialog, toast } from '../../../shared/feedback/feedback.js';
 import HostIcon from './HostIcon.jsx';
@@ -50,11 +50,103 @@ function Kpi({ name, value, delta, detail, icon, invert = false, iconBg = '#eff6
   );
 }
 
+function DecisionSupport({ data, loading, error, onTab }) {
+  if (loading) return <section className="decision-card decision-loading">Đang tổng hợp dữ liệu ra quyết định…</section>;
+  if (error) return <section className="decision-card decision-error">Chưa thể tải phân tích: {error}</section>;
+  if (!data) return null;
+  const funnel = data.funnel || {};
+  const cancellation = data.cancellations || {};
+  const opportunity = data.demandOpportunity || {};
+  return (
+    <section className="decision-card">
+      <header className="decision-head">
+        <div><span>RA QUYẾT ĐỊNH NHANH</span><h2>Tín hiệu kinh doanh cần chú ý</h2></div>
+        <small>Cập nhật từ booking và hành vi khách thực tế</small>
+      </header>
+      <div className="inventory-now">
+        <div><small>PHÒNG TRỐNG HIỆN TẠI</small><strong>{data.inventoryNow?.availableRooms || 0}</strong><span>/ {data.inventoryNow?.totalSellableRooms || 0} phòng đang mở bán</span></div>
+        <div><small>ĐANG CÓ KHÁCH</small><strong>{data.inventoryNow?.occupiedRooms || 0}</strong><span>Công suất hôm nay {data.inventoryNow?.occupancyRate || 0}%</span></div>
+        <button type="button" onClick={() => onTab('calendar')}>Xem lịch phòng →</button>
+      </div>
+      <div className="decision-occupancy">
+        {(data.futureOccupancy || []).map((x) => (
+          <article key={x.days}>
+            <div><small>CÔNG SUẤT {x.days} NGÀY TỚI</small><strong>{x.rate}%</strong></div>
+            <span><i style={{ width: `${Math.min(100, x.rate)}%` }} /></span>
+            <p>{x.soldRoomNights} đêm đã bán · {x.availableRoomNights} đêm còn trống</p>
+          </article>
+        ))}
+        <article className="pickup-card">
+          <div><small>BOOKING PICKUP 7 NGÀY</small><strong>{data.pickup?.last7Days?.bookings || 0}</strong></div>
+          <p>{money(data.pickup?.last7Days?.value)} giá trị đặt mới cho kỳ lưu trú tương lai</p>
+        </article>
+      </div>
+      <div className="decision-details">
+        <article className="decision-panel">
+          <h3>Phễu gợi ý AI · 30 ngày</h3>
+          <div className="funnel-row"><span><b>{funnel.impressions || 0}</b><small>Xuất hiện</small></span><i>→</i><span><b>{funnel.views || 0}</b><small>Lượt xem</small></span><i>→</i><span><b>{funnel.bookings || 0}</b><small>Booking</small></span></div>
+          <p>Xem → đặt: <b>{funnel.viewToBookingRate || 0}%</b> · Hiển thị → xem: <b>{funnel.impressionToViewRate || 0}%</b></p>
+        </article>
+        <article className="decision-panel cancellation-panel">
+          <h3>Hủy & khách quay lại · 30 ngày</h3>
+          <div><span><small>Tỷ lệ hủy</small><b>{cancellation.rate || 0}%</b></span><span><small>Doanh thu mất ước tính</small><b>{money(cancellation.lostRevenue)}</b></span><span><small>Khách quay lại</small><b>{data.customers?.repeatRate || 0}%</b></span></div>
+          <p>{cancellation.count || 0} đơn hủy · đã hoàn {money(cancellation.refunded)}</p>
+        </article>
+      </div>
+      <div className="topk-performance">
+        <div className="topk-heading"><div><small>AI TOP-K</small><h3>Hiệu quả homestay trong danh sách gợi ý</h3></div><span>Thống kê 30 ngày gần nhất</span></div>
+        {(funnel.topKProperties || []).length ? <div className="topk-table">
+          <div className="topk-row topk-header"><span>Homestay</span><span>Xuất hiện</span><span>Vào Top 3</span><span>Hạng TB</span><span>Xem</span><span>Booking</span></div>
+          {funnel.topKProperties.map((x) => <div className="topk-row" key={x.homestayId}><b>{x.name}</b><span>{x.appearances}</span><span>{x.top3Appearances}</span><span>#{x.averageRank}</span><span>{x.views}</span><strong>{x.bookings}</strong></div>)}
+        </div> : <p className="topk-empty">Chưa có lượt tìm kiếm chứa homestay của bạn trong Top-K.</p>}
+      </div>
+      <div className="business-opportunity">
+        <div className="topk-heading"><div><small>ĐỒNG BỘ NHU CẦU CUSTOMER</small><h3>Cơ hội kinh doanh từ lượt tìm kiếm</h3></div><span>Dữ liệu tổng hợp, không hiển thị thông tin cá nhân</span></div>
+        <div className="opportunity-kpis">
+          <span><small>TÌM KIẾM PHÙ HỢP</small><b>{opportunity.relevantSearches || 0}</b></span>
+          <span><small>KHÔNG CÓ KẾT QUẢ</small><b>{opportunity.searchesWithoutResults || 0}</b></span>
+          <span><small>NGÂN SÁCH TRUNG VỊ</small><b>{money(opportunity.medianBudget)}</b></span>
+          <span><small>NHU CẦU PHÒNG-ĐÊM</small><b>{opportunity.requestedRoomNights || 0}</b></span>
+        </div>
+        {(opportunity.properties || []).length > 0 && <div className="opportunity-list">
+          {opportunity.properties.map((x) => <article key={x.homestayId}>
+            <div><b>{x.name}</b><small>{x.matchedSearches} lượt phù hợp · {x.missedTopKSearches} lượt chưa vào Top-K</small></div>
+            <p>{x.suggestedAction}</p>
+            <button type="button" onClick={() => onTab('homestays')}>Tối ưu →</button>
+          </article>)}
+        </div>}
+        {(opportunity.topAmenities || []).length > 0 && <p className="amenity-demand"><b>Tiện nghi khách đang cần:</b> {opportunity.topAmenities.map(x => `${x.name} (${x.searches})`).join(' · ')}</p>}
+      </div>
+      <div className="decision-alerts">
+        <h3>Cảnh báo và hành động đề xuất</h3>
+        {(data.alerts || []).length ? data.alerts.map((x, i) => (
+          <button key={`${x.title}-${i}`} className={`decision-alert ${x.severity}`} onClick={() => onTab(x.target)}>
+            <span><b>{x.title}</b><small>{x.message}</small></span><em>Xử lý →</em>
+          </button>
+        )) : <div className="decision-all-good">Không phát hiện chỉ số bất thường cần xử lý.</div>}
+      </div>
+    </section>
+  );
+}
+
 export default function HostOverview({ bookings, reviews, homestays, rooms, run, onTab, onCreate }) {
   const now = new Date();
   const [range, setRange] = useState('month');
   const [from, setFrom] = useState(iso(new Date(now.getFullYear(), now.getMonth(), 1)));
   const [to, setTo] = useState(iso(now));
+  const [decision, setDecision] = useState(null);
+  const [decisionLoading, setDecisionLoading] = useState(true);
+  const [decisionError, setDecisionError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    setDecisionLoading(true);
+    homestayApi.hostDecisionSupport()
+      .then((value) => { if (active) setDecision(value); })
+      .catch((e) => { if (active) setDecisionError(e.message || 'Lỗi không xác định'); })
+      .finally(() => { if (active) setDecisionLoading(false); });
+    return () => { active = false; };
+  }, [bookings, rooms, reviews]);
 
   const dates = useMemo(() => {
     let end = new Date(`${to}T23:59:59`);
@@ -260,6 +352,8 @@ export default function HostOverview({ bookings, reviews, homestays, rooms, run,
           iconColor="#f59e0b"
         />
       </div>
+
+      <DecisionSupport data={decision} loading={decisionLoading} error={decisionError} onTab={onTab} />
 
       {/* Việc quan trọng cần xử lý hôm nay */}
       <section className="overview-actions-card">

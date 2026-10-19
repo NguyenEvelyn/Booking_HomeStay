@@ -1,6 +1,7 @@
 using HomestayAuth.Api.Features.Admin.Authorization;
 using HomestayAuth.Api.Features.Bookings;
 using HomestayAuth.Api.Infrastructure.Persistence;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -69,6 +70,43 @@ public sealed class AdminDashboardController(AppDbContext db) : ControllerBase
         var reconciliationIssues = await db.Payments.CountAsync(p => p.TransactionType == "Deposit" && p.Status == "Success" &&
             (p.Booking.Status == BookingStatus.Hold || p.Booking.Status == BookingStatus.Cancelled || p.Amount < p.Booking.DepositAmount));
 
+        var recommendationEvents = await db.RecommendationEvents.AsNoTracking()
+            .Where(x => x.Source == "real" && x.OccurredAt >= start && x.OccurredAt < end)
+            .Select(x => new { Type = x.EventType, x.SessionId, x.HomestayId, x.QueryData, x.OccurredAt }).ToListAsync();
+        var searches = recommendationEvents.Count(x => x.Type == "search");
+        var views = recommendationEvents.Count(x => x.Type == "view");
+        var aiBookingEvents = recommendationEvents.Where(x => x.Type == "booking" && x.HomestayId.HasValue).ToList();
+        var aiBookings = aiBookingEvents.Count;
+        var bookingsInTop5 = aiBookingEvents.Count(booking => recommendationEvents
+            .Where(search => search.Type == "search" && search.SessionId == booking.SessionId && search.OccurredAt <= booking.OccurredAt)
+            .OrderByDescending(search => search.OccurredAt)
+            .Any(search => RankOf(search.QueryData, booking.HomestayId!.Value) is > 0 and <= 5));
+        var topKRecall = aiBookings == 0 ? 0 : Math.Round(100m * bookingsInTop5 / aiBookings, 1);
+        var searchPayloads = recommendationEvents.Where(x => x.Type == "search")
+            .Select(x => new { Location = DemandLocation(x.QueryData), Results = RecommendedCount(x.QueryData) }).ToList();
+        var noResultSearches = searchPayloads.Count(x => x.Results == 0);
+        var noResultRate = searches == 0 ? 0 : Math.Round(100m * noResultSearches / searches, 1);
+        var demandHotspots = searchPayloads.Where(x => !string.IsNullOrWhiteSpace(x.Location))
+            .GroupBy(x => x.Location.Trim(), StringComparer.OrdinalIgnoreCase)
+            .Select(g => new { location = g.Key, searches = g.Count(), noResults = g.Count(x => x.Results == 0) })
+            .OrderByDescending(x => x.searches).Take(5).ToList();
+        var payments = await db.Payments.AsNoTracking().Where(x => x.CreatedAt >= start && x.CreatedAt < end)
+            .GroupBy(x => x.Status).Select(g => new { Status = g.Key, Count = g.Count(), Amount = g.Sum(x => x.Amount) }).ToListAsync();
+        var successfulPayments = payments.Where(x => x.Status == "Success").Sum(x => x.Count);
+        var failedPayments = payments.Where(x => x.Status == "Failed").Sum(x => x.Count);
+        var refundAmount = await db.Payments.AsNoTracking().Where(x => x.CreatedAt >= start && x.CreatedAt < end && x.TransactionType == "Refund" && x.Status == "Success")
+            .SumAsync(x => (decimal?)x.Amount) ?? 0;
+        var customerFrequency = await db.Bookings.AsNoTracking().Where(x => x.CreatedAt >= start && x.CreatedAt < end && OccupiedStatuses.Contains(x.Status))
+            .GroupBy(x => x.CustomerId).Select(g => g.Count()).ToListAsync();
+        var repeatCustomerRate = customerFrequency.Count == 0 ? 0 : Math.Round(100m * customerFrequency.Count(x => x > 1) / customerFrequency.Count, 1);
+        var maintenanceRooms = await db.Rooms.CountAsync(x => x.Status == "Maintenance");
+        var inactiveRooms = await db.Rooms.CountAsync(x => x.Status == "Inactive");
+        var todayEnd = today.AddDays(1);
+        var sellableRooms = await db.Rooms.CountAsync(x => x.Status != "Maintenance" && x.Status != "Inactive" &&
+            x.RoomType.Status == "Active" && x.RoomType.Homestay.Status == "Approved");
+        var occupiedRoomsToday = await db.BookingDetails.AsNoTracking().Where(x => OccupiedStatuses.Contains(x.Booking.Status) &&
+            x.Booking.CheckInDate < todayEnd && x.Booking.CheckOutDate > today).SumAsync(x => (int?)x.Quantity) ?? 0;
+
         return Ok(new
         {
             period = new { range, from = startDate, to = endDate, previousFrom = startDate.AddDays(-duration.Days), previousTo = startDate.AddDays(-1) },
@@ -93,7 +131,30 @@ public sealed class AdminDashboardController(AppDbContext db) : ControllerBase
                 topHomestays = topHomestays.Select(x => new { x.id, name = homeNames.GetValueOrDefault(x.id, "Homestay"), x.value, x.amount }),
                 bookingStatuses
             },
-            attention = new { pendingHomestays, reportedReviews, staleBookings, reconciliationIssues }
+            attention = new { pendingHomestays, reportedReviews, staleBookings, reconciliationIssues },
+            decisionSupport = new
+            {
+                acquisition = new
+                {
+                    searches, views, bookings = aiBookings,
+                    searchToViewRate = searches == 0 ? 0 : Math.Round(100m * views / searches, 1),
+                    viewToBookingRate = views == 0 ? 0 : Math.Round(100m * aiBookings / views, 1),
+                    topKRecall, bookingsInTop5
+                },
+                paymentHealth = new
+                {
+                    successful = successfulPayments, failed = failedPayments, refundAmount,
+                    successRate = successfulPayments + failedPayments == 0 ? 0 : Math.Round(100m * successfulPayments / (successfulPayments + failedPayments), 1)
+                },
+                customers = new { uniqueCustomers = customerFrequency.Count, repeatCustomerRate },
+                demandGap = new { noResultSearches, noResultRate, demandHotspots },
+                supply = new
+                {
+                    maintenanceRooms, inactiveRooms, sellableRooms,
+                    occupiedRooms = Math.Min(sellableRooms, occupiedRoomsToday),
+                    availableRooms = Math.Max(0, sellableRooms - occupiedRoomsToday)
+                }
+            }
         });
     }
 
@@ -119,7 +180,7 @@ public sealed class AdminDashboardController(AppDbContext db) : ControllerBase
             FROM (SELECT COUNT(*) * (@end_date::date - @start_date::date) AS room_nights
                   FROM rooms r JOIN room_types rt ON rt.room_type_id=r.room_type_id
                   JOIN homestays h ON h.homestay_id=rt.homestay_id
-                  WHERE r.status <> 'Inactive' AND rt.status='Active' AND h.status='Approved') capacity
+                  WHERE r.status NOT IN ('Inactive','Maintenance') AND rt.status='Active' AND h.status='Approved') capacity
             CROSS JOIN (SELECT COALESCE(SUM((LEAST(b.check_out_date,@end_date::date)-GREATEST(b.check_in_date,@start_date::date))*bd.quantity),0) AS booked_nights
                   FROM bookings b JOIN booking_details bd ON bd.booking_id=b.booking_id
                   WHERE b.status = ANY(@statuses) AND b.check_in_date < @end_date::date AND b.check_out_date > @start_date::date) occupied
@@ -146,6 +207,41 @@ public sealed class AdminDashboardController(AppDbContext db) : ControllerBase
     }
 
     private static object Kpi(decimal value, decimal previous) => new { value, change = Change(value, previous) };
+    private static int RankOf(string queryData, long homestayId)
+    {
+        try
+        {
+            using var json = JsonDocument.Parse(queryData);
+            if (!json.RootElement.TryGetProperty("recommendedIds", out var ids) || ids.ValueKind != JsonValueKind.Array) return 0;
+            var rank = 0;
+            foreach (var item in ids.EnumerateArray())
+            {
+                rank++;
+                if (item.TryGetInt64(out var id) && id == homestayId) return rank;
+            }
+        }
+        catch (JsonException) { }
+        return 0;
+    }
+    private static int RecommendedCount(string queryData)
+    {
+        try
+        {
+            using var json = JsonDocument.Parse(queryData);
+            return json.RootElement.TryGetProperty("recommendedIds", out var ids) && ids.ValueKind == JsonValueKind.Array ? ids.GetArrayLength() : 0;
+        }
+        catch (JsonException) { return 0; }
+    }
+    private static string DemandLocation(string queryData)
+    {
+        try
+        {
+            using var json = JsonDocument.Parse(queryData);
+            return json.RootElement.TryGetProperty("location", out var location) && location.ValueKind == JsonValueKind.String
+                ? location.GetString() ?? "" : "";
+        }
+        catch (JsonException) { return ""; }
+    }
     private static decimal Change(decimal value, decimal previous) => previous == 0 ? (value == 0 ? 0 : 100) : Math.Round((value - previous) * 100 / previous, 2);
     private static (DateOnly Start, DateOnly End) ResolveRange(string range, DateOnly? from, DateOnly? to, DateOnly today) => range switch
     {
