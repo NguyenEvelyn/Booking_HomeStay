@@ -13,8 +13,11 @@ public class RoomType
     public int MaxCapacity { get; set; }
     public bool ExtraGuestAllowed { get; set; }
     public decimal ExtraGuestFee { get; set; }
+    // Fixed fee per night for each child from 1.2 m staying beyond BaseCapacity (see OccupancyRules).
     public decimal ExtraChildFee { get; set; }
     public int ChildMaxAge { get; set; } = 11;
+    // Children (from 1.2 m beyond capacity, plus any under 1.2 m) a room may take on top of BaseCapacity.
+    public int MaxExtraChildren { get; set; } = 2;
     public decimal DepositPercent { get; set; } = .3m;
     public required string BedType { get; set; }
     public decimal? RoomSize { get; set; }

@@ -133,4 +133,23 @@ Check(Banner(title: "Hi") is not null, "banner title needs at least 3 characters
 var liveBanner = new HomestayAuth.Api.Domain.Entities.Banner { Title = "x", ImageUrl = "https://a/b.jpg", TargetType = "Homestay", StartsAt = bannerStart, EndsAt = bannerStart.AddDays(1), Status = "Active" };
 Check(HomestayAuth.Api.Features.Admin.BannerRules.IsLive(liveBanner, bannerStart.AddHours(1)), "active banner inside its window is live");
 Check(!HomestayAuth.Api.Features.Admin.BannerRules.IsLive(liveBanner, bannerStart.AddDays(1)), "banner stops at its end time");
+// Occupancy: room for 3, +2 children on top, tall child fee 150,000/night (the examples agreed with the lecturer).
+OccupancyEvaluation Occ(int adults, int tall, int small, int quantity = 1, bool extraAdults = false) =>
+    OccupancyRules.Evaluate(new Party(adults, tall, small), quantity, 3, extraAdults ? 4 : 3, extraAdults, 2);
+Check(Occ(2, 1, 0) is { Ok: true, ExtraTallChildren: 0 }, "2 adults + 1 tall child fit the standard capacity");
+Check(Occ(2, 1, 1) is { Ok: true, ExtraTallChildren: 0 }, "a child under 1.2 m is free and outside the capacity");
+Check(Occ(2, 2, 0) is { Ok: true, ExtraTallChildren: 1 }, "the second tall child beyond capacity pays");
+Check(Occ(3, 0, 2) is { Ok: true, ExtraOccupants: 2 }, "3 adults + 2 small children stay within the extra cap");
+Check(Occ(3, 0, 3).Problem == OccupancyRules.OverExtraLimit, "3 small children on top exceed the extra cap");
+Check(Occ(4, 0, 0).Problem == OccupancyRules.TooManyAdults, "a 4th adult needs a room change");
+Check(Occ(0, 2, 0).Problem == OccupancyRules.NoAdult, "children cannot stay without an adult");
+Check(Occ(4, 0, 0, quantity: 2).Ok && Occ(2, 0, 0, quantity: 2).Ok && Occ(1, 2, 0, quantity: 2).Problem == OccupancyRules.NoAdult, "every room of a multi-room booking needs an adult");
+Check(Occ(4, 1, 0, extraAdults: true) is { Ok: true, ExtraAdults: 1, ExtraTallChildren: 1 }, "host opt-in allows a paid extra adult");
+Check(OccupancyRules.FromCounts(2, 3, null, null, [1, 8, 13], 12) == new Party(3, 1, 1), "legacy ages: 13 is an adult, 8 assumed tall, 1 assumed small");
+Check(OccupancyRules.FromCounts(2, 2, null, null, null, 12) == new Party(2, 2, 0), "no detail: children are charged as tall");
+var familyRoom = new HomestayAuth.Api.Domain.Entities.RoomType { Name = "Phòng đơn", Description = "-", BedType = "Đôi", Status = "Active", BasePrice = 800_000,
+    BaseCapacity = 3, MaxCapacity = 3, ExtraChildFee = 150_000, MaxExtraChildren = 2 };
+var stay = new BookingPricingService().Calculate(familyRoom, new DateOnly(2026, 12, 1), new DateOnly(2026, 12, 3), 2, 3, 1, null, "Deposit", [],
+    PolicyService.DefaultSnapshot(), new DateOnly(2026, 11, 1), party: new Party(2, 2, 1));
+Check(stay.ChildSurcharge == 300_000 && stay.Occupancy.Ok, "pricing: 1 extra tall child x 150,000 x 2 nights = 300,000; the small child is free");
 Console.WriteLine("Booking rule checks passed.");

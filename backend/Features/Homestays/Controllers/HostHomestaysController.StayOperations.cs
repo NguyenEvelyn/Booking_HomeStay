@@ -30,6 +30,21 @@ public sealed partial class HostHomestaysController
             return BadRequest(new { message = "Chỉ có thể check-in cho đơn ở trạng thái 'Đã xác nhận'." });
 
         var now = DateTime.UtcNow;
+        // Actual party at the door: same occupancy rules as online booking. Extra adults (or too many children)
+        // cannot be checked in to this room; the host must change room or add a room first.
+        decimal? serverGuestFee = null;
+        if (request.ActualGuests is { } actualGuests)
+        {
+            var (stayRoomType, stayQuantity) = await BookingRoomType(booking);
+            var actualParty = ActualParty(actualGuests);
+            var occupancy = OccupancyRules.Evaluate(actualParty, stayQuantity, stayRoomType.BaseCapacity, stayRoomType.MaxCapacity, stayRoomType.ExtraGuestAllowed, stayRoomType.MaxExtraChildren);
+            if (!occupancy.Ok)
+                return Conflict(new { message = occupancy.Message + " Hãy dùng Đổi phòng hoặc tạo thêm đơn cho phòng khác trước khi nhận phòng.", problem = occupancy.Problem,
+                    suggestions = await occupancySuggestions.For(stayRoomType, actualParty, StayFrom(booking), booking.CheckOutDate, booking.Id) });
+            serverGuestFee = GuestFees(occupancy, stayRoomType, StayNights(booking, booking.CheckInDate));
+            booking.AdultCount = actualParty.Adults; booking.ChildCount = actualParty.Children;
+            booking.TallChildCount = actualParty.TallChildren; booking.SmallChildCount = actualParty.SmallChildren;
+        }
 
         // Cập nhật số điện thoại nếu khách cập nhật/đối chiếu
         if (!string.IsNullOrWhiteSpace(request.CustomerPhone))
@@ -77,16 +92,18 @@ public sealed partial class HostHomestaysController
 
         // 2. Xử lý Phụ thu thêm khách thực tế (Module I)
         var existingGuestCharge = booking.AdditionalCharges.FirstOrDefault(c => c.Type == "extra_guest");
-        if (request.ExtraGuestFee.HasValue && request.ExtraGuestFee.Value > 0)
+        // The server-computed fee wins whenever the actual party is known; the client value is only a legacy fallback.
+        var guestFee = serverGuestFee ?? request.ExtraGuestFee;
+        if (guestFee is > 0)
         {
-            var g = request.ActualGuests;
+            var g = request.ActualGuests is { } actual ? ActualParty(actual) : null;
             var desc = g != null
-                ? $"Phụ thu thêm khách ({g.Adults} người lớn, {g.ChildUnder2 + g.Child2To6 + g.Child6To10 + g.Child10To12 + g.ChildOver12} trẻ em)"
+                ? $"Phụ thu thêm khách ({g.Adults} người lớn, {g.TallChildren} trẻ từ 1m2, {g.SmallChildren} trẻ dưới 1m2)"
                 : "Phụ thu vượt số lượng khách tiêu chuẩn";
             if (existingGuestCharge is not null)
             {
-                existingGuestCharge.UnitPrice = request.ExtraGuestFee.Value;
-                existingGuestCharge.TotalPrice = request.ExtraGuestFee.Value;
+                existingGuestCharge.UnitPrice = guestFee.Value;
+                existingGuestCharge.TotalPrice = guestFee.Value;
                 existingGuestCharge.Description = desc;
                 existingGuestCharge.Status = "Approved";
             }
@@ -98,8 +115,8 @@ public sealed partial class HostHomestaysController
                     Type = "extra_guest",
                     Description = desc,
                     Quantity = 1,
-                    UnitPrice = request.ExtraGuestFee.Value,
-                    TotalPrice = request.ExtraGuestFee.Value,
+                    UnitPrice = guestFee.Value,
+                    TotalPrice = guestFee.Value,
                     Status = "Approved",
                     RecordedBy = HostId,
                     CreatedAt = now
@@ -399,6 +416,8 @@ public sealed partial class HostHomestaysController
                     .FirstOrDefault() ?? r.RoomType.BasePrice,
                 BaseCapacity = r.RoomType.BaseCapacity,
                 MaxCapacity = r.RoomType.MaxCapacity > 0 ? r.RoomType.MaxCapacity : r.RoomType.BaseCapacity,
+                r.RoomType.ExtraGuestAllowed,
+                r.RoomType.MaxExtraChildren,
                 IsCurrent = r.Id == currentRoomId
             })
             .ToListAsync();
@@ -1078,4 +1097,64 @@ public sealed partial class HostHomestaysController
             booking.TotalAmount
         });
     }
+
+    // Same occupancy rules during the stay: extra children pay for the remaining nights; extra adults need a room change.
+    [HttpPost("bookings/{bookingId:long}/add-guests")]
+    public async Task<IActionResult> AddGuests(long bookingId, HostAddGuestsRequest request)
+    {
+        if (request.Adults < 0 || request.TallChildren < 0 || request.SmallChildren < 0 || request.Adults + request.TallChildren + request.SmallChildren < 1)
+            return BadRequest(new { message = "Vui lòng nhập số khách thêm." });
+        await using var tx = await db.Database.BeginTransactionAsync();
+        await BookingAvailability.LockBooking(db, bookingId);
+        var booking = await db.Bookings.Include(b => b.Details)
+            .SingleOrDefaultAsync(b => b.Id == bookingId && db.Homestays.Any(h => h.Id == b.HomestayId && h.HostId == HostId));
+        if (booking is null) return NotFound(new { message = "Không tìm thấy đơn đặt phòng." });
+        if (booking.Status != BookingStatus.CheckedIn) return Conflict(new { message = "Chỉ thêm khách cho đơn đang lưu trú." });
+        var from = StayFrom(booking);
+        var nights = StayNights(booking, from);
+        if (nights < 1) return Conflict(new { message = "Đơn đã đến ngày trả phòng, không còn đêm để thêm khách." });
+        var (roomType, quantity) = await BookingRoomType(booking);
+        var current = CurrentParty(booking);
+        var next = new Party(current.Adults + request.Adults, current.TallChildren + request.TallChildren, current.SmallChildren + request.SmallChildren);
+        var after = OccupancyRules.Evaluate(next, quantity, roomType.BaseCapacity, roomType.MaxCapacity, roomType.ExtraGuestAllowed, roomType.MaxExtraChildren);
+        if (!after.Ok)
+            return Conflict(new { message = after.Message, problem = after.Problem, suggestions = await occupancySuggestions.For(roomType, next, from, booking.CheckOutDate, booking.Id) });
+        var before = OccupancyRules.Evaluate(current, quantity, roomType.BaseCapacity, roomType.MaxCapacity, roomType.ExtraGuestAllowed, roomType.MaxExtraChildren);
+        var fee = Math.Max(0, GuestFees(after, roomType, nights) - (before.Ok ? GuestFees(before, roomType, nights) : 0));
+        var now = DateTime.UtcNow;
+        if (fee > 0)
+            db.AdditionalCharges.Add(new AdditionalCharge { BookingId = booking.Id, Type = "extra_guest_midstay",
+                Description = $"Thêm khách giữa kỳ ({request.Adults} người lớn, {request.TallChildren} trẻ từ 1m2, {request.SmallChildren} trẻ dưới 1m2) × {nights} đêm còn lại",
+                Quantity = 1, UnitPrice = fee, TotalPrice = fee, Status = "Approved", RecordedBy = HostId, CreatedAt = now });
+        booking.AdultCount = next.Adults; booking.ChildCount = next.Children; booking.TallChildCount = next.TallChildren; booking.SmallChildCount = next.SmallChildren;
+        booking.UpdatedAt = now;
+        await LogAudit("AddGuests", bookingId,
+            beforeJson: System.Text.Json.JsonSerializer.Serialize(new { adults = current.Adults, tall = current.TallChildren, small = current.SmallChildren }),
+            afterJson: System.Text.Json.JsonSerializer.Serialize(new { adults = next.Adults, tall = next.TallChildren, small = next.SmallChildren, fee, nights }),
+            reason: request.Note?.Trim());
+        await db.SaveChangesAsync(); await tx.CommitAsync();
+        return Ok(new { fee, nights, message = fee > 0 ? $"Đã thêm khách, phụ thu {fee:N0}đ cho {nights} đêm còn lại." : "Đã thêm khách, không phát sinh phụ thu." });
+    }
+
+    private async Task<(RoomType RoomType, int Quantity)> BookingRoomType(Booking booking)
+    {
+        var roomTypeId = booking.Details.Select(d => d.RoomTypeId).First();
+        return (await db.RoomTypes.AsNoTracking().SingleAsync(r => r.Id == roomTypeId), Math.Max(1, booking.Details.Sum(d => d.Quantity)));
+    }
+
+    private static Party ActualParty(HostActualGuestsRequest g) =>
+        g.TallChildren > 0 || g.SmallChildren > 0 || g.ChildUnder2 + g.Child2To6 + g.Child6To10 + g.Child10To12 + g.ChildOver12 == 0
+            ? new Party(g.Adults, g.TallChildren, g.SmallChildren)
+            // Older clients send age buckets: 12+ are adults, 6-11 assumed from 1.2 m, under 6 assumed under 1.2 m.
+            : new Party(g.Adults + g.ChildOver12, g.Child6To10 + g.Child10To12, g.ChildUnder2 + g.Child2To6);
+
+    private static Party CurrentParty(Booking b) =>
+        b.TallChildCount.HasValue || b.SmallChildCount.HasValue
+            ? new Party(b.AdultCount, b.TallChildCount ?? 0, b.SmallChildCount ?? 0)
+            : new Party(b.AdultCount, b.ChildCount, 0);
+
+    private static DateOnly StayFrom(Booking b) => BookingRules.Today > b.CheckInDate ? BookingRules.Today : b.CheckInDate;
+    private static int StayNights(Booking b, DateOnly from) => Math.Max(0, b.CheckOutDate.DayNumber - from.DayNumber);
+    private static decimal GuestFees(OccupancyEvaluation e, RoomType r, int nights) =>
+        (e.ExtraAdults * r.ExtraGuestFee + e.ExtraTallChildren * r.ExtraChildFee) * Math.Max(1, nights);
 }

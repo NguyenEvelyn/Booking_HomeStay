@@ -582,6 +582,7 @@ export default function App() {
             refreshKey={catalogVersion}
             id={selectedHomestayId}
             initialSearch={homestaySearch}
+            onOpenHomestay={openHomestay}
             user={user}
             onHome={() => setView('home')}
             onBack={() => setView('catalog')}
@@ -681,6 +682,7 @@ export default function App() {
             refreshKey={catalogVersion}
             id={selectedHomestayId}
             initialSearch={homestaySearch}
+            onOpenHomestay={openHomestay}
             user={null}
             onHome={() => setView('home')}
             onBack={() => setView('catalog')}

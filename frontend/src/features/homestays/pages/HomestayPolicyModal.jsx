@@ -435,40 +435,36 @@ export default function HomestayPolicyModal({ isOpen, onClose, homestayName, pol
                   <strong>Từ {guests.adultAge || 12} tuổi trở lên</strong> (hoặc cao trên {guests.heightFallbackMeters || 1.2}m)
                 </div>
 
-                {guests.childFeeTiers && guests.childFeeTiers.length > 0 && (
-                  <div className="policy-table-wrapper">
-                    <table className="policy-table">
-                      <thead>
-                        <tr>
-                          <th>Độ tuổi trẻ em</th>
-                          <th>Phụ phí theo đêm</th>
-                          <th>Chính sách</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {guests.childFeeTiers.map((tier, idx) => (
-                          <tr key={idx}>
-                            <td>
-                              <strong>
-                                {tier.minimumAge} — dưới {tier.maximumAgeExclusive} tuổi
-                              </strong>
-                            </td>
-                            <td>
-                              <span className={`policy-fee-tag ${tier.percent === 0 ? 'free' : 'fee'}`}>
-                                {tier.percent === 0 ? 'Miễn phí (0%)' : `+${tier.percent}% giá người lớn`}
-                              </span>
-                            </td>
-                            <td>
-                              {tier.percent === 0
-                                ? 'Ngủ chung giường có sẵn với bố mẹ'
-                                : 'Có thể yêu cầu bố trí thêm tiện nghi trẻ em'}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                {/* Occupancy rules (backend OccupancyRules): height decides whether a child takes a capacity slot. */}
+                <div className="policy-table-wrapper">
+                  <table className="policy-table">
+                    <thead>
+                      <tr>
+                        <th>Khách</th>
+                        <th>Tính vào sức chứa</th>
+                        <th>Phụ phí khi vượt sức chứa</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><strong>Người lớn (từ {guests.adultAge || 12} tuổi)</strong></td>
+                        <td>Có</td>
+                        <td>Không ở thêm được — đổi sang phòng lớn hơn hoặc đặt thêm phòng</td>
+                      </tr>
+                      <tr>
+                        <td><strong>Trẻ em cao từ {guests.heightFallbackMeters || 1.2}m</strong></td>
+                        <td>Có</td>
+                        <td><span className="policy-fee-tag fee">Phụ thu cố định mỗi đêm (theo loại phòng)</span></td>
+                      </tr>
+                      <tr>
+                        <td><strong>Trẻ em dưới {guests.heightFallbackMeters || 1.2}m</strong></td>
+                        <td>Không</td>
+                        <td><span className="policy-fee-tag free">Miễn phí</span></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <p className="policy-card-desc">Mỗi loại phòng nhận thêm tối đa một số trẻ em ngoài sức chứa (gồm cả trẻ dưới 1m2). Chủ nhà đối chiếu chiều cao khi nhận phòng; nếu khác khai báo sẽ điều chỉnh phụ thu. Mọi khách, kể cả trẻ em, đều phải khai báo lưu trú.</p>
+                </div>
               </div>
 
               {/* Extra bed fees */}

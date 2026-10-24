@@ -95,6 +95,7 @@ builder.Services.AddSingleton<HomestayAuth.Api.Features.Bookings.BookingPricingS
 builder.Services.AddScoped<HomestayAuth.Api.Features.Bookings.VoucherService>();
 builder.Services.AddScoped<HomestayAuth.Api.Features.Bookings.NoShowService>();
 builder.Services.AddScoped<HomestayAuth.Api.Features.Bookings.DealService>();
+builder.Services.AddScoped<HomestayAuth.Api.Features.Bookings.OccupancySuggestionService>();
 builder.Services.AddHostedService<HomestayAuth.Api.Features.Bookings.NoShowReminderWorker>();
 builder.Services.AddSingleton<IEmailOtpSender, EmailOtpSender>();
 // Render (and similar hosts) terminate TLS at a proxy, so without this every request appears to come
@@ -403,6 +404,9 @@ if (!string.Equals(Environment.GetEnvironmentVariable("SKIP_SCHEMA_SYNC"), "true
         ALTER TABLE room_types ADD COLUMN IF NOT EXISTS extra_guest_fee NUMERIC(18,2) NOT NULL DEFAULT 0;
         ALTER TABLE room_types ADD COLUMN IF NOT EXISTS extra_child_fee NUMERIC(18,2) NOT NULL DEFAULT 0;
         ALTER TABLE room_types ADD COLUMN IF NOT EXISTS child_max_age INTEGER NOT NULL DEFAULT 11;
+        ALTER TABLE room_types ADD COLUMN IF NOT EXISTS max_extra_children INTEGER NOT NULL DEFAULT 2;
+        ALTER TABLE bookings ADD COLUMN IF NOT EXISTS tall_child_count INTEGER;
+        ALTER TABLE bookings ADD COLUMN IF NOT EXISTS small_child_count INTEGER;
         ALTER TABLE room_types ADD COLUMN IF NOT EXISTS deposit_percent NUMERIC(5,4) NOT NULL DEFAULT .30;
         ALTER TABLE rooms ADD COLUMN IF NOT EXISTS cleaning_status VARCHAR(30) NOT NULL DEFAULT 'Clean';
         ALTER TABLE rooms ADD COLUMN IF NOT EXISTS cleaning_started_at TIMESTAMPTZ;

@@ -47,6 +47,7 @@ public sealed record RoomTypeListItemResponse(
     decimal ExtraGuestFee,
     decimal ExtraChildFee,
     int ChildMaxAge,
+    int MaxExtraChildren,
     string BedType,
     decimal? RoomSize,
     string? ThumbnailUrl,
@@ -84,6 +85,7 @@ public sealed record RoomTypeDetailResponse(
     decimal ExtraGuestFee,
     decimal ExtraChildFee,
     int ChildMaxAge,
+    int MaxExtraChildren,
     string BedType,
     decimal? RoomSize,
     int AvailableRoomCount,
@@ -95,8 +97,10 @@ public sealed record PagedResponse<T>(IReadOnlyList<T> Items, int Total, int Pag
 
 public sealed record SaveHomestayRequest(string Name, string Description, string AddressLine, string Ward, string District, string Province, TimeOnly? CheckInTime, TimeOnly? CheckOutTime);
 public sealed record SaveRoomTypeRequest(string Name, string Description, decimal BasePrice, int MaxAdults, int MaxChildren, string BedType, decimal? RoomSize, int? BaseCapacity, int? MaxCapacity, bool? ExtraGuestAllowed, decimal? ExtraGuestFee, decimal? DepositPercent);
-public sealed record SaveCapacityRequest(int BaseCapacity, int MaxCapacity, bool ExtraGuestAllowed, decimal ExtraGuestFee, decimal ExtraChildFee, int ChildMaxAge);
-public sealed record BulkExtraGuestPolicyRequest(bool ExtraGuestAllowed, decimal ExtraGuestFee, decimal ExtraChildFee, int ChildMaxAge);
+// ExtraGuestAllowed/ExtraGuestFee: optional paid extra adults (off by default). ExtraChildFee: fixed fee per night for each child from 1.2 m
+// beyond BaseCapacity. MaxExtraChildren: children allowed on top of BaseCapacity (see OccupancyRules).
+public sealed record SaveCapacityRequest(int BaseCapacity, int MaxCapacity, bool ExtraGuestAllowed, decimal ExtraGuestFee, decimal ExtraChildFee, int ChildMaxAge, int? MaxExtraChildren = null);
+public sealed record BulkExtraGuestPolicyRequest(bool ExtraGuestAllowed, decimal ExtraGuestFee, decimal ExtraChildFee, int ChildMaxAge, int? MaxExtraChildren = null);
 public sealed record SaveRoomRequest(string RoomNumber, int? FloorNumber, string Status, string? Note);
 public sealed record SaveImageRequest(string ImageUrl, string? Caption, bool IsThumbnail);
 public sealed record SaveAmenitiesRequest(IReadOnlyList<int> AmenityIds);
