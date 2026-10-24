@@ -24,7 +24,8 @@ public sealed record BookingPricingResult(
     decimal MaxNightlyPrice,
     decimal NightlyRoomTotal,
     IReadOnlyList<NightlyPriceBreakdown> NightsBreakdown,
-    IReadOnlyList<ChildPriceBreakdown> ChildrenBreakdown);
+    IReadOnlyList<ChildPriceBreakdown> ChildrenBreakdown,
+    OccupancyEvaluation Occupancy);
 
 public sealed record NightlyPriceBreakdown(
     DateOnly Date,
@@ -37,7 +38,8 @@ public sealed record NightlyPriceBreakdown(
     string? SurchargeCode,
     decimal SurchargePercent,
     decimal FinalPrice);
-public sealed record ChildPriceBreakdown(int Age, decimal Percent, decimal Amount);
+// One line per children group: "Tall" (from 1.2 m, beyond capacity, fixed fee per night) or "Small" (under 1.2 m, free).
+public sealed record ChildPriceBreakdown(string Group, int Count, decimal FeePerNight, decimal Amount);
 
 public sealed class BookingPricingService
 {
@@ -54,7 +56,8 @@ public sealed class BookingPricingService
         BookingPolicySnapshot policy,
         DateOnly today,
         int? dayUseHours = null,
-        decimal? dealPercent = null)
+        decimal? dealPercent = null,
+        Party? party = null)
     {
         var document = policy.Document ?? OperationalPolicyDocument.SunriseGardenDefault();
         var isDayUse = checkOut == checkIn && dayUseHours is > 0 && document.DayUse.Enabled;
@@ -103,34 +106,17 @@ public sealed class BookingPricingService
         var discount = Round(roomBeforeDiscount * promotion.Percent / 100m);
         var roomAmount = roomBeforeDiscount - discount;
 
-        var included = roomType.BaseCapacity * quantity;
-        var extraAdults = Math.Max(0, adults - included);
+        // Occupancy: adults and children from 1.2 m fill the standard capacity; children from 1.2 m beyond it pay a
+        // fixed fee per night, children under 1.2 m are free; extra adults only when the host enabled it.
+        var occupancyParty = party ?? OccupancyRules.FromCounts(adults, children, null, null, childAges, document.Guests.AdultAge);
+        var occupancy = OccupancyRules.Evaluate(occupancyParty, quantity, roomType.BaseCapacity, roomType.MaxCapacity, roomType.ExtraGuestAllowed, roomType.MaxExtraChildren);
         var chargeUnits = isDayUse ? 1 : nights;
+        var extraAdults = occupancy.ExtraAdults;
         var extraAdultFee = extraAdults * roomType.ExtraGuestFee * chargeUnits;
+        var childSurcharge = occupancy.ExtraTallChildren * roomType.ExtraChildFee * chargeUnits;
         var childBreakdown = new List<ChildPriceBreakdown>();
-        decimal childSurcharge;
-        if (childAges is { Count: > 0 })
-        {
-            childSurcharge = 0;
-            var perRoomStayAfterSurcharge = nightLines.Sum(x => x.FinalPrice);
-            foreach (var age in childAges)
-            {
-                var percent = document.Guests.ChildFeeTiers
-                    .Where(x => age >= x.MinimumAge && age < x.MaximumAgeExclusive)
-                    .OrderByDescending(x => x.MinimumAge)
-                    .Select(x => (decimal?)x.Percent)
-                    .FirstOrDefault() ?? (age >= document.Guests.AdultAge ? 100m : 0m);
-                var amount = Round(perRoomStayAfterSurcharge * percent / 100m);
-                childSurcharge += amount;
-                childBreakdown.Add(new(age, percent, amount));
-            }
-        }
-        else
-        {
-            var remainingIncluded = Math.Max(0, included - adults);
-            var extraChildren = Math.Max(0, children - remainingIncluded);
-            childSurcharge = extraChildren * roomType.ExtraChildFee * chargeUnits;
-        }
+        if (occupancy.ExtraTallChildren > 0) childBreakdown.Add(new("Tall", occupancy.ExtraTallChildren, roomType.ExtraChildFee, childSurcharge));
+        if (occupancyParty.SmallChildren > 0) childBreakdown.Add(new("Small", occupancyParty.SmallChildren, 0, 0));
 
         var total = roomAmount + extraAdultFee + childSurcharge;
         var standardDeposit = isDayUse ? document.DayUse.DepositPercent : Math.Max(roomType.DepositPercent * 100m, document.Payment.StandardDepositPercent);
@@ -150,7 +136,7 @@ public sealed class BookingPricingService
 
         return new(nights, baseRoomAmount, seasonalSurcharge, roomBeforeDiscount, promotion.Code, promotion.Percent,
             discount, roomAmount, extraAdults, extraAdultFee, childSurcharge, total, depositPercent, deposit, dueNow,
-            normalizedPaymentOption, holidayDeposit, minNightlyPrice, maxNightlyPrice, nightlyRoomTotal, nightLines, childBreakdown);
+            normalizedPaymentOption, holidayDeposit, minNightlyPrice, maxNightlyPrice, nightlyRoomTotal, nightLines, childBreakdown, occupancy);
     }
 
     public static string? ValidateChildAges(int childCount, IReadOnlyList<int>? ages)

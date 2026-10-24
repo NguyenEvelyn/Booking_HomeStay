@@ -25,8 +25,12 @@ public sealed record HostActualGuestsRequest(
     int Child2To6 = 0,
     int Child6To10 = 0,
     int Child10To12 = 0,
-    int ChildOver12 = 0
+    int ChildOver12 = 0,
+    // Occupancy groups (preferred): children from 1.2 m and under 1.2 m. The age buckets above are kept for older clients.
+    int TallChildren = 0,
+    int SmallChildren = 0
 );
+public sealed record HostAddGuestsRequest(int Adults = 0, int TallChildren = 0, int SmallChildren = 0, string? Note = null);
 
 public sealed record HostExtraItemRequest(
     string Name,
@@ -71,7 +75,8 @@ public sealed record HostCheckoutRequest(
 [ApiController]
 [Route("api/host/homestays")]
 [Authorize(Roles = "Host")]
-public sealed partial class HostHomestaysController(IHomestayQueryService service, AppDbContext db, SupabaseStorageService storage, RoomInventoryService roomInventory, VnPayService vnPay, PaymentService paymentService) : ControllerBase
+public sealed partial class HostHomestaysController(IHomestayQueryService service, AppDbContext db, SupabaseStorageService storage, RoomInventoryService roomInventory, VnPayService vnPay, PaymentService paymentService,
+    OccupancySuggestionService occupancySuggestions) : ControllerBase
 {
     private long HostId => long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
@@ -109,7 +114,7 @@ public sealed partial class HostHomestaysController(IHomestayQueryService servic
             .Select(h => new { h.Id, h.Name, h.Description, h.AddressLine, h.Ward, h.District, h.Province, h.CheckInTime, h.CheckOutTime, h.Status, h.RejectionReason,
                 Amenities = h.HomestayAmenities.Select(x => new { x.AmenityId, x.Amenity.Name, x.Amenity.Category }).ToList(),
                 Images = h.Images.OrderBy(x => x.SortOrder).Select(x => new { x.Id, Url = x.ImageUrl, x.Caption, x.IsThumbnail }).ToList(),
-                RoomTypes = h.RoomTypes.OrderBy(x => x.BasePrice).Select(r => new { r.Id, r.Name, r.Description, r.BasePrice, r.MaxAdults, r.MaxChildren, r.BaseCapacity, r.MaxCapacity, r.ExtraGuestAllowed, r.ExtraGuestFee, r.ExtraChildFee, r.ChildMaxAge, r.BedType, r.RoomSize, r.Status,
+                RoomTypes = h.RoomTypes.OrderBy(x => x.BasePrice).Select(r => new { r.Id, r.Name, r.Description, r.BasePrice, r.MaxAdults, r.MaxChildren, r.BaseCapacity, r.MaxCapacity, r.ExtraGuestAllowed, r.ExtraGuestFee, r.ExtraChildFee, r.ChildMaxAge, r.MaxExtraChildren, r.BedType, r.RoomSize, r.Status,
                     Rooms = r.Rooms.OrderBy(x => x.RoomNumber).Select(x => new { x.Id, x.RoomNumber, x.FloorNumber, x.Status, x.Note }).ToList(),
                     PricePeriods = r.PricePeriods.OrderBy(x => x.StartDate).Select(x => new { x.Id, x.Name, x.StartDate, x.EndDate, x.PricePerNight }).ToList() }).ToList()
             }).SingleOrDefaultAsync();
@@ -210,11 +215,13 @@ public sealed partial class HostHomestaysController(IHomestayQueryService servic
     {
         var item = await db.RoomTypes.SingleOrDefaultAsync(r => r.Id == roomTypeId && r.HomestayId == id && r.Homestay.HostId == HostId);
         if (item is null) return NotFound(new { message = "Không tìm thấy loại phòng." });
-        if (request.BaseCapacity < 1 || request.MaxCapacity < request.BaseCapacity || request.ExtraGuestFee < 0 || request.ExtraChildFee < 0 || request.ChildMaxAge is < 0 or > 17)
+        if (request.BaseCapacity < 1 || request.MaxCapacity < request.BaseCapacity || request.ExtraGuestFee < 0 || request.ExtraChildFee < 0 || request.ChildMaxAge is < 0 or > 17 || request.MaxExtraChildren is < 0 or > 10)
             return BadRequest(new { message = "Sức chứa hoặc phụ phí khách thêm không hợp lệ." });
         item.BaseCapacity = request.BaseCapacity; item.MaxCapacity = request.MaxCapacity;
         item.ExtraGuestAllowed = request.ExtraGuestAllowed; item.ExtraGuestFee = request.ExtraGuestAllowed ? request.ExtraGuestFee : 0;
-        item.ExtraChildFee = request.ExtraGuestAllowed ? request.ExtraChildFee : 0; item.ChildMaxAge = request.ChildMaxAge;
+        // The child fee no longer depends on paid extra adults: children from 1.2 m beyond capacity always pay it.
+        item.ExtraChildFee = request.ExtraChildFee; item.ChildMaxAge = request.ChildMaxAge;
+        if (request.MaxExtraChildren.HasValue) item.MaxExtraChildren = request.MaxExtraChildren.Value;
         item.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
         return Ok(new { message = "Đã cập nhật sức chứa và phụ phí khách thêm." });
@@ -223,13 +230,14 @@ public sealed partial class HostHomestaysController(IHomestayQueryService servic
     [HttpPatch("{id:long}/room-types/extra-guest-policy")]
     public async Task<IActionResult> BulkExtraGuestPolicy(long id, BulkExtraGuestPolicyRequest request)
     {
-        if (request.ExtraGuestFee < 0 || request.ExtraChildFee < 0 || request.ChildMaxAge is < 0 or > 17) return BadRequest(new { message = "Phụ phí hoặc độ tuổi trẻ em không hợp lệ." });
+        if (request.ExtraGuestFee < 0 || request.ExtraChildFee < 0 || request.ChildMaxAge is < 0 or > 17 || request.MaxExtraChildren is < 0 or > 10) return BadRequest(new { message = "Phụ phí, độ tuổi hoặc số trẻ ở thêm không hợp lệ." });
         if (!await db.Homestays.AnyAsync(h => h.Id == id && h.HostId == HostId)) return NotFound(new { message = "Không tìm thấy homestay." });
         await db.RoomTypes.Where(r => r.HomestayId == id).ExecuteUpdateAsync(setters => setters
             .SetProperty(r => r.ExtraGuestAllowed, request.ExtraGuestAllowed)
             .SetProperty(r => r.ExtraGuestFee, request.ExtraGuestAllowed ? request.ExtraGuestFee : 0)
-            .SetProperty(r => r.ExtraChildFee, request.ExtraGuestAllowed ? request.ExtraChildFee : 0)
+            .SetProperty(r => r.ExtraChildFee, request.ExtraChildFee)
             .SetProperty(r => r.ChildMaxAge, request.ChildMaxAge)
+            .SetProperty(r => r.MaxExtraChildren, r => request.MaxExtraChildren ?? r.MaxExtraChildren)
             .SetProperty(r => r.UpdatedAt, DateTime.UtcNow));
         return Ok(new { message = "Đã áp dụng chính sách khách thêm cho tất cả loại phòng." });
     }

@@ -5,7 +5,8 @@ import { NumberStepper, BookingActionMenu } from './HostBookingControls.jsx';
 import HostNoShowModal from './HostNoShowModal.jsx';
 import HostDealModal from './HostDealModal.jsx';
 import { toast } from '../../../shared/feedback/feedback.js';
-import { money, date, dateTime, day, plainDate, labels, paymentState, calcEarlyCheckInPolicy, calcLateCheckOutPolicy, calcExtraGuestSurcharge } from './hostBookingUtils.js';
+import { money, date, dateTime, day, plainDate, labels, paymentState, calcEarlyCheckInPolicy, calcLateCheckOutPolicy, calcExtraGuestSurcharge, occupancyCheck } from './hostBookingUtils.js';
+import HostAddGuestsModal from './HostAddGuestsModal.jsx';
 
 export default function BookingDetail({ item: initialItem, initialStage = null, initialTab = null, close, run, decide }) {
   const [item, setItem] = useState(initialItem);
@@ -109,25 +110,15 @@ export default function BookingDetail({ item: initialItem, initialStage = null, 
 
   // Bộ đếm khách thực tế tại Check-in (Module I)
   const [actualGuests, setActualGuests] = useState({
-    adults: item.adultCount || 2,
-    childUnder2: 0,
-    child2To6: 0,
-    child6To10: 0,
-    child10To12: item.childCount || 0,
-    childOver12: 0
+    adults: item.adultCount || 1,
+    // Occupancy groups: children from 1.2 m count toward capacity, children under 1.2 m are free.
+    tallChildren: item.tallChildCount ?? item.childCount ?? 0,
+    smallChildren: item.smallChildCount ?? 0
   });
 
   const guestSurchargeInfo = useMemo(() => {
-    return calcExtraGuestSurcharge(
-      actualGuests,
-      item.adultCount,
-      item.childCount,
-      capacity,
-      policy.guests,
-      pricePerNight,
-      item.nights || 1
-    );
-  }, [actualGuests, item.adultCount, item.childCount, capacity, policy.guests, pricePerNight, item.nights]);
+    return calcExtraGuestSurcharge(actualGuests, capacity, item.nights || 1);
+  }, [actualGuests, capacity, item.nights]);
 
   // Thú cưng tại check-in (Module IV)
   const [hasPetAtCheckin, setHasPetAtCheckin] = useState(false);
@@ -166,6 +157,7 @@ export default function BookingDetail({ item: initialItem, initialStage = null, 
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showNoShowModal, setShowNoShowModal] = useState(false);
   const [dealSuggestion, setDealSuggestion] = useState(null);
+  const [showAddGuests, setShowAddGuests] = useState(false);
 
   // Extend quote state
   const [extendQuote, setExtendQuote] = useState(null);
@@ -255,8 +247,8 @@ export default function BookingDetail({ item: initialItem, initialStage = null, 
   const initialAdults = Number(pricingSnapshot.initialAdultCount || item.adultCount || 2);
   const initialChildren = Number(pricingSnapshot.initialChildCount || item.childCount || 0);
   const initialTotalGuests = initialAdults + initialChildren;
-  const actualAdultsCount = (actualGuests.adults || 0) + (actualGuests.childOver12 || 0);
-  const actualChildrenCount = (actualGuests.childUnder2 || 0) + (actualGuests.child2To6 || 0) + (actualGuests.child6To10 || 0) + (actualGuests.child10To12 || 0);
+  const actualAdultsCount = actualGuests.adults || 0;
+  const actualChildrenCount = (actualGuests.tallChildren || 0) + (actualGuests.smallChildren || 0);
   const actualTotalGuests = actualAdultsCount + actualChildrenCount;
 
   // Toggle lọc khoản phát sinh (Section 8) & Xem chi tiết từng đêm (Section 5)
@@ -908,6 +900,10 @@ export default function BookingDetail({ item: initialItem, initialStage = null, 
           setShowIncidentalModal(true);
         }
       });
+    }
+
+    if (item.status === 'CheckedIn') {
+      list.push({ label: 'Thêm khách giữa kỳ', icon: 'plus', handler: () => setShowAddGuests(true) });
     }
 
     if (['Confirmed', 'CheckedIn'].includes(item.status)) {
@@ -1720,17 +1716,17 @@ export default function BookingDetail({ item: initialItem, initialStage = null, 
                 {/* 3. Kiểm đếm khách thực tế & Sức chứa */}
                 <div className="form-sub-header" style={{ marginTop: '20px' }}>
                   <h5>3. Số lượng khách thực tế & Đối chiếu sức chứa phòng</h5>
-                  <span>Sức chứa phòng: Tiêu chuẩn {capacity.baseCapacity} khách · Tối đa {capacity.maxCapacity} khách</span>
+                  <span>Sức chứa tiêu chuẩn {capacity.baseCapacity} người (người lớn + trẻ từ 1m2) · ở thêm tối đa {capacity.maxExtraChildren ?? 2} trẻ</span>
                 </div>
 
-                <div className={`guest-capacity-banner ${guestSurchargeInfo.totalActualGuests > capacity.maxCapacity ? 'warning' : ''}`}>
+                <div className={`guest-capacity-banner ${guestSurchargeInfo.problem ? 'warning' : ''}`}>
                   <div className="guest-capacity-info">
                     <span>Đơn đặt: <strong>{item.adultCount} người lớn, {item.childCount} trẻ em</strong></span>
                     <span>Thực tế đến: <strong>{guestSurchargeInfo.totalActualGuests} người</strong></span>
-                    <span>Tối đa phòng: <strong>{capacity.maxCapacity} người</strong></span>
+                    <span>Tối đa phòng: <strong>{(capacity.extraGuestAllowed ? capacity.maxCapacity : capacity.baseCapacity) + (capacity.maxExtraChildren ?? 2)} người</strong></span>
                   </div>
-                  {guestSurchargeInfo.totalActualGuests > capacity.maxCapacity && (
-                    <span className="balance-badge-due">⚠️ Vượt quá sức chứa tối đa của phòng!</span>
+                  {guestSurchargeInfo.problem && (
+                    <span className="balance-badge-due">⚠️ {guestSurchargeInfo.message}</span>
                   )}
                 </div>
 
@@ -1738,72 +1734,29 @@ export default function BookingDetail({ item: initialItem, initialStage = null, 
                   <div className="guest-tier-card">
                     <header>
                       <strong>Người lớn (≥12 tuổi)</strong>
-                      <small>Tiêu chuẩn theo đơn</small>
+                      <small>Vượt sức chứa phải đổi phòng</small>
                     </header>
-                    <NumberStepper
-                      value={actualGuests.adults}
-                      min={1}
-                      onChange={val => setActualGuests(p => ({ ...p, adults: val }))}
-                      ariaLabel="Số người lớn"
-                    />
+                    <NumberStepper value={actualGuests.adults} min={1} onChange={val => setActualGuests(p => ({ ...p, adults: val }))} ariaLabel="Số người lớn" />
                   </div>
-
                   <div className="guest-tier-card">
                     <header>
-                      <strong>Trẻ em &lt;2 tuổi</strong>
-                      <small>Miễn phí lưu trú</small>
+                      <strong>Trẻ em cao từ 1m2</strong>
+                      <small>Tính vào sức chứa · vượt thì +{money(capacity.extraChildFee || 0)}/đêm</small>
                     </header>
-                    <NumberStepper
-                      value={actualGuests.childUnder2}
-                      min={0}
-                      onChange={val => setActualGuests(p => ({ ...p, childUnder2: val }))}
-                      ariaLabel="Trẻ dưới 2 tuổi"
-                    />
+                    <NumberStepper value={actualGuests.tallChildren} min={0} onChange={val => setActualGuests(p => ({ ...p, tallChildren: val }))} ariaLabel="Trẻ em cao từ 1m2" />
                   </div>
-
                   <div className="guest-tier-card">
                     <header>
-                      <strong>Trẻ 2 - &lt;6 tuổi</strong>
-                      <small>{policy.guests?.child2To6SurchargePercent > 0 ? `+${policy.guests.child2To6SurchargePercent}%` : 'Miễn phí'}</small>
+                      <strong>Trẻ em dưới 1m2</strong>
+                      <small>Miễn phí · không tính sức chứa</small>
                     </header>
-                    <NumberStepper
-                      value={actualGuests.child2To6}
-                      min={0}
-                      onChange={val => setActualGuests(p => ({ ...p, child2To6: val }))}
-                      ariaLabel="Trẻ 2 đến 6 tuổi"
-                    />
-                  </div>
-
-                  <div className="guest-tier-card">
-                    <header>
-                      <strong>Trẻ 6 - &lt;10 tuổi</strong>
-                      <small>+50% phụ thu</small>
-                    </header>
-                    <NumberStepper
-                      value={actualGuests.child6To10}
-                      min={0}
-                      onChange={val => setActualGuests(p => ({ ...p, child6To10: val }))}
-                      ariaLabel="Trẻ 6 đến 10 tuổi"
-                    />
-                  </div>
-
-                  <div className="guest-tier-card">
-                    <header>
-                      <strong>Trẻ 10 - &lt;12 tuổi</strong>
-                      <small>+70% phụ thu</small>
-                    </header>
-                    <NumberStepper
-                      value={actualGuests.child10To12}
-                      min={0}
-                      onChange={val => setActualGuests(p => ({ ...p, child10To12: val }))}
-                      ariaLabel="Trẻ 10 đến 12 tuổi"
-                    />
+                    <NumberStepper value={actualGuests.smallChildren} min={0} onChange={val => setActualGuests(p => ({ ...p, smallChildren: val }))} ariaLabel="Trẻ em dưới 1m2" />
                   </div>
                 </div>
 
                 {guestSurchargeInfo.totalSurcharge > 0 && (
                   <div className="diff-highlight-line" style={{ background: '#fef3c7', padding: '10px 14px', borderRadius: '8px', marginTop: '12px' }}>
-                    <span>Phụ thu phát sinh thêm khách ({guestSurchargeInfo.extraAdults} lớn, {guestSurchargeInfo.extraChildrenCount} nhỏ - {item.nights} đêm):</span>
+                    <span>Phụ thu phát sinh thêm khách ({guestSurchargeInfo.extraAdults} người lớn, {guestSurchargeInfo.extraChildrenCount} trẻ từ 1m2 - {item.nights} đêm):</span>
                     <strong className="text-danger">+{money(guestSurchargeInfo.totalSurcharge)} (Tự động cộng vào Bill)</strong>
                   </div>
                 )}
@@ -3447,7 +3400,7 @@ export default function BookingDetail({ item: initialItem, initialStage = null, 
                 {(() => {
                   const selRoom = availableRooms.find(r => String(r.id) === String(selectedNewRoomId));
                   if (!selRoom) return null;
-                  const isOverCapacity = actualTotalGuests > (selRoom.maxCapacity || 99);
+                  const isOverCapacity = Boolean(occupancyCheck({ adults: actualAdultsCount, tallChildren: actualGuests.tallChildren, smallChildren: actualGuests.smallChildren }, selRoom).problem);
                   const policyDiff = isHomestayFault && selRoom.diffPerNight > 0 ? 0 : (customDiff !== '' ? Number(customDiff) || 0 : selRoom.priceDifference || 0);
                   const effectiveDiff = applyDiff ? policyDiff : 0;
                   const newDebt = liveRemainingDue + effectiveDiff;
@@ -3754,6 +3707,15 @@ export default function BookingDetail({ item: initialItem, initialStage = null, 
               // Offer to resell the room that was just released.
               homestayApi.dealSuggestion(item.id).then(s => s.available && setDealSuggestion(s)).catch(() => {});
             }}
+          />
+        )}
+
+        {showAddGuests && (
+          <HostAddGuestsModal
+            item={item}
+            close={() => setShowAddGuests(false)}
+            done={res => { toast.success(res.message); setShowAddGuests(false); run(homestayApi.hostBookings, false); }}
+            changeRoom={() => { setShowAddGuests(false); loadAvailableRooms(); setShowRoomChangeModal(true); }}
           />
         )}
 

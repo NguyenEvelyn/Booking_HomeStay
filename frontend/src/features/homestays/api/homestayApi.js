@@ -65,6 +65,7 @@ export const homestayApi = {
   promoteDeal: (id, payload = {}) => apiClient(`/host/deals/${id}/promote`, { method: 'POST', body: JSON.stringify(payload) }),
   endDeal: (id) => apiClient(`/host/deals/${id}/end`, { method: 'POST' }),
   dealSuggestion: (bookingId) => apiClient(`/host/deals/suggestion?bookingId=${bookingId}`),
+  addGuests: (id, payload) => apiClient(`/host/homestays/bookings/${id}/add-guests`, { method: 'POST', body: JSON.stringify(payload) }),
   noShowQuote: (id) => apiClient(`/bookings/${id}/no-show/quote`),
   markNoShow: (id, payload) => apiClient(`/bookings/${id}/no-show`, { method: 'POST', body: JSON.stringify(payload) }),
   cancelBooking: (id, payload) => apiClient(`/host/homestays/bookings/${id}/cancel`, { method: 'POST', body: JSON.stringify(payload) }),
