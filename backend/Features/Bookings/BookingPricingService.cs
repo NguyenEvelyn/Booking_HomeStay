@@ -53,7 +53,8 @@ public sealed class BookingPricingService
         IReadOnlyList<RoomPricePeriod> pricePeriods,
         BookingPolicySnapshot policy,
         DateOnly today,
-        int? dayUseHours = null)
+        int? dayUseHours = null,
+        decimal? dealPercent = null)
     {
         var document = policy.Document ?? OperationalPolicyDocument.SunriseGardenDefault();
         var isDayUse = checkOut == checkIn && dayUseHours is > 0 && document.DayUse.Enabled;
@@ -95,7 +96,10 @@ public sealed class BookingPricingService
             ? dayUseHours <= 3 ? document.DayUse.UpToThreeHoursPercent : dayUseHours <= 6 ? document.DayUse.UpToSixHoursPercent : document.DayUse.OverSixHoursPercent
             : 100m;
         var roomBeforeDiscount = Round((baseRoomAmount + seasonalSurcharge) * dayUsePercent / 100m);
-        var promotion = isDayUse ? (Code: (string?)null, Percent: 0m) : BestPromotion(document.Promotions, today, checkIn, nights);
+        // A last-minute deal replaces the automatic promotions instead of stacking with them.
+        var promotion = isDayUse ? (Code: (string?)null, Percent: 0m)
+            : dealPercent is > 0 ? (Code: (string?)DealRules.PromotionCode, Percent: dealPercent.Value)
+            : BestPromotion(document.Promotions, today, checkIn, nights);
         var discount = Round(roomBeforeDiscount * promotion.Percent / 100m);
         var roomAmount = roomBeforeDiscount - discount;
 

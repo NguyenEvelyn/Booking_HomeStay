@@ -22,6 +22,9 @@ export const urgencyFor = (item, now) => {
   }
   if (!upcomingStatuses.includes(item.status)) return null;
   const days = Number.isFinite(Number(item.daysUntilCheckin)) ? Number(item.daysUntilCheckin) : dayDiff(item.checkInDate, now);
+  // Server-computed: past the grace period (or the announced arrival) and still not checked in.
+  if (item.noShowRisk) return { level: 'overdue', label: 'Nguy cơ no-show', urgent: true };
+  if (item.expectedArrivalAt && days <= 0) return { level: 'today', label: 'Khách báo đến muộn', urgent: true };
   if (days < 0) return { level: 'overdue', label: `Trễ ${Math.abs(days)} ngày`, urgent: true };
   if (days === 0) return { level: 'today', label: 'Check-in hôm nay', urgent: true };
   if (days === 1) return { level: 'tomorrow', label: 'Ngày mai', urgent: true };

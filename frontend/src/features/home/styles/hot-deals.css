@@ -1,0 +1,36 @@
+/* "Săn phòng giá rẻ" section on the home page (HotDealsSection.jsx). */
+.hot-deals-section { display: grid; gap: 20px; padding-top: 32px; padding-bottom: 32px; }
+
+.hot-deals-banners { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(280px, 1fr); gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 4px; }
+.hot-deal-banner { scroll-snap-align: start; min-height: 170px; border: 0; border-radius: 18px; padding: 22px; display: flex; flex-direction: column; justify-content: flex-end;
+  align-items: flex-start; gap: 6px; text-align: left; color: #fff; background-size: cover; background-position: center; cursor: pointer; }
+.hot-deal-banner strong { font-size: 20px; line-height: 1.25; }
+.hot-deal-banner span { font-size: 14px; opacity: .92; }
+
+.hot-deals-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.hot-deals-head h2 { margin: 4px 0 0; color: #09275f; }
+.hot-deals-head > p { margin: 0; max-width: 420px; color: #475569; font-size: 14px; }
+
+.hot-deals-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
+.hot-deal-card { border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; background: #fff; padding: 0; text-align: left; cursor: pointer;
+  transition: transform .15s ease, box-shadow .15s ease; }
+.hot-deal-card:hover, .hot-deal-card:focus-visible { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(9, 39, 95, .12); }
+.hot-deal-image { position: relative; height: 140px; background: #e2e8f0 center / cover no-repeat; }
+.hot-deal-badge { position: absolute; top: 10px; left: 10px; background: #e11d48; color: #fff; font-weight: 800; font-size: 14px; padding: 4px 10px; border-radius: 999px; }
+.hot-deal-body { display: grid; gap: 4px; padding: 12px 14px 14px; }
+.hot-deal-body strong { color: #0f172a; font-size: 15px; }
+.hot-deal-body small { color: #64748b; }
+.hot-deal-price { display: flex; align-items: baseline; gap: 6px; }
+.hot-deal-price s { color: #94a3b8; font-size: 13px; }
+.hot-deal-price b { color: #e11d48; font-size: 18px; }
+.hot-deal-meta { display: flex; justify-content: space-between; font-size: 12px; color: #9f1239; font-weight: 600; }
+.hot-deal-countdown { color: #9f1239; font-weight: 700; }
+.hot-deal-banner .hot-deal-countdown { color: #fde68a; }
+.hot-deal-countdown.ended { color: #94a3b8; }
+
+@media (max-width: 640px) {
+  .hot-deals-section { padding-left: 16px; padding-right: 16px; }
+  .hot-deals-banners { grid-auto-columns: 86%; }
+  .hot-deals-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .hot-deal-image { height: 110px; }
+}

@@ -191,18 +191,29 @@ public sealed class AdminPaymentsController(AppDbContext db, VnPayService vnPay,
         }
         else
         {
-            csv.AppendLine("Host,Email,Số đơn,GMV,Hoa hồng,Phải trả");
+            csv.AppendLine("Host,Email,Số đơn,GMV,Hoa hồng,Tripio bù voucher,Phải trả");
+            // Platform-funded voucher discounts are reimbursed to the host on top of the usual payout.
+            var subsidies = await (from u in db.VoucherUsages.AsNoTracking()
+                join b in db.Bookings on u.BookingId equals b.Id
+                join h in db.Homestays on b.HomestayId equals h.Id
+                where u.FundedBy == VoucherFunding.Platform && b.Status == BookingStatus.CheckedOut && b.UpdatedAt >= start && b.UpdatedAt < end
+                group u by h.HostId into g
+                select new { HostId = g.Key, Amount = g.Sum(x => x.DiscountAmount) }).ToDictionaryAsync(x => x.HostId, x => x.Amount);
             var rows = await (from b in db.Bookings.AsNoTracking()
                 join h in db.Homestays on b.HomestayId equals h.Id
                 join u in db.Users on h.HostId equals u.Id
                 where b.Status == BookingStatus.CheckedOut && b.UpdatedAt >= start && b.UpdatedAt < end
                 select new { Booking = b, Host = u })
                 .GroupBy(x => new { x.Host.Id, x.Host.FullName, x.Host.Email })
-                .Select(g => new { g.Key.FullName, g.Key.Email, Count = g.Count(), Gmv = g.Sum(x => x.Booking.TotalAmount),
+                .Select(g => new { g.Key.Id, g.Key.FullName, g.Key.Email, Count = g.Count(), Gmv = g.Sum(x => x.Booking.TotalAmount),
                     Commission = g.Sum(x => x.Booking.TotalAmount * x.Booking.CommissionRate), Payout = g.Sum(x => x.Booking.TotalAmount * (1 - x.Booking.CommissionRate)) }).ToListAsync();
-            foreach (var r in rows) csv.AppendLine(string.Join(',', new[] { r.FullName, r.Email, r.Count.ToString(),
-                r.Gmv.ToString(System.Globalization.CultureInfo.InvariantCulture), r.Commission.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                r.Payout.ToString(System.Globalization.CultureInfo.InvariantCulture) }.Select(Csv)));
+            var invariant = System.Globalization.CultureInfo.InvariantCulture;
+            foreach (var r in rows)
+            {
+                var subsidy = subsidies.GetValueOrDefault(r.Id);
+                csv.AppendLine(string.Join(',', new[] { r.FullName, r.Email, r.Count.ToString(), r.Gmv.ToString(invariant), r.Commission.ToString(invariant),
+                    subsidy.ToString(invariant), (r.Payout + subsidy).ToString(invariant) }.Select(Csv)));
+            }
         }
         return File(Encoding.UTF8.GetBytes(csv.ToString()), "text/csv; charset=utf-8", $"tripio-{type}-{year}-{month:00}.csv");
     }

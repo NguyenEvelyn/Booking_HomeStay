@@ -298,6 +298,10 @@ export default function MyBookingsPage({
             setDetail(null);
           }}
           rebook={() => handleRebook(detail)}
+          refresh={async () => {
+            setDetail(await bookingApi.detail(detail.id));
+            load();
+          }}
         />
       )}{" "}
       {cancel && (
@@ -500,7 +504,7 @@ function ServiceRequestDialog({ booking, close, reload }) {
     </>}{error&&<p className="modal-error">{error}</p>}</section></div>;
 }
 
-function BookingDetail({ data, close, cancel, pay, review, rebook }) {
+function BookingDetail({ data, close, cancel, pay, review, rebook, refresh }) {
   const ref = useDialog(close),
     status = uiStatus(data.status),
     [contact, setContact] = useState({
@@ -587,7 +591,8 @@ function BookingDetail({ data, close, cancel, pay, review, rebook }) {
                 </span>
               </div>
             )}
-            {groups.cancelled.includes(status) && (
+            <NoShowPanel data={data} status={status} refresh={refresh} />
+            {groups.cancelled.includes(status) && status !== "NoShow" && (
               <div className="state-banner danger">
                 <b>Đơn đã hủy</b>
                 <span>
@@ -865,6 +870,90 @@ function ContactDialog({ bookingId, status, value, close, saved }) {
     </section>
   </div>;
 }
+const timeLabel = (v) =>
+  v ? new Intl.DateTimeFormat("vi-VN", { dateStyle: "short", timeStyle: "short" }).format(new Date(v)) : "—";
+// datetime-local value in the viewer's local time.
+const localInput = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+
+// Late arrival announcement (keeps the room past the no-show grace period) and the no-show outcome/dispute.
+function NoShowPanel({ data, status, refresh }) {
+  const [mode, setMode] = useState(null),
+    [arrival, setArrival] = useState(""),
+    [note, setNote] = useState(""),
+    [reason, setReason] = useState(""),
+    [busy, setBusy] = useState(false);
+  const canAnnounce = status === "Confirmed" && daysUntil(data.checkInDate) <= 1 && daysUntil(data.checkInDate) >= 0;
+  const run = async (action, success) => {
+    setBusy(true);
+    try {
+      const result = await action();
+      toast.success(result?.message || success);
+      setMode(null);
+      await refresh?.();
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (status === "NoShow" && data.noShow) {
+    const n = data.noShow;
+    return (
+      <div className="state-banner danger">
+        <b>Đơn được ghi nhận không đến nhận phòng</b>
+        <span>
+          Đã thanh toán {money(n.paidAmount)} · chủ nhà giữ lại {money(n.retainedAmount)} · hoàn lại {money(n.refundAmount)}.
+        </span>
+        {n.disputeStatus === "Pending" && <span>Khiếu nại của bạn đang được quản trị viên xem xét.</span>}
+        {n.disputeStatus === "Accepted" && <span>Khiếu nại đã được chấp nhận. {n.resolutionNote}</span>}
+        {n.disputeStatus === "Rejected" && <span>Khiếu nại chưa được chấp nhận. {n.resolutionNote}</span>}
+        {n.canDispute && mode !== "dispute" && (
+          <button type="button" onClick={() => setMode("dispute")}>Khiếu nại (trong 48 giờ)</button>
+        )}
+        {mode === "dispute" && (
+          <form onSubmit={(e) => { e.preventDefault(); run(() => bookingApi.disputeNoShow(data.id, reason.trim()), "Đã gửi khiếu nại."); }}>
+            <textarea required minLength={10} maxLength={1000} value={reason} onChange={(e) => setReason(e.target.value)}
+              placeholder="Ví dụ: tôi đã đến lúc 21:00 nhưng không liên lạc được chủ nhà / tôi đã báo đến muộn…" />
+            <button disabled={busy}>Gửi khiếu nại</button>
+            <button type="button" onClick={() => setMode(null)}>Hủy</button>
+          </form>
+        )}
+      </div>
+    );
+  }
+  if (!canAnnounce) return null;
+  const openForm = () => {
+    const base = data.expectedArrivalAt ? new Date(data.expectedArrivalAt) : new Date(Date.now() + 2 * 3600000);
+    setArrival(localInput(base));
+    setNote(data.lateArrivalNote || "");
+    setMode("late");
+  };
+  return (
+    <div className="state-banner info">
+      <b>{data.expectedArrivalAt ? `Bạn đã báo sẽ đến lúc ${timeLabel(data.expectedArrivalAt)}` : "Bạn sẽ đến muộn?"}</b>
+      <span>
+        {data.expectedArrivalAt
+          ? "Chủ nhà sẽ giữ phòng cho bạn đến giờ đã báo."
+          : "Báo giờ đến dự kiến để chủ nhà giữ phòng, tránh bị ghi nhận không đến."}
+      </span>
+      {mode !== "late" && (
+        <button type="button" onClick={openForm}>{data.expectedArrivalAt ? "Đổi giờ đến" : "Tôi sẽ đến muộn"}</button>
+      )}
+      {mode === "late" && (
+        <form onSubmit={(e) => {
+          e.preventDefault();
+          run(() => bookingApi.announceLateArrival(data.id, { expectedArrivalAt: new Date(arrival).toISOString(), note: note.trim() || null }), "Đã báo đến muộn.");
+        }}>
+          <label>Giờ đến dự kiến<input required type="datetime-local" value={arrival} onChange={(e) => setArrival(e.target.value)} /></label>
+          <label>Ghi chú cho chủ nhà<input maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ví dụ: chuyến bay bị hoãn" /></label>
+          <button disabled={busy}>Xác nhận</button>
+          <button type="button" onClick={() => setMode(null)}>Hủy</button>
+        </form>
+      )}
+    </div>
+  );
+}
+
 function HoldBanner({ expires }) {
   const [left, setLeft] = useState(() =>
     Math.max(0, Math.floor((new Date(expires) - new Date()) / 1000)),

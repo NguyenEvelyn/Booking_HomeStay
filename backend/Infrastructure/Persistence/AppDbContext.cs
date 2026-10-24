@@ -17,6 +17,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<RoomTypeImage> RoomTypeImages => Set<RoomTypeImage>();
     public DbSet<RoomImage> RoomImages => Set<RoomImage>();
     public DbSet<Booking> Bookings => Set<Booking>();
+    public DbSet<BookingNoShow> BookingNoShows => Set<BookingNoShow>();
+    public DbSet<RoomDeal> RoomDeals => Set<RoomDeal>();
+    public DbSet<Banner> Banners => Set<Banner>();
     public DbSet<BookingDetail> BookingDetails => Set<BookingDetail>();
     public DbSet<BookingGuest> BookingGuests => Set<BookingGuest>();
     public DbSet<Payment> Payments => Set<Payment>();
@@ -70,6 +73,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         voucher.Property(x => x.UsageLimit).HasColumnName("usage_limit");
         voucher.Property(x => x.UsageLimitPerCustomer).HasColumnName("usage_limit_per_customer");
         voucher.Property(x => x.HomestayId).HasColumnName("homestay_id");
+        voucher.Property(x => x.FundedBy).HasColumnName("funded_by").HasMaxLength(20);
+        voucher.Property(x => x.IsPublic).HasColumnName("is_public");
         voucher.Property(x => x.Status).HasColumnName("status").HasMaxLength(20);
         voucher.Property(x => x.CreatedBy).HasColumnName("created_by");
         voucher.Property(x => x.CreatedAt).HasColumnName("created_at");
@@ -87,6 +92,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         voucherUsage.Property(x => x.CustomerId).HasColumnName("customer_id");
         voucherUsage.Property(x => x.CodeUsed).HasColumnName("code_used").HasMaxLength(50);
         voucherUsage.Property(x => x.DiscountAmount).HasColumnName("discount_amount").HasPrecision(18, 2);
+        voucherUsage.Property(x => x.FundedBy).HasColumnName("funded_by").HasMaxLength(20);
         voucherUsage.Property(x => x.UsedAt).HasColumnName("used_at");
         voucherUsage.HasOne<Voucher>().WithMany().HasForeignKey(x => x.VoucherId).OnDelete(DeleteBehavior.Restrict);
         voucherUsage.HasOne<Booking>().WithMany().HasForeignKey(x => x.BookingId).OnDelete(DeleteBehavior.Cascade);
@@ -395,10 +401,55 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         booking.Property(x => x.GuestName).HasColumnName("guest_name").HasMaxLength(150);
         booking.Property(x => x.ContactNameEditCount).HasColumnName("contact_name_edit_count").HasDefaultValue(0);
         booking.Property(x => x.ContactUpdatedAt).HasColumnName("contact_updated_at");
+        booking.Property(x => x.ExpectedArrivalAt).HasColumnName("expected_arrival_at");
+        booking.Property(x => x.LateArrivalNote).HasColumnName("late_arrival_note").HasMaxLength(500);
+        booking.Property(x => x.NoShowReminderSentAt).HasColumnName("no_show_reminder_sent_at");
+        booking.Property(x => x.RoomDealId).HasColumnName("room_deal_id");
         booking.Property(x => x.CreatedAt).HasColumnName("created_at");
         booking.Property(x => x.UpdatedAt).HasColumnName("updated_at");
         booking.HasIndex(x => new { x.HomestayId, x.Status, x.CheckInDate }).HasDatabaseName("ix_bookings_homestay_status_check_in");
         booking.HasOne(x => x.Homestay).WithMany().HasForeignKey(x => x.HomestayId).OnDelete(DeleteBehavior.Restrict);
+
+        var banner = modelBuilder.Entity<Banner>();
+        banner.ToTable("banners"); banner.HasKey(x => x.Id);
+        banner.Property(x => x.Id).HasColumnName("banner_id"); banner.Property(x => x.Title).HasColumnName("title").HasMaxLength(80);
+        banner.Property(x => x.Subtitle).HasColumnName("subtitle").HasMaxLength(160); banner.Property(x => x.ImageUrl).HasColumnName("image_url").HasMaxLength(500);
+        banner.Property(x => x.Placement).HasColumnName("placement").HasMaxLength(20); banner.Property(x => x.TargetType).HasColumnName("target_type").HasMaxLength(20);
+        banner.Property(x => x.TargetId).HasColumnName("target_id"); banner.Property(x => x.TargetQuery).HasColumnName("target_query").HasMaxLength(100);
+        banner.Property(x => x.StartsAt).HasColumnName("starts_at"); banner.Property(x => x.EndsAt).HasColumnName("ends_at");
+        banner.Property(x => x.Priority).HasColumnName("priority"); banner.Property(x => x.Status).HasColumnName("status").HasMaxLength(20);
+        banner.Property(x => x.RequestedBy).HasColumnName("requested_by"); banner.Property(x => x.ReviewNote).HasColumnName("review_note").HasMaxLength(500);
+        banner.Property(x => x.CreatedBy).HasColumnName("created_by");
+        banner.Property(x => x.CreatedAt).HasColumnName("created_at"); banner.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+
+        var deal = modelBuilder.Entity<RoomDeal>();
+        deal.ToTable("room_deals"); deal.HasKey(x => x.Id);
+        deal.Property(x => x.Id).HasColumnName("room_deal_id"); deal.Property(x => x.HomestayId).HasColumnName("homestay_id");
+        deal.Property(x => x.RoomTypeId).HasColumnName("room_type_id");
+        deal.Property(x => x.StartDate).HasColumnName("start_date"); deal.Property(x => x.EndDate).HasColumnName("end_date");
+        deal.Property(x => x.DiscountPercent).HasColumnName("discount_percent").HasPrecision(5, 2);
+        deal.Property(x => x.RoomsLimit).HasColumnName("rooms_limit"); deal.Property(x => x.SaleEndsAt).HasColumnName("sale_ends_at");
+        deal.Property(x => x.AllowVoucher).HasColumnName("allow_voucher");
+        deal.Property(x => x.Status).HasColumnName("status").HasMaxLength(20); deal.Property(x => x.Source).HasColumnName("source").HasMaxLength(20);
+        deal.Property(x => x.SourceBookingId).HasColumnName("source_booking_id"); deal.Property(x => x.CreatedBy).HasColumnName("created_by");
+        deal.Property(x => x.CreatedAt).HasColumnName("created_at"); deal.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+        deal.HasOne(x => x.RoomType).WithMany().HasForeignKey(x => x.RoomTypeId).OnDelete(DeleteBehavior.Cascade);
+        deal.HasOne(x => x.Homestay).WithMany().HasForeignKey(x => x.HomestayId).OnDelete(DeleteBehavior.Cascade);
+
+        var noShow = modelBuilder.Entity<BookingNoShow>();
+        noShow.ToTable("booking_no_shows"); noShow.HasKey(x => x.Id);
+        noShow.Property(x => x.Id).HasColumnName("booking_no_show_id"); noShow.Property(x => x.BookingId).HasColumnName("booking_id");
+        noShow.HasIndex(x => x.BookingId).IsUnique();
+        noShow.Property(x => x.MarkedBy).HasColumnName("marked_by"); noShow.Property(x => x.MarkedAt).HasColumnName("marked_at");
+        noShow.Property(x => x.ContactNote).HasColumnName("contact_note").HasMaxLength(1000); noShow.Property(x => x.Penalty).HasColumnName("penalty").HasMaxLength(20);
+        noShow.Property(x => x.PaidAmount).HasColumnName("paid_amount").HasPrecision(18, 2);
+        noShow.Property(x => x.RetainedAmount).HasColumnName("retained_amount").HasPrecision(18, 2);
+        noShow.Property(x => x.RefundAmount).HasColumnName("refund_amount").HasPrecision(18, 2);
+        noShow.Property(x => x.DisputeStatus).HasColumnName("dispute_status").HasMaxLength(20);
+        noShow.Property(x => x.DisputeReason).HasColumnName("dispute_reason").HasMaxLength(1000);
+        noShow.Property(x => x.DisputedAt).HasColumnName("disputed_at"); noShow.Property(x => x.ResolvedBy).HasColumnName("resolved_by");
+        noShow.Property(x => x.ResolvedAt).HasColumnName("resolved_at"); noShow.Property(x => x.ResolutionNote).HasColumnName("resolution_note").HasMaxLength(1000);
+        noShow.HasOne<Booking>().WithMany().HasForeignKey(x => x.BookingId).OnDelete(DeleteBehavior.Cascade);
 
         var bookingGuest = modelBuilder.Entity<BookingGuest>();
         bookingGuest.ToTable("booking_guests"); bookingGuest.HasKey(x => x.Id);

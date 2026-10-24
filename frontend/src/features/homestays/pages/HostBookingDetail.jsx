@@ -2,6 +2,9 @@ import React, { useMemo, useState } from 'react';
 import { homestayApi } from '../api/homestayApi.js';
 import HostIcon from './HostIcon.jsx';
 import { NumberStepper, BookingActionMenu } from './HostBookingControls.jsx';
+import HostNoShowModal from './HostNoShowModal.jsx';
+import HostDealModal from './HostDealModal.jsx';
+import { toast } from '../../../shared/feedback/feedback.js';
 import { money, date, dateTime, day, plainDate, labels, paymentState, calcEarlyCheckInPolicy, calcLateCheckOutPolicy, calcExtraGuestSurcharge } from './hostBookingUtils.js';
 
 export default function BookingDetail({ item: initialItem, initialStage = null, initialTab = null, close, run, decide }) {
@@ -161,6 +164,8 @@ export default function BookingDetail({ item: initialItem, initialStage = null, 
   const [showExtendModal, setShowExtendModal] = useState(false);
   const [showDateChangeModal, setShowDateChangeModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showNoShowModal, setShowNoShowModal] = useState(false);
+  const [dealSuggestion, setDealSuggestion] = useState(null);
 
   // Extend quote state
   const [extendQuote, setExtendQuote] = useState(null);
@@ -952,6 +957,15 @@ export default function BookingDetail({ item: initialItem, initialStage = null, 
       handler: print
     });
 
+    if (item.status === 'Confirmed' && Number(item.daysUntilCheckin) <= 0) {
+      list.push({
+        label: 'Khách không đến (No-show)',
+        icon: 'clock',
+        danger: true,
+        handler: () => setShowNoShowModal(true)
+      });
+    }
+
     if (['Hold', 'Confirmed'].includes(item.status)) {
       list.push({
         label: 'Hủy đơn đặt phòng',
@@ -1063,6 +1077,13 @@ export default function BookingDetail({ item: initialItem, initialStage = null, 
             </button>
           </div>
         </div>
+
+        {item.status === 'Confirmed' && (item.noShowRisk || item.expectedArrivalAt) && (
+          <div className={`timing-message-alert ${item.noShowRisk ? 'error' : 'info'}`} style={{ margin: '0 0 12px' }}>
+            {item.expectedArrivalAt && <>Khách đã báo sẽ đến lúc <b>{dateTime(item.expectedArrivalAt)}</b>{item.lateArrivalNote ? ` — “${item.lateArrivalNote}”` : ''}. </>}
+            {item.noShowRisk && <>Đã quá thời gian chờ mà khách chưa nhận phòng. Hãy gọi cho khách; nếu không liên lạc được, dùng <b>Thao tác › Khách không đến</b> để trả phòng bán lại.</>}
+          </div>
+        )}
 
         {/* TRIPIO LIFECYCLE STEPPER & SUB-NAVIGATION */}
         <div className="lifecycle-stepper-wrap">
@@ -3719,6 +3740,29 @@ export default function BookingDetail({ item: initialItem, initialStage = null, 
               </footer>
             </div>
           </div>
+        )}
+
+        {showNoShowModal && (
+          <HostNoShowModal
+            item={item}
+            close={() => setShowNoShowModal(false)}
+            done={res => {
+              setItem(prev => ({ ...prev, status: res.status, paymentStatus: res.paymentStatus, noShowRisk: false }));
+              setShowNoShowModal(false);
+              toast.success(res.message);
+              run(homestayApi.hostBookings, false);
+              // Offer to resell the room that was just released.
+              homestayApi.dealSuggestion(item.id).then(s => s.available && setDealSuggestion(s)).catch(() => {});
+            }}
+          />
+        )}
+
+        {dealSuggestion && (
+          <HostDealModal
+            suggestion={dealSuggestion}
+            close={() => setDealSuggestion(null)}
+            created={res => { toast.success(res.message); setDealSuggestion(null); }}
+          />
         )}
 
         {/* ========================================================

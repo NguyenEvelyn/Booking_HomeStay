@@ -1,5 +1,6 @@
 using HomestayAuth.Api.Features.Bookings;
 using HomestayAuth.Api.Features.Homestays.Services;
+using HomestayAuth.Api.Features.Admin.Controllers;
 
 static void Check(bool condition, string name)
 {
@@ -65,7 +66,7 @@ Check(BookingRules.HostCancellation(1_000_000, 400_000) is (400_000, 600_000, 40
 Check(BookingRules.HostCancellation(1_000_000, -1).Error is not null, "host override cannot be negative");
 Check(BookingRules.HostCancellation(1_000_000, 1_000_001).Error is not null, "host override cannot exceed paid amount");
 Check(BookingRules.HostCancellation(0, null) is (0, 0, 100, null), "unpaid booking cancels without refund");
-var lockNamespaces = new[] { AdvisoryLocks.BookingNamespace, AdvisoryLocks.RoomTypeNamespace, AdvisoryLocks.VoucherNamespace, AdvisoryLocks.HomestayPolicyNamespace };
+var lockNamespaces = new[] { AdvisoryLocks.BookingNamespace, AdvisoryLocks.RoomTypeNamespace, AdvisoryLocks.VoucherNamespace, AdvisoryLocks.HomestayPolicyNamespace, AdvisoryLocks.DealNamespace };
 Check(lockNamespaces.Distinct().Count() == lockNamespaces.Length, "advisory lock namespaces are distinct");
 Check(ImageUpload.MatchesSignature(new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 }, "image/jpeg"), "jpeg magic bytes are accepted");
 Check(ImageUpload.MatchesSignature(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A }, "image/png"), "png magic bytes are accepted");
@@ -77,4 +78,59 @@ Check(!ImageUpload.IsAllowedUrl("data:image/png;base64,AAAA"), "data url is reje
 Check(!ImageUpload.IsAllowedUrl("javascript:alert(1)"), "javascript url is rejected");
 Check(!ImageUpload.IsAllowedUrl("http://evil.example/x.jpg"), "plain http is rejected outside localhost");
 Check(!ImageUpload.IsAllowedUrl("https://a.example/" + new string('x', 600)), "url longer than image_url column is rejected");
+var usedVoucher = new HomestayAuth.Api.Domain.Entities.Voucher { Code = "SUMMER", Name = "Hè", DiscountType = "Percentage", DiscountValue = 10,
+    MinimumBookingAmount = 0, ValidFrom = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc), ValidUntil = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc) };
+VoucherRequest Edit(string code = "summer", decimal value = 10, string fundedBy = "Platform", int? limit = 100, DateTime? until = null) =>
+    new(code, "Hè rực rỡ", null, "Percentage", value, null, 0, usedVoucher.ValidFrom, until ?? usedVoucher.ValidUntil, limit, 1, null, "Active", fundedBy, false);
+Check(!AdminVouchersController.PricingChanged(usedVoucher, Edit(until: new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc))), "used voucher may be extended, renamed and hidden");
+Check(AdminVouchersController.PricingChanged(usedVoucher, Edit(value: 20)), "used voucher cannot change its discount");
+Check(AdminVouchersController.PricingChanged(usedVoucher, Edit(code: "SUMMER2")), "used voucher cannot change its code");
+Check(AdminVouchersController.PricingChanged(usedVoucher, Edit(fundedBy: "Host")), "used voucher cannot change who pays");
+var vn = NoShowRules.Zone("Asia/Ho_Chi_Minh");
+var noShowPolicy = new HomestayAuth.Api.Domain.Entities.NoShowPolicy();
+var checkInDay = new DateOnly(2026, 11, 1);
+var standardDeadline = NoShowRules.DeadlineUtc(checkInDay, new TimeOnly(14, 0), vn, noShowPolicy, null);
+Check(standardDeadline == new DateTime(2026, 11, 1, 13, 0, 0, DateTimeKind.Utc), "no-show deadline is check-in 14:00 + 6h grace, i.e. 20:00 Vietnam time");
+var lateArrival = new DateTime(2026, 11, 1, 16, 0, 0, DateTimeKind.Utc); // 23:00 Vietnam time
+Check(NoShowRules.DeadlineUtc(checkInDay, new TimeOnly(14, 0), vn, noShowPolicy, lateArrival) == lateArrival.AddHours(1), "announced late arrival postpones the deadline by one hour after it");
+Check(NoShowRules.DeadlineUtc(checkInDay, new TimeOnly(14, 0), vn, noShowPolicy, new DateTime(2026, 11, 1, 8, 0, 0, DateTimeKind.Utc)) == standardDeadline, "early announced arrival never shortens the grace period");
+Check(NoShowRules.ValidateExpectedArrival(checkInDay, new TimeOnly(14, 0), vn, lateArrival, new DateTime(2026, 11, 1, 10, 0, 0, DateTimeKind.Utc)) is null, "late arrival at 23:00 on check-in day is accepted");
+Check(NoShowRules.ValidateExpectedArrival(checkInDay, new TimeOnly(14, 0), vn, new DateTime(2026, 11, 2, 2, 0, 0, DateTimeKind.Utc), new DateTime(2026, 11, 1, 10, 0, 0, DateTimeKind.Utc)) is not null, "late arrival after 06:00 next morning is rejected");
+Check(NoShowRules.ValidateExpectedArrival(checkInDay, new TimeOnly(14, 0), vn, new DateTime(2026, 11, 1, 5, 0, 0, DateTimeKind.Utc), new DateTime(2026, 11, 1, 4, 0, 0, DateTimeKind.Utc)) is not null, "arrival before check-in time is not a late arrival");
+Check(NoShowRules.Settlement(300_000, 300_000, 1_000_000, 2, noShowPolicy) == (300_000, 0), "deposit-only booking: host keeps the deposit");
+Check(NoShowRules.Settlement(1_000_000, 300_000, 1_000_000, 2, noShowPolicy) == (300_000, 700_000), "fully paid booking: deposit kept, rest refunded");
+Check(NoShowRules.Settlement(1_000_000, 300_000, 1_000_000, 2, noShowPolicy with { Penalty = "FirstNight" }) == (500_000, 500_000), "first-night penalty keeps one night's price");
+Check(NoShowRules.Settlement(1_000_000, 300_000, 1_000_000, 2, noShowPolicy with { RemainingRefundPercent = 50 }) == (650_000, 350_000), "partial refund of the remainder");
+Check(NoShowRules.Settlement(100_000, 300_000, 1_000_000, 2, noShowPolicy) == (100_000, 0), "penalty is capped at what was paid");
+Check(NoShowRules.ValidatePolicy(noShowPolicy with { GraceHours = 0 }) is not null, "grace hours must be at least 1");
+var dealNow = new DateTime(2026, 11, 1, 3, 0, 0, DateTimeKind.Utc); // 10:00 Vietnam time
+var dealToday = new DateOnly(2026, 11, 1);
+var deal = new HomestayAuth.Api.Domain.Entities.RoomDeal { StartDate = dealToday, EndDate = dealToday.AddDays(2), DiscountPercent = 30, RoomsLimit = 2,
+    SaleEndsAt = DealRules.DefaultSaleEndUtc(dealToday, vn, dealNow) };
+Check(deal.SaleEndsAt == new DateTime(2026, 11, 1, 15, 0, 0, DateTimeKind.Utc), "deal sale ends 22:00 Vietnam time on the first night by default");
+Check(DealRules.Covers(deal, dealToday, dealToday.AddDays(1), dealToday, dealNow), "deal covers a one-night stay inside its nights");
+Check(!DealRules.Covers(deal, dealToday, dealToday.AddDays(3), dealToday, dealNow), "deal never applies when the stay runs past its nights");
+Check(!DealRules.Covers(deal, dealToday, dealToday.AddDays(1), dealToday, deal.SaleEndsAt), "deal stops applying at its sale end");
+var endedDeal = new HomestayAuth.Api.Domain.Entities.RoomDeal { StartDate = deal.StartDate, EndDate = deal.EndDate, DiscountPercent = 30, RoomsLimit = 2,
+    SaleEndsAt = deal.SaleEndsAt, Status = "Ended" };
+Check(!DealRules.Covers(endedDeal, dealToday, dealToday.AddDays(1), dealToday, dealNow), "ended deal does not apply");
+Check(DealRules.Validate(dealToday, dealToday.AddDays(1), 30, 1, deal.SaleEndsAt, dealToday, dealNow, vn) is null, "valid tonight deal");
+Check(DealRules.Validate(dealToday, dealToday.AddDays(1), 80, 1, deal.SaleEndsAt, dealToday, dealNow, vn) is not null, "discount above 70% is rejected");
+Check(DealRules.Validate(dealToday.AddDays(5), dealToday.AddDays(6), 30, 1, deal.SaleEndsAt.AddDays(5), dealToday, dealNow, vn) is not null, "deal more than 3 days ahead is rejected");
+Check(DealRules.Validate(dealToday, dealToday.AddDays(4), 30, 1, deal.SaleEndsAt, dealToday, dealNow, vn) is not null, "deal longer than 3 nights is rejected");
+Check(DealRules.Validate(dealToday, dealToday.AddDays(1), 30, 1, deal.SaleEndsAt.AddDays(1), dealToday, dealNow, vn) is not null, "deal must stop selling before midnight of the first night");
+Check(DealRules.NonRefundable(PolicyService.DefaultSnapshot()).CancellationTiers is [{ RefundPercent: 0, MinimumDays: 0, MaximumDays: null }], "deal bookings are non-refundable");
+var bannerStart = new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc);
+string? Banner(string targetType = "Homestay", long? targetId = 5, string? query = null, string image = "https://cdn.example/b.jpg", int days = 14, string title = "Ưu đãi cuối tuần") =>
+    HomestayAuth.Api.Features.Admin.BannerRules.Validate(title, null, image, "HomeHero", targetType, targetId, query, bannerStart, bannerStart.AddDays(days), 10);
+Check(Banner() is null, "valid homestay banner");
+Check(Banner("Search", null, "Kiên Giang") is null, "valid search banner by province");
+Check(Banner("Search", null, null) is not null, "search banner needs a province");
+Check(Banner("Url", 5) is not null, "free URL targets are not allowed");
+Check(Banner(image: "javascript:alert(1)") is not null, "banner image must be an https link");
+Check(Banner(days: 120) is not null, "banner runs at most 90 days");
+Check(Banner(title: "Hi") is not null, "banner title needs at least 3 characters");
+var liveBanner = new HomestayAuth.Api.Domain.Entities.Banner { Title = "x", ImageUrl = "https://a/b.jpg", TargetType = "Homestay", StartsAt = bannerStart, EndsAt = bannerStart.AddDays(1), Status = "Active" };
+Check(HomestayAuth.Api.Features.Admin.BannerRules.IsLive(liveBanner, bannerStart.AddHours(1)), "active banner inside its window is live");
+Check(!HomestayAuth.Api.Features.Admin.BannerRules.IsLive(liveBanner, bannerStart.AddDays(1)), "banner stops at its end time");
 Console.WriteLine("Booking rule checks passed.");

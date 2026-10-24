@@ -11,6 +11,7 @@ import HostOverview from'./HostOverview.jsx';
 import HostReviewsPage from'./HostReviewsPage.jsx';
 import HostServiceRequests from'./HostServiceRequests.jsx';
 import PolicyEditor from'./PolicyEditor.jsx';
+import HostDealsPage from'./HostDealsPage.jsx';
 import HostPropertyDetail from'./HostPropertyDetail.jsx';
 import{HostDemandForecast}from'../../demand-forecast/DemandForecastDashboard.jsx';
 import{confirmDialog,promptDialog,toast}from'../../../shared/feedback/feedback.js';
@@ -28,6 +29,7 @@ const navItems=[
   {key:'calendar',icon:'calendar',label:'Lịch đặt phòng'},
   {key:'homestays',icon:'home',label:'Homestay & phòng'},
   {key:'bookings',icon:'bookings',label:'Đơn đặt phòng'},
+  {key:'deals',icon:'tag',label:'Deal phút chót'},
   {key:'requests',icon:'bookings',label:'Yêu cầu từ khách'},
   {key:'reviews',icon:'reviews',label:'Khách & đánh giá'},
   {key:'finance',icon:'finance',label:'Doanh thu & báo cáo'},
@@ -53,6 +55,7 @@ export default function HostDashboardPage({user,onLogout,onChangePassword,onCust
  {tab==='homestays'&&!detail&&<RoomManagement data={roomData} run={run}/>}
  {tab==='bookings'&&<HostBookings items={bookings} homestays={items} run={run} sort={bookingSort} onSortChange={changeBookingSort}/>}
  {tab==='requests'&&<HostServiceRequests homestays={items}/>}
+{tab==='deals'&&<HostDealsPage rooms={roomData.items}/>}
  {tab==='reviews'&&<HostReviewsPage homestays={items} onBooking={()=>setTab('bookings')}/>}
  {tab==='finance'&&<FinanceReport homestays={items} onOpenBookings={()=>setTab('bookings')}/>}
  {tab==='forecast'&&<HostDemandForecast homestays={items}/>}</section>

@@ -242,18 +242,6 @@ public sealed class BookingOperationsController(AppDbContext db, RoomInventorySe
         await db.SaveChangesAsync(); return Ok(new { refund.Id, refund.Amount, refund.Status, refund.PaidAt });
     }
 
-    [HttpPost("bookings/{id:long}/no-show")]
-    public async Task<IActionResult> MarkNoShow(long id, DecisionRequest request)
-    {
-        if (Role != "Host") return Forbid(); await using var tx = await db.Database.BeginTransactionAsync(); await BookingAvailability.LockBooking(db, id);
-        var booking = await HostBooking(id); if (booking is null) return NotFound();
-        if (booking.Status != BookingStatus.Confirmed || BookingRules.Today < booking.CheckInDate) return Conflict(new { message = "Chỉ có thể đánh dấu no-show từ ngày check-in cho booking đã xác nhận." });
-        booking.Status = BookingStatus.NoShow; booking.UpdatedAt = DateTime.UtcNow;
-        await db.BookingRoomStays.Where(x => x.BookingId == id && x.Status == "Active").ExecuteUpdateAsync(x => x.SetProperty(s => s.Status, "Cancelled"));
-        AddAudit("booking.no_show", "Booking", id, new { booking.Status, refund = 0 }, request.Reason); await db.SaveChangesAsync(); await tx.CommitAsync();
-        return Ok(new { booking.Status, booking.PaymentStatus, refundAmount = 0 });
-    }
-
     [HttpPost("additional-charges/{id:long}/accept")]
     public async Task<IActionResult> AcceptCharge(long id)
     {

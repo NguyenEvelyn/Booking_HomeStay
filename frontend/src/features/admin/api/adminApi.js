@@ -37,5 +37,13 @@ export const adminApi = {
   ,vouchers: filters => apiClient(`/admin/vouchers${query(filters)}`)
   ,createVoucher: payload => apiClient('/admin/vouchers',{method:'POST',body:JSON.stringify(payload)})
   ,updateVoucher: (id,payload) => apiClient(`/admin/vouchers/${id}`,{method:'PUT',body:JSON.stringify(payload)})
+  ,voucherUsages: id => apiClient(`/admin/vouchers/${id}/usages`)
+  ,banners: () => apiClient('/admin/banners')
+  ,createBanner: payload => apiClient('/admin/banners',{method:'POST',body:JSON.stringify(payload)})
+  ,updateBanner: (id,payload) => apiClient(`/admin/banners/${id}`,{method:'PUT',body:JSON.stringify(payload)})
+  ,setBannerStatus: (id,payload) => apiClient(`/admin/banners/${id}/status`,{method:'PATCH',body:JSON.stringify(payload)})
+  ,uploadBannerImage: file => { const body=new FormData(); body.append('file',file); return apiClient('/admin/banners/upload',{method:'POST',body}); }
+  ,noShowDisputes: status => apiClient(`/admin/no-show-disputes${status?`?status=${encodeURIComponent(status)}`:''}`)
+  ,decideNoShowDispute: (bookingId,payload) => apiClient(`/admin/no-show-disputes/${bookingId}`,{method:'PATCH',body:JSON.stringify(payload)})
   ,setVoucherStatus: (id,status) => apiClient(`/admin/vouchers/${id}/status`,{method:'PATCH',body:JSON.stringify({status})})
 };

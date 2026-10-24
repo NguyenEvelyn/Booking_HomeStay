@@ -77,6 +77,7 @@ public sealed class HomestayPoliciesController(AppDbContext db, PolicyService po
                 d.DayUse.DepositPercent is < 0 or > 100 || d.DayUse.NonRefundableCancellationWindowHours < 0 ||
                 d.Pets.MaximumPerRoom < 0 || d.Pets.FeePerNight < 0)
                 return "Chính sách day-use hoặc thú cưng không hợp lệ.";
+            if (NoShowRules.ValidatePolicy(d.NoShow) is { } noShowError) return noShowError;
         }
         return null;
     }

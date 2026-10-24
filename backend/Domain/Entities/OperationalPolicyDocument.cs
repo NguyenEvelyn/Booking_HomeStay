@@ -14,6 +14,7 @@ public sealed record OperationalPolicyDocument
     public AssetPolicy Assets { get; init; } = new();
     public HouseRulesPolicy HouseRules { get; init; } = new();
     public PromotionPolicy Promotions { get; init; } = new();
+    public NoShowPolicy NoShow { get; init; } = new();
     public MinibarPolicy Minibar { get; init; } = new();
     public ServiceCatalogPolicy Services { get; init; } = new();
     public IReadOnlyList<SeasonalSurchargeRule> SeasonalSurcharges { get; init; } = DefaultSeasonalSurcharges();
@@ -216,6 +217,23 @@ public sealed record HouseRulesPolicy
     public decimal MaximumPartyFee { get; init; } = 1_000_000;
     public int FreeLuggageStorageHoursAfterCheckout { get; init; } = 6;
     public decimal LuggageFeePerItemPerDay { get; init; } = 50_000;
+}
+
+// What happens when a confirmed guest neither checks in nor cancels. Snapshotted into each booking.
+public sealed record NoShowPolicy
+{
+    // Hours after the check-in time before the host may release the room.
+    public int GraceHours { get; init; } = 6;
+    // "Deposit": the host keeps the deposit; "FirstNight": the host keeps one night's price.
+    public string Penalty { get; init; } = NoShowPenalty.Deposit;
+    // Share of what the guest paid beyond the penalty that is refunded.
+    public decimal RemainingRefundPercent { get; init; } = 100;
+}
+
+public static class NoShowPenalty
+{
+    public const string Deposit = "Deposit";
+    public const string FirstNight = "FirstNight";
 }
 
 public sealed record PromotionPolicy
