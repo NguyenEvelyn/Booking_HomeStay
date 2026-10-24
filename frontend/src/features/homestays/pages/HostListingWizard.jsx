@@ -379,26 +379,29 @@ export default function HostListingWizard({ user, onBack, onSuccess }) {
     toast.success('Đã đặt làm ảnh bìa chính!');
   };
 
-  const handleFileUpload = (e) => {
+  // Upload to storage right away and keep only the returned URL: a base64 data URL would not fit
+  // the image_url column and the image would be silently lost when the listing is saved.
+  const handleFileUpload = async (e) => {
     const files = Array.from(e.target.files || []);
-    if (!files.length) return;
-    files.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (uploadEvent) => {
-        const resultUrl = uploadEvent.target.result;
-        setFormData((prev) => {
-          const updated = [...(prev.images || []), resultUrl];
-          return {
-            ...prev,
-            images: updated,
-            imageUrl: prev.imageUrl || resultUrl,
-          };
-        });
-      };
-      reader.readAsDataURL(file);
-    });
-    toast.success(`Đã tải lên ${files.length} ảnh!`);
     e.target.value = '';
+    if (!files.length) return;
+    let uploadedCount = 0;
+    for (const file of files) {
+      try {
+        const { url } = user?.role === 'Host'
+          ? await homestayApi.uploadHostImage(file)
+          : await hostRegistrationApi.uploadImage(file);
+        uploadedCount++;
+        setFormData((prev) => ({
+          ...prev,
+          images: [...(prev.images || []), url],
+          imageUrl: prev.imageUrl || url,
+        }));
+      } catch (error) {
+        toast.error(`Không tải được ảnh ${file.name}: ${error.message || 'lỗi không xác định'}`);
+      }
+    }
+    if (uploadedCount) toast.success(`Đã tải lên ${uploadedCount} ảnh!`);
   };
 
   const handleAddSampleImage = (url, label) => {
@@ -576,13 +579,15 @@ export default function HostListingWizard({ user, onBack, onSuccess }) {
             ? formData.images
             : (formData.imageUrl ? [formData.imageUrl] : []);
 
+          let failedImages = 0;
           for (let i = 0; i < imagesToSave.length; i++) {
             await homestayApi.addImage(created.id, {
               imageUrl: imagesToSave[i],
               caption: i === 0 ? 'Ảnh bìa chính homestay' : `Ảnh homestay #${i + 1}`,
               isThumbnail: i === 0,
-            }).catch(() => {});
+            }).catch(() => { failedImages++; });
           }
+          if (failedImages) toast.error(`${failedImages} ảnh không lưu được. Bạn có thể thêm lại trong trang quản lý homestay.`);
 
           // 2.3 Thêm loại phòng theo thiết lập CSDL (room_types)
           const rtRes = await homestayApi.addRoomType(created.id, {

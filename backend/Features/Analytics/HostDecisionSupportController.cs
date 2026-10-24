@@ -68,7 +68,7 @@ public sealed class HostDecisionSupportController(AppDbContext db) : ControllerB
 
         var pickupBookings = await db.Bookings.AsNoTracking()
             .Where(x => homestayIds.Contains(x.HomestayId) && x.CreatedAt >= now.AddDays(-7) &&
-                        x.CheckInDate >= today && x.Status != BookingStatus.Cancelled)
+                        x.CheckInDate >= today && BookingRules.ReservedStatuses.Contains(x.Status))
             .Select(x => new PickupItem(x.CreatedAt, x.TotalAmount))
             .ToListAsync();
 

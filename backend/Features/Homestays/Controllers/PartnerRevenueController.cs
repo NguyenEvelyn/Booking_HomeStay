@@ -158,7 +158,13 @@ public sealed class PartnerRevenueController(AppDbContext db) : ControllerBase
         var items = await db.Payments.AsNoTracking().Where(x => x.Booking.Homestay.HostId == HostId && x.Status == "Success" && x.PaidAt >= startUtc && x.PaidAt < endUtc
             && (!homestayId.HasValue || x.Booking.HomestayId == homestayId) && (string.IsNullOrEmpty(paymentMethod) || paymentMethod == "all" || x.TransactionType == paymentMethod))
             .OrderByDescending(x => x.PaidAt).Select(x => new { x.Booking.BookingCode, customer = x.Booking.ContactName ?? x.Booking.GuestName ?? "Khách lưu trú", x.Booking.Homestay.Name, x.PaidAt, x.PaymentMethod, x.Amount, x.TransactionType, x.Booking.CommissionRate }).ToListAsync();
-        static string Csv(object? value) => $"\"{Convert.ToString(value, CultureInfo.InvariantCulture)?.Replace("\"", "\"\"")}\"";
+        // Guest-entered names must not start a spreadsheet formula (same rule as AdminPaymentsController.Csv).
+        static string Csv(object? value)
+        {
+            var text = Convert.ToString(value, CultureInfo.InvariantCulture) ?? "";
+            if (text.Length > 0 && "=+-@\t\r".Contains(text[0])) text = "'" + text;
+            return $"\"{text.Replace("\"", "\"\"")}\"";
+        }
         var csv = new StringBuilder("Mã đơn,Khách,Homestay,Ngày thanh toán,Phương thức,Số tiền,Phí nền tảng,Thực nhận,Trạng thái\r\n");
         foreach (var x in items)
         {

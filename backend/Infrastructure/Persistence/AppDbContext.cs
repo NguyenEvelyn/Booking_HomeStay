@@ -48,9 +48,50 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
     public DbSet<HomestayService> HomestayServices => Set<HomestayService>();
     public DbSet<GuestServiceRequest> GuestServiceRequests => Set<GuestServiceRequest>();
+    public DbSet<Voucher> Vouchers => Set<Voucher>();
+    public DbSet<VoucherUsage> VoucherUsages => Set<VoucherUsage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        var voucher = modelBuilder.Entity<Voucher>();
+        voucher.ToTable("vouchers");
+        voucher.HasKey(x => x.Id);
+        voucher.Property(x => x.Id).HasColumnName("voucher_id");
+        voucher.Property(x => x.Code).HasColumnName("code").HasMaxLength(50);
+        voucher.HasIndex(x => x.Code).IsUnique();
+        voucher.Property(x => x.Name).HasColumnName("name").HasMaxLength(150);
+        voucher.Property(x => x.Description).HasColumnName("description").HasMaxLength(500);
+        voucher.Property(x => x.DiscountType).HasColumnName("discount_type").HasMaxLength(20);
+        voucher.Property(x => x.DiscountValue).HasColumnName("discount_value").HasPrecision(18, 2);
+        voucher.Property(x => x.MaximumDiscount).HasColumnName("maximum_discount").HasPrecision(18, 2);
+        voucher.Property(x => x.MinimumBookingAmount).HasColumnName("minimum_booking_amount").HasPrecision(18, 2);
+        voucher.Property(x => x.ValidFrom).HasColumnName("valid_from");
+        voucher.Property(x => x.ValidUntil).HasColumnName("valid_until");
+        voucher.Property(x => x.UsageLimit).HasColumnName("usage_limit");
+        voucher.Property(x => x.UsageLimitPerCustomer).HasColumnName("usage_limit_per_customer");
+        voucher.Property(x => x.HomestayId).HasColumnName("homestay_id");
+        voucher.Property(x => x.Status).HasColumnName("status").HasMaxLength(20);
+        voucher.Property(x => x.CreatedBy).HasColumnName("created_by");
+        voucher.Property(x => x.CreatedAt).HasColumnName("created_at");
+        voucher.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+        voucher.HasOne<Homestay>().WithMany().HasForeignKey(x => x.HomestayId).OnDelete(DeleteBehavior.Cascade);
+        voucher.HasOne<User>().WithMany().HasForeignKey(x => x.CreatedBy).OnDelete(DeleteBehavior.SetNull);
+
+        var voucherUsage = modelBuilder.Entity<VoucherUsage>();
+        voucherUsage.ToTable("voucher_usages");
+        voucherUsage.HasKey(x => x.Id);
+        voucherUsage.Property(x => x.Id).HasColumnName("voucher_usage_id");
+        voucherUsage.Property(x => x.VoucherId).HasColumnName("voucher_id");
+        voucherUsage.Property(x => x.BookingId).HasColumnName("booking_id");
+        voucherUsage.HasIndex(x => x.BookingId).IsUnique();
+        voucherUsage.Property(x => x.CustomerId).HasColumnName("customer_id");
+        voucherUsage.Property(x => x.CodeUsed).HasColumnName("code_used").HasMaxLength(50);
+        voucherUsage.Property(x => x.DiscountAmount).HasColumnName("discount_amount").HasPrecision(18, 2);
+        voucherUsage.Property(x => x.UsedAt).HasColumnName("used_at");
+        voucherUsage.HasOne<Voucher>().WithMany().HasForeignKey(x => x.VoucherId).OnDelete(DeleteBehavior.Restrict);
+        voucherUsage.HasOne<Booking>().WithMany().HasForeignKey(x => x.BookingId).OnDelete(DeleteBehavior.Cascade);
+        voucherUsage.HasOne<User>().WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
+
         var homestayService = modelBuilder.Entity<HomestayService>();
         homestayService.ToTable("homestay_services");
         homestayService.HasKey(x => x.Id);

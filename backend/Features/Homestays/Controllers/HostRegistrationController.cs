@@ -3,6 +3,7 @@ using System.Text.Json;
 using HomestayAuth.Api.Domain.Entities;
 using HomestayAuth.Api.Features.Admin.Audit;
 using HomestayAuth.Api.Features.Admin.Authorization;
+using HomestayAuth.Api.Features.Homestays.Services;
 using HomestayAuth.Api.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -22,9 +23,21 @@ public sealed record RegisterHostRequest(
 public sealed record HostRegistrationDecisionRequest(string? Reason);
 
 [ApiController]
-public sealed class HostRegistrationController(AppDbContext db, IAuditLogService audit) : ControllerBase
+public sealed class HostRegistrationController(AppDbContext db, IAuditLogService audit, SupabaseStorageService storage) : ControllerBase
 {
     private long UserId => long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+    // Applicants are not Hosts yet, so they cannot use /api/host/profile/upload for listing photos.
+    [HttpPost("api/host-registration/upload"), Authorize, RequestSizeLimit(ImageUpload.MaxBytes)]
+    public async Task<IActionResult> UploadImage(IFormFile file, CancellationToken cancellationToken)
+    {
+        if (file.Length == 0 || file.Length > ImageUpload.MaxBytes) return BadRequest(new { message = "Ảnh phải nhỏ hơn 8 MB." });
+        if (await ImageUpload.Validate(file, cancellationToken) is not (var extension, var contentType))
+            return BadRequest(new { message = "Chỉ hỗ trợ JPG, PNG hoặc WEBP hợp lệ." });
+        await using var stream = file.OpenReadStream();
+        var url = await storage.UploadPublicImageAsync(stream, $"registrations/{UserId}/{DateTime.UtcNow:yyyy/MM}/{Guid.NewGuid():N}{extension}", contentType, cancellationToken);
+        return Ok(new { url });
+    }
 
     // 1. Khách hàng gửi đơn đăng ký làm Host
     [HttpPost("api/HostRegistration/register"), HttpPost("api/host-registration/register"), Authorize]
@@ -258,13 +271,15 @@ public sealed class HostRegistrationController(AppDbContext db, IAuditLogService
                         int order = 0;
                         foreach (var img in imgs.EnumerateArray())
                         {
-                            var url = img.GetString();
-                            if (!string.IsNullOrWhiteSpace(url))
+                            var url = img.ValueKind == JsonValueKind.String ? img.GetString()?.Trim() : null;
+                            // Older applications may hold base64 data URLs that do not fit image_url; skip them
+                            // instead of failing the whole approval.
+                            if (ImageUpload.IsAllowedUrl(url))
                             {
                                 db.HomestayImages.Add(new HomestayImage
                                 {
                                     HomestayId = homestay.Id,
-                                    ImageUrl = url,
+                                    ImageUrl = url!,
                                     Caption = order == 0 ? "Ảnh bìa chính homestay" : $"Ảnh homestay #{order + 1}",
                                     IsThumbnail = order == 0,
                                     SortOrder = order++,

@@ -1,4 +1,5 @@
 using HomestayAuth.Api.Features.Bookings;
+using HomestayAuth.Api.Features.Homestays.Services;
 
 static void Check(bool condition, string name)
 {
@@ -59,4 +60,21 @@ Check(PolicyService.LateCheckoutFee(sunrisePolicy, 359, 1_000_000) == 500_000, "
 Check(PolicyService.LateCheckoutFee(sunrisePolicy, 360, 1_000_000) == 1_000_000, "late checkout at 18:00 costs 100 percent");
 Check(CompensationRules.RequestedAmount(2, 1_000_000, 20) == 1_600_000, "compensation applies quantity and depreciation");
 Check(CompensationRules.RequestedAmount(2, 1_000_000, 0, 700_000) == 1_400_000, "compensation respects per-item maximum");
+Check(BookingRules.HostCancellation(1_000_000, null) is (1_000_000, 0, 100, null), "host cancellation refunds in full by default");
+Check(BookingRules.HostCancellation(1_000_000, 400_000) is (400_000, 600_000, 40, null), "host override keeps the remainder as fee");
+Check(BookingRules.HostCancellation(1_000_000, -1).Error is not null, "host override cannot be negative");
+Check(BookingRules.HostCancellation(1_000_000, 1_000_001).Error is not null, "host override cannot exceed paid amount");
+Check(BookingRules.HostCancellation(0, null) is (0, 0, 100, null), "unpaid booking cancels without refund");
+var lockNamespaces = new[] { AdvisoryLocks.BookingNamespace, AdvisoryLocks.RoomTypeNamespace, AdvisoryLocks.VoucherNamespace, AdvisoryLocks.HomestayPolicyNamespace };
+Check(lockNamespaces.Distinct().Count() == lockNamespaces.Length, "advisory lock namespaces are distinct");
+Check(ImageUpload.MatchesSignature(new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 }, "image/jpeg"), "jpeg magic bytes are accepted");
+Check(ImageUpload.MatchesSignature(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A }, "image/png"), "png magic bytes are accepted");
+Check(ImageUpload.MatchesSignature("RIFF\0\0\0\0WEBP"u8, "image/webp"), "webp magic bytes are accepted");
+Check(!ImageUpload.MatchesSignature("<svg onload=alert(1)>"u8, "image/png"), "html/svg renamed to .png is rejected");
+Check(!ImageUpload.MatchesSignature(new byte[] { 0xFF, 0xD8, 0xFF }, "image/png"), "jpeg bytes declared as png are rejected");
+Check(ImageUpload.IsAllowedUrl("https://images.unsplash.com/photo.jpg"), "https image link is allowed");
+Check(!ImageUpload.IsAllowedUrl("data:image/png;base64,AAAA"), "data url is rejected");
+Check(!ImageUpload.IsAllowedUrl("javascript:alert(1)"), "javascript url is rejected");
+Check(!ImageUpload.IsAllowedUrl("http://evil.example/x.jpg"), "plain http is rejected outside localhost");
+Check(!ImageUpload.IsAllowedUrl("https://a.example/" + new string('x', 600)), "url longer than image_url column is rejected");
 Console.WriteLine("Booking rule checks passed.");

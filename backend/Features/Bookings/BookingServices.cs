@@ -28,10 +28,17 @@ public sealed class HomestayClock : IHomestayClock
 
 public sealed class RoomInventoryService(AppDbContext db)
 {
-    public Task LockRoom(long roomId) => db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock({0})", roomId);
+    // Rooms are locked through their room type so room-level flows (manual booking, room change,
+    // extension) serialize with online booking, which allocates rooms under the room type lock.
+    public async Task LockRoom(long roomId)
+    {
+        var roomTypeId = await db.Rooms.Where(x => x.Id == roomId).Select(x => (long?)x.RoomTypeId).SingleOrDefaultAsync();
+        if (roomTypeId.HasValue) await AdvisoryLocks.RoomType(db, roomTypeId.Value);
+    }
 
     public IQueryable<BookingRoomStay> BlockingStays(long roomId, DateOnly from, DateOnly to, long? excludingBookingId = null) =>
-        db.BookingRoomStays.Where(x => x.RoomId == roomId && x.StartDate < to && x.EndDate > from && x.Status == "Active" && (!excludingBookingId.HasValue || x.BookingId != excludingBookingId));
+        BookingAvailability.BlockingStays(db, from, to, DateTime.UtcNow)
+            .Where(x => x.RoomId == roomId && (!excludingBookingId.HasValue || x.BookingId != excludingBookingId));
 
     public async Task<bool> IsAvailable(long roomId, DateOnly from, DateOnly to, long? excludingBookingId = null)
     {

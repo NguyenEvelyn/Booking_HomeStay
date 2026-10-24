@@ -14,6 +14,7 @@ public sealed class VnPayService
     private readonly string _hashSecret = Environment.GetEnvironmentVariable("VNPAY_HASH_SECRET") ?? "";
     private readonly string _paymentUrl = Environment.GetEnvironmentVariable("VNPAY_PAYMENT_URL") ?? "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
     private readonly string _returnUrl = Environment.GetEnvironmentVariable("VNPAY_RETURN_URL") ?? "http://localhost:5000/api/bookings/vnpay-return";
+    private readonly string _apiUrl = Environment.GetEnvironmentVariable("VNPAY_API_URL") ?? "https://sandbox.vnpayment.vn/merchant_webapi/api/transaction";
 
     public bool IsConfigured => !string.IsNullOrWhiteSpace(_tmnCode) && !string.IsNullOrWhiteSpace(_hashSecret);
 
@@ -65,7 +66,7 @@ public sealed class VnPayService
             ["vnp_TransactionDate"] = transactionDate, ["vnp_CreateDate"] = createDate,
             ["vnp_IpAddr"] = ip, ["vnp_OrderInfo"] = orderInfo, ["vnp_SecureHash"] = signature
         };
-        using var response = await QueryClient.PostAsJsonAsync("https://sandbox.vnpayment.vn/merchant_webapi/api/transaction", payload, cancellationToken);
+        using var response = await QueryClient.PostAsJsonAsync(_apiUrl, payload, cancellationToken);
         response.EnsureSuccessStatusCode();
         using var json = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(cancellationToken), cancellationToken: cancellationToken);
         var root = json.RootElement;

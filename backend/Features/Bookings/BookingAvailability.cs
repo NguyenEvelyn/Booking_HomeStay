@@ -13,14 +13,21 @@ public static class BookingAvailability
                 || (d.Booking.Status == BookingStatus.Hold && d.Booking.HoldExpiresAt > now)));
     }
 
+    // A room stay only occupies a room while its booking does: a failed or expired payment leaves its
+    // stay rows "Active", and counting them would block the room for those dates forever.
+    public static IQueryable<BookingRoomStay> BlockingStays(AppDbContext db, DateOnly from, DateOnly to, DateTime now) =>
+        db.BookingRoomStays.Where(s => s.StartDate < to && s.EndDate > from && s.Status == "Active"
+            && (BookingRules.ReservedStatuses.Contains(s.Booking.Status)
+                || (s.Booking.Status == BookingStatus.Hold && s.Booking.HoldExpiresAt > now)));
+
     public static async Task<List<long>> AvailableRoomIds(AppDbContext db, long roomTypeId,
         DateOnly checkIn, DateOnly checkOut, DateTime now, long? excludingBookingId = null)
     {
         var futureCheckIn = checkIn > BookingRules.Today;
         var occupied = BlockingDetails(db, checkIn, checkOut, now)
             .Where(d => d.RoomTypeId == roomTypeId && (!excludingBookingId.HasValue || d.BookingId != excludingBookingId));
-        var occupiedStayRooms = db.BookingRoomStays.Where(s => s.StartDate < checkOut && s.EndDate > checkIn && s.Status == "Active"
-            && (!excludingBookingId.HasValue || s.BookingId != excludingBookingId)).Select(s => s.RoomId);
+        var occupiedStayRooms = BlockingStays(db, checkIn, checkOut, now)
+            .Where(s => !excludingBookingId.HasValue || s.BookingId != excludingBookingId).Select(s => s.RoomId);
         var legacyCount = await occupied.Where(d => d.RoomId == null).SumAsync(d => (int?)d.Quantity) ?? 0;
         return await db.Rooms.Where(r => r.RoomTypeId == roomTypeId && (r.Status == "Available" || (futureCheckIn && BookingRules.InventoryStatuses.Contains(r.Status)))
                 && !occupiedStayRooms.Contains(r.Id)
@@ -30,5 +37,5 @@ public static class BookingAvailability
 
     // Serialize changes to a booking, including duplicate gateway callbacks and cancellation.
     public static Task LockBooking(AppDbContext db, long bookingId) =>
-        db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock({0})", -bookingId);
+        AdvisoryLocks.Booking(db, bookingId);
 }

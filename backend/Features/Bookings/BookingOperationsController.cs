@@ -63,6 +63,10 @@ public sealed class BookingOperationsController(AppDbContext db, RoomInventorySe
         var phone = request.GuestPhone.Trim();
         var customer = await db.Users.SingleOrDefaultAsync(x => x.Email == email);
         if (customer is not null && customer.Role != "Customer") return Conflict(new { message = "Email này đang thuộc tài khoản không phải khách hàng." });
+        // Attaching to an existing account requires both email and phone to match, so a host cannot
+        // push bookings into a stranger's account (or learn its profile) just by knowing an email.
+        if (customer is not null && NormalizePhone(customer.PhoneNumber) != NormalizePhone(phone))
+            return Conflict(new { message = "Email này đã có tài khoản nhưng số điện thoại không khớp. Vui lòng kiểm tra lại thông tin khách." });
         if (customer is null && await db.Users.AnyAsync(x => x.PhoneNumber == phone))
             return Conflict(new { message = "Số điện thoại này đã thuộc một tài khoản khác. Vui lòng kiểm tra lại email khách." });
         if (customer is null)
@@ -90,10 +94,15 @@ public sealed class BookingOperationsController(AppDbContext db, RoomInventorySe
     [HttpPost("bookings/{id:long}/pay-deposit")]
     public async Task<IActionResult> PayDeposit(long id, DepositRequest request)
     {
+        // Manual deposit confirmation is a Host action on bookings of their own homestay only;
+        // online bookings must be confirmed by the VNPay callback.
+        if (Role != "Host") return Forbid();
         if (await Replay("pay-deposit", request) is { } replay) return replay;
         await using var tx = await db.Database.BeginTransactionAsync(); await BookingAvailability.LockBooking(db, id);
-        var booking = await db.Bookings.SingleOrDefaultAsync(x => x.Id == id);
+        var booking = await HostBooking(id);
         if (booking is null) return NotFound();
+        if (await db.Payments.AnyAsync(x => x.BookingId == id && x.PaymentMethod == "VNPay"))
+            return Conflict(new { message = "Đơn đặt online chỉ được xác nhận qua cổng thanh toán VNPay." });
         if (!BookingRules.IsActiveHold(booking.Status, booking.HoldExpiresAt ?? booking.UpdatedAt, DateTime.UtcNow)) return Conflict(new { message = "Thời gian giữ phòng đã hết." });
         var amount = request.Amount ?? booking.DepositAmount;
         if (amount < booking.DepositAmount) return BadRequest(new { message = "Số tiền cọc chưa đủ." });
@@ -324,6 +333,11 @@ public sealed class BookingOperationsController(AppDbContext db, RoomInventorySe
         await db.SaveChangesAsync(); return Ok(new { request.Status, request.Fee });
     }
 
+    private static string NormalizePhone(string? value)
+    {
+        var compact = new string((value ?? "").Where(c => char.IsDigit(c) || c == '+').ToArray());
+        return compact.StartsWith("+84") ? "0" + compact[3..] : compact;
+    }
     private Task<Booking?> HostBooking(long id) => db.Bookings.SingleOrDefaultAsync(x => x.Id == id && x.Homestay.HostId == UserId);
     private async Task<IActionResult?> Replay(string scope, object request)
     {

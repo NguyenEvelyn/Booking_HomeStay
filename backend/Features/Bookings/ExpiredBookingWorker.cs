@@ -16,8 +16,11 @@ public sealed class ExpiredBookingWorker(IServiceScopeFactory scopeFactory, ILog
                 var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
                 var now = DateTime.UtcNow;
                 var expiredIds = await db.Bookings.Where(x => x.Status == BookingStatus.Hold && x.HoldExpiresAt != null && x.HoldExpiresAt <= now).Select(x => x.Id).ToListAsync(stoppingToken);
-                var count = await db.Bookings.Where(x => expiredIds.Contains(x.Id)).ExecuteUpdateAsync(x => x.SetProperty(b => b.Status, BookingStatus.Cancelled).SetProperty(b => b.UpdatedAt, now), stoppingToken);
-                if (expiredIds.Count > 0) await db.BookingRoomStays.Where(x => expiredIds.Contains(x.BookingId) && x.Status == "Active").ExecuteUpdateAsync(x => x.SetProperty(s => s.Status, "Cancelled"), stoppingToken);
+                // Re-check the hold in the UPDATE itself: a retry payment may have renewed it after the SELECT.
+                var count = await db.Bookings.Where(x => expiredIds.Contains(x.Id) && x.Status == BookingStatus.Hold && x.HoldExpiresAt != null && x.HoldExpiresAt <= now)
+                    .ExecuteUpdateAsync(x => x.SetProperty(b => b.Status, BookingStatus.Expired).SetProperty(b => b.UpdatedAt, now), stoppingToken);
+                if (count > 0) await db.BookingRoomStays.Where(x => expiredIds.Contains(x.BookingId) && x.Status == "Active" && x.Booking.Status == BookingStatus.Expired)
+                    .ExecuteUpdateAsync(x => x.SetProperty(s => s.Status, "Cancelled"), stoppingToken);
                 if (count > 0) logger.LogInformation("Cancelled {Count} expired booking holds", count);
             }
             catch (Exception exception) when (!stoppingToken.IsCancellationRequested)

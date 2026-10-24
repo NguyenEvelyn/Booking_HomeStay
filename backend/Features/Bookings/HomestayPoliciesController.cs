@@ -32,7 +32,7 @@ public sealed class HomestayPoliciesController(AppDbContext db, PolicyService po
     {
         if (!await Owns(homestayId)) return NotFound();
         var error = Validate(request); if (error is not null) return BadRequest(new { message = error });
-        await using var tx = await db.Database.BeginTransactionAsync(); await db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock({0})", -homestayId);
+        await using var tx = await db.Database.BeginTransactionAsync(); await AdvisoryLocks.HomestayPolicy(db, homestayId);
         var now = DateTime.UtcNow; var effective = request.EffectiveFrom?.ToUniversalTime() ?? now;
         var current = await db.HomestayPolicies.Where(x => x.HomestayId == homestayId && x.Status == "Active" && x.EffectiveTo == null).OrderByDescending(x => x.Version).FirstOrDefaultAsync();
         if (current is not null && effective <= current.EffectiveFrom) return Conflict(new { message = "Thời điểm hiệu lực phải sau phiên bản policy đang được lên lịch." });

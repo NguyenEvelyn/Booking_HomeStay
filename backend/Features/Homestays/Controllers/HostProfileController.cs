@@ -21,6 +21,11 @@ public sealed class HostProfileController(AppDbContext db, SupabaseStorageServic
     public async Task<IActionResult> Update(SaveHostProfileRequest request)
     {
         var user = await db.Users.SingleAsync(x => x.Id == HostId);
+        // Keep an existing (possibly legacy) image unchanged; any new value must be a valid web link.
+        if (!string.IsNullOrWhiteSpace(request.AvatarUrl) && request.AvatarUrl != user.AvatarUrl && !ImageUpload.IsAllowedUrl(request.AvatarUrl))
+            return BadRequest(new { message = "Đường dẫn ảnh đại diện không hợp lệ." });
+        if (!string.IsNullOrWhiteSpace(request.CoverUrl) && request.CoverUrl != user.CoverUrl && !ImageUpload.IsAllowedUrl(request.CoverUrl))
+            return BadRequest(new { message = "Đường dẫn ảnh bìa không hợp lệ." });
         user.FullName = request.FullName.Trim(); user.PhoneNumber = request.PhoneNumber?.Trim(); user.Bio = request.Bio?.Trim(); user.Address = request.Address?.Trim(); user.AvatarUrl = request.AvatarUrl; user.CoverUrl = request.CoverUrl; user.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(); return Ok(new { message = "Đã cập nhật hồ sơ Host." });
     }
@@ -29,15 +34,8 @@ public sealed class HostProfileController(AppDbContext db, SupabaseStorageServic
     [RequestSizeLimit(8_000_000)]
     public async Task<IActionResult> Upload(IFormFile file, CancellationToken cancellationToken)
     {
-        if (file.Length == 0 || file.Length > 8_000_000) return BadRequest(new { message = "Ảnh phải nhỏ hơn 8 MB." });
-        var allowed = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-        {
-            [".jpg"] = "image/jpeg", [".jpeg"] = "image/jpeg",
-            [".png"] = "image/png", [".webp"] = "image/webp"
-        };
-        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
-        if (!allowed.TryGetValue(extension, out var contentType) ||
-            !string.Equals(file.ContentType, contentType, StringComparison.OrdinalIgnoreCase))
+        if (file.Length == 0 || file.Length > ImageUpload.MaxBytes) return BadRequest(new { message = "Ảnh phải nhỏ hơn 8 MB." });
+        if (await ImageUpload.Validate(file, cancellationToken) is not (var extension, var contentType))
             return BadRequest(new { message = "Chỉ hỗ trợ JPG, PNG hoặc WEBP hợp lệ." });
 
         var objectPath = $"hosts/{HostId}/{DateTime.UtcNow:yyyy/MM}/{Guid.NewGuid():N}{extension}";

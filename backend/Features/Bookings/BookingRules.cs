@@ -50,6 +50,16 @@ public static class BookingRules
         return (refund, paidAmount - refund, percent);
     }
 
+    // Host-initiated cancellation: full refund by default; an override may only lower it within [0, paid].
+    public static (decimal Refund, decimal Penalty, decimal Percent, string? Error) HostCancellation(decimal paidAmount, decimal? overrideRefund)
+    {
+        var refund = overrideRefund ?? paidAmount;
+        if (refund < 0 || refund > paidAmount)
+            return (0, 0, 0, $"Số tiền hoàn phải nằm trong khoảng 0 – {paidAmount:N0}đ (số tiền khách đã thanh toán).");
+        var percent = paidAmount > 0 ? decimal.Round(refund * 100m / paidAmount, 2) : 100m;
+        return (refund, paidAmount - refund, percent, null);
+    }
+
     public static decimal RoomChangeDifference(decimal newNightlyPrice, decimal oldNightlyPrice, int remainingNights) =>
         (newNightlyPrice - oldNightlyPrice) * Math.Max(0, remainingNights);
 
@@ -69,6 +79,10 @@ public static class BookingStatus
     public const string CheckedOut = "CheckedOut";
     public const string Cancelled = "Cancelled";
     public const string NoShow = "NoShow";
+    // Unpaid holds end as Expired (never Cancelled) so the guest can still retry payment
+    // and cancellation statistics only count real cancellations.
+    public const string Expired = "Expired";
+    public const string PaymentFailed = "PaymentFailed";
 }
 
 public static class PaymentStatus

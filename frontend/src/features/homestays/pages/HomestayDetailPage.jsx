@@ -291,6 +291,8 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [policyAccepted, setPolicyAccepted] = useState(false);
   const [paymentOption, setPaymentOption] = useState('Deposit');
+  const [voucherCode, setVoucherCode] = useState('');
+  const [appliedVoucherCode, setAppliedVoucherCode] = useState('');
   const [showCancellationPolicy, setShowCancellationPolicy] = useState(false);
   useEffect(() => {
     const count = Math.max(0, adultCount + childCount - 1);
@@ -431,7 +433,8 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
         quantity: roomQuantity,
         customerNote: null,
         dayUseHours: sameDayUse ? dayUseHours : null,
-        paymentOption
+        paymentOption,
+        voucherCode: appliedVoucherCode || null
       }).then((quote) => {
         if (active) {
           setPriceQuote(quote);
@@ -448,7 +451,7 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
       active = false;
       window.clearTimeout(timer);
     };
-  }, [selectedRoom?.id, arrival, departure, adultCount, childCount, roomQuantity, dayUseHours, paymentOption, policy?.document?.dayUse?.enabled, refreshKey]);
+  }, [selectedRoom?.id, arrival, departure, adultCount, childCount, roomQuantity, dayUseHours, paymentOption, appliedVoucherCode, policy?.document?.dayUse?.enabled, refreshKey]);
 
   useEffect(() => {
     if (!selectedRoom?.id) { setRoomCalendarData(null); return undefined; }
@@ -671,7 +674,7 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
     if (!isDayUse && bookingNights < 1) { setBookingError('Ngày trả phòng phải sau ngày nhận phòng.'); return; }
     setBookingBusy(true); setBookingError('');
     try {
-      const quote = await bookingApi.quote({ roomTypeId: selectedRoom.id, checkInDate: arrival, checkOutDate: departure, adultCount, childCount, quantity: roomQuantity, customerNote: null, dayUseHours: isDayUse ? dayUseHours : null });
+      const quote = await bookingApi.quote({ roomTypeId: selectedRoom.id, checkInDate: arrival, checkOutDate: departure, adultCount, childCount, quantity: roomQuantity, customerNote: null, dayUseHours: isDayUse ? dayUseHours : null, voucherCode: appliedVoucherCode || null });
       setPriceQuote(quote); setPaymentExpiresAt(Date.now() + 15 * 60 * 1000); setPaymentSecondsLeft(15 * 60); setShowPaymentPage(true); window.scrollTo(0, 0);
     } catch (quoteError) { setBookingError(quoteError.message); }
     finally { setBookingBusy(false); }
@@ -719,7 +722,7 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
       const contactNote = [`Email: ${guestInfo.email.trim()}`, `Điện thoại: ${guestInfo.countryCode} ${guestInfo.phone.trim()}`, guestInfo.arrivalTime ? `Giờ nhận phòng dự kiến: ${guestInfo.arrivalTime}` : 'Giờ nhận phòng dự kiến: Chưa biết', guestInfo.note.trim() ? `Ghi chú: ${guestInfo.note.trim()}` : ''].filter(Boolean).join('\n');
       const primaryGuest = { type:'adult', fullName:`${guestInfo.firstName.trim()} ${guestInfo.lastName.trim()}`, birthDate:guestInfo.birthDate, gender:guestInfo.gender, nationality:guestInfo.country, documentType:guestInfo.documentType, documentNumber:guestInfo.documentNumber, address:guestInfo.address, accompanyingAdult:null };
       const guestDeclarations = companions.map(item=>({ type:item.type, fullName:item.fullName, birthDate:item.birthDate||null, gender:item.gender, nationality:item.nationality, documentType:item.documentType, documentNumber:item.documentNumber||null, address:item.sameAddress?guestInfo.address:null, accompanyingAdult:item.type==='child'?item.accompanyingAdult:null }));
-      const result = await bookingApi.createVnPayPayment({ roomTypeId: selectedRoom.id, checkInDate: arrival, checkOutDate: departure, adultCount, childCount, quantity: roomQuantity, customerNote: contactNote, recommendationSessionId: recommendationSessionId(), dayUseHours: isDayUse ? dayUseHours : null, paymentOption, primaryGuest, companions:guestDeclarations, declareCompanionsLater:declareLater, privacyAccepted, policyAccepted });
+      const result = await bookingApi.createVnPayPayment({ roomTypeId: selectedRoom.id, checkInDate: arrival, checkOutDate: departure, adultCount, childCount, quantity: roomQuantity, customerNote: contactNote, recommendationSessionId: recommendationSessionId(), dayUseHours: isDayUse ? dayUseHours : null, paymentOption, primaryGuest, companions:guestDeclarations, declareCompanionsLater:declareLater, privacyAccepted, policyAccepted, voucherCode: appliedVoucherCode || null });
       window.location.assign(result.paymentUrl);
     } catch (error) { setBookingError(error.message); setBookingBusy(false); }
   };
@@ -794,9 +797,11 @@ export default function HomestayDetailPage({ id, initialSearch, user, onHome, on
           </div>
           <aside className="payment-summary" aria-live="polite">
             <h2>Chi tiết thanh toán</h2>
+            <div className="payment-voucher"><label htmlFor="voucher-code">Mã voucher</label><div className="inline-search"><input id="voucher-code" value={voucherCode} maxLength="50" placeholder="Nhập mã do Tripio phát hành" onChange={e=>setVoucherCode(e.target.value.toUpperCase())}/><button type="button" disabled={!voucherCode.trim()||quoteLoading} onClick={()=>{setBookingError('');setAppliedVoucherCode(voucherCode.trim())}}>Áp dụng</button></div>{priceQuote?.voucherCode&&<small>✓ Đã áp dụng {priceQuote.voucherCode}: {priceQuote.voucherName}</small>}{appliedVoucherCode&&!priceQuote?.voucherCode&&!quoteLoading&&<button type="button" className="policy-link" onClick={()=>{setAppliedVoucherCode('');setVoucherCode('')}}>Bỏ mã voucher</button>}</div>
             <div><span>{selectedRoom.name} · {isDayUse?`${dayUseHours<=6?dayUseHours:'trên 6'} giờ`:`${bookingNights} đêm`}</span><strong>{money(quotedRoomTotal)}</strong></div>
             {(quotedExtraAdultTotal+quotedChildFeeTotal)>0&&<div><span>Phụ thu khách</span><strong>{money(quotedExtraAdultTotal+quotedChildFeeTotal)}</strong></div>}
             <div><span>Phí dịch vụ</span><strong>0 đ</strong></div>
+            {Number(priceQuote?.discountAmount)>0&&<div><span>{priceQuote?.voucherCode?`Voucher ${priceQuote.voucherCode}`:`Ưu đãi ${priceQuote?.promotionPercent||''}%`}</span><strong>− {money(priceQuote.discountAmount)}</strong></div>}
             {Number(priceQuote?.taxAmount)>0&&<div><span>Thuế khách hàng ({priceQuote.customerTaxPercent}%)</span><strong>{money(priceQuote.taxAmount)}</strong></div>}
             <hr/>
             <div><span>Tổng tiền</span><strong>{money(quotedGrandTotal)}</strong></div>

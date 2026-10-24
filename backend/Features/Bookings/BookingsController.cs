@@ -7,6 +7,7 @@ using HomestayAuth.Api.Domain.Entities;
 using HomestayAuth.Api.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
 namespace HomestayAuth.Api.Features.Bookings;
@@ -16,7 +17,7 @@ public sealed record BookingGuestInput(string Type, string FullName, DateOnly? B
 public sealed record CreateBookingRequest(long RoomTypeId, DateOnly CheckInDate, DateOnly CheckOutDate, int AdultCount, int ChildCount, int Quantity,
     string? CustomerNote, string? RecommendationSessionId = null, IReadOnlyList<int>? ChildAges = null, string? PaymentOption = null,
     int? DayUseHours = null, BookingGuestInput? PrimaryGuest = null, IReadOnlyList<BookingGuestInput>? Companions = null,
-    bool DeclareCompanionsLater = false, bool PrivacyAccepted = false, bool PolicyAccepted = false);
+    bool DeclareCompanionsLater = false, bool PrivacyAccepted = false, bool PolicyAccepted = false, string? VoucherCode = null);
 public sealed record CancelBookingRequest(string Reason);
 public sealed record UpdateGuestDeclarationsRequest(IReadOnlyList<BookingGuestInput> Guests, bool PrivacyAccepted);
 public sealed record UpdateBookingContactRequest(string ContactName, string Phone, string? Email, string? GuestName);
@@ -24,7 +25,7 @@ public sealed record UpdateBookingContactRequest(string ContactName, string Phon
 [ApiController]
 [Route("api/bookings")]
 public sealed class BookingsController(AppDbContext db, VnPayService vnPay, PaymentService paymentService, RoomInventoryService inventory,
-    PolicyService policyService, BookingPricingService pricingService) : ControllerBase
+    PolicyService policyService, BookingPricingService pricingService, VoucherService voucherService) : ControllerBase
 {
     private static string? ValidateGuest(BookingGuestInput guest, bool primary)
     {
@@ -51,7 +52,31 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
         return new { booking.Id, booking.BookingCode, daysBeforeCheckIn, isFree = result.Penalty == 0, refundPercent = percent, cancellationFee = result.Penalty, refundAmount = result.Refund, policyVersion = policy.Version };
     }
 
+    private sealed record BookingTotals(decimal AppliedDiscount, bool VoucherApplied, decimal Subtotal, decimal CustomerTaxPercent,
+        decimal TaxAmount, decimal Total, decimal AmountDueNow);
+
+    // Single source of truth for what the guest pays, shared by the quote and the real booking so the
+    // quoted amount can never drift from the charged amount. The better of promotion and voucher wins.
+    private async Task<BookingTotals> ComputeTotals(BookingPricingResult price, VoucherQuote? voucher)
+    {
+        var appliedDiscount = Math.Max(price.DiscountAmount, voucher?.DiscountAmount ?? 0);
+        var voucherApplied = voucher is not null && voucher.DiscountAmount >= price.DiscountAmount;
+        var subtotal = Math.Max(0, price.TotalAmount + price.DiscountAmount - appliedDiscount);
+        var customerTaxPercent = await CustomerTaxSettings.ReadPercent(db);
+        var taxAmount = CustomerTaxSettings.Amount(subtotal, customerTaxPercent);
+        var total = subtotal + taxAmount;
+        var amountDueNow = price.PaymentOption == "Full"
+            ? total
+            : Math.Round(total * price.DepositPercent / 100m, 0, MidpointRounding.AwayFromZero);
+        return new BookingTotals(appliedDiscount, voucherApplied, subtotal, customerTaxPercent, taxAmount, total, amountDueNow);
+    }
+
+    private static int ExtraChildren(CreateBookingRequest request, RoomType roomType) =>
+        request.ChildAges is { Count: > 0 } ? request.ChildAges.Count(x => x >= 2) :
+            Math.Max(0, request.ChildCount - Math.Max(0, roomType.BaseCapacity * request.Quantity - request.AdultCount));
+
     [AllowAnonymous]
+    [EnableRateLimiting("booking-quote")]
     [HttpPost("quote")]
     public async Task<IActionResult> Quote(CreateBookingRequest request)
     {
@@ -86,20 +111,19 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
         var periods = await db.RoomPricePeriods.AsNoTracking().Where(x => x.RoomTypeId == roomType.Id && x.StartDate < inventoryCheckOut && x.EndDate >= request.CheckInDate).ToListAsync();
         var price = pricingService.Calculate(roomType, request.CheckInDate, request.CheckOutDate, request.AdultCount, request.ChildCount,
             request.Quantity, request.ChildAges, request.PaymentOption, periods, policy, BookingRules.Today, request.DayUseHours);
-        var customerTaxPercent = await CustomerTaxSettings.ReadPercent(db);
-        var taxAmount = CustomerTaxSettings.Amount(price.TotalAmount, customerTaxPercent);
-        var totalWithTax = price.TotalAmount + taxAmount;
-        var amountDueNow = price.PaymentOption == "Full"
-            ? totalWithTax
-            : Math.Round(totalWithTax * price.DepositPercent / 100m, 0, MidpointRounding.AwayFromZero);
-        var extraChildren = request.ChildAges is { Count: > 0 } ? request.ChildAges.Count(x => x >= 2) :
-            Math.Max(0, request.ChildCount - Math.Max(0, roomType.BaseCapacity * request.Quantity - request.AdultCount));
+        var quoteCustomerId = long.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var parsedCustomerId) ? parsedCustomerId : (long?)null;
+        var (voucher, voucherError) = await voucherService.Validate(request.VoucherCode, roomType.HomestayId, quoteCustomerId,
+            price.RoomAmountBeforeDiscount, DateTime.UtcNow);
+        if (voucherError is not null) return BadRequest(new { message = voucherError });
+        var totals = await ComputeTotals(price, voucher);
+        var extraChildren = ExtraChildren(request, roomType);
         return Ok(new { price.Nights, quantity = request.Quantity, roomTotal = price.RoomAmount, extraGuestCount = price.ExtraAdults + extraChildren,
             extraAdults = price.ExtraAdults, extraChildren, price.ExtraAdultFee, extraChildFee = price.ChildSurcharge,
             extraGuestFee = price.ExtraAdultFee + price.ChildSurcharge, extraFee = price.ExtraAdultFee + price.ChildSurcharge,
-            subtotal = price.TotalAmount, customerTaxPercent, taxAmount, total = totalWithTax, availableRooms = available, price.BaseRoomAmount, price.SeasonalSurchargeAmount,
-            price.RoomAmountBeforeDiscount, price.PromotionCode, price.PromotionPercent, price.DiscountAmount,
-            price.DepositPercent, depositAmount = amountDueNow, amountDueNow, price.PaymentOption,
+            subtotal = totals.Subtotal, totals.CustomerTaxPercent, totals.TaxAmount, total = totals.Total, availableRooms = available, price.BaseRoomAmount, price.SeasonalSurchargeAmount,
+            price.RoomAmountBeforeDiscount, promotionCode = totals.VoucherApplied ? null : price.PromotionCode, promotionPercent = totals.VoucherApplied ? 0 : price.PromotionPercent,
+            discountAmount = totals.AppliedDiscount, voucherCode = totals.VoucherApplied ? voucher!.Code : null, voucherName = totals.VoucherApplied ? voucher!.Name : null,
+            price.DepositPercent, depositAmount = totals.AmountDueNow, totals.AmountDueNow, price.PaymentOption,
             price.MinNightlyPrice, price.MaxNightlyPrice, price.NightlyRoomTotal, price.NightsBreakdown,
             price.ChildrenBreakdown, isDayUse, dayUseHours = isDayUse ? request.DayUseHours : null, policyVersion = policy.Version });
     }
@@ -111,18 +135,18 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
         var userId = long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var items = await db.Bookings.AsNoTracking().Where(x => x.CustomerId == userId)
             .OrderByDescending(x => x.CreatedAt)
-            .Select(x => new { x.Id, x.BookingCode, x.HomestayId, HomestayName = db.Homestays.Where(h => h.Id == x.HomestayId).Select(h => h.Name).First(),
-                HomestayImage = db.HomestayImages.Where(i => i.HomestayId == x.HomestayId).OrderByDescending(i => i.IsThumbnail).ThenBy(i => i.SortOrder).Select(i => i.ImageUrl).FirstOrDefault(),
-                Address = db.Homestays.Where(h => h.Id == x.HomestayId).Select(h => h.AddressLine + ", " + h.District + ", " + h.Province).First(),
-                HostPhone = db.Homestays.Where(h => h.Id == x.HomestayId).Select(h => db.Users.Where(u => u.Id == h.HostId).Select(u => u.PhoneNumber).FirstOrDefault()).FirstOrDefault(),
-                City = db.Homestays.Where(h => h.Id == x.HomestayId).Select(h => h.District).First(),
-                Province = db.Homestays.Where(h => h.Id == x.HomestayId).Select(h => h.Province).First(),
+            .Select(x => new { x.Id, x.BookingCode, x.HomestayId, HomestayName = x.Homestay.Name,
+                HomestayImage = x.Homestay.Images.OrderByDescending(i => i.IsThumbnail).ThenBy(i => i.SortOrder).Select(i => i.ImageUrl).FirstOrDefault(),
+                Address = x.Homestay.AddressLine + ", " + x.Homestay.District + ", " + x.Homestay.Province,
+                HostPhone = db.Users.Where(u => u.Id == x.Homestay.HostId).Select(u => u.PhoneNumber).FirstOrDefault(),
+                City = x.Homestay.District,
+                Province = x.Homestay.Province,
                 x.CheckInDate, x.CheckOutDate, x.HoldExpiresAt, Nights = x.Details.Select(d => (int?)d.NumberOfNights).FirstOrDefault() ?? 0, x.AdultCount, x.ChildCount, x.TotalAmount,
                 Rooms = x.Details.Select(d => d.RoomId == null ? db.RoomTypes.Where(t => t.Id == d.RoomTypeId).Select(t => t.Name).First() : db.Rooms.Where(r => r.Id == d.RoomId).Select(r => r.RoomNumber).First()).ToList(),
                 RoomTypeId = x.Details.Select(d => (long?)d.RoomTypeId).FirstOrDefault(),
                 Details = x.Details.Select(d => new { d.RoomTypeId, d.RoomId }).ToList(),
                 ActiveServiceRequestCount = db.GuestServiceRequests.Count(r => r.BookingId == x.Id && (r.Status == "Pending" || r.Status == "Approved" || r.Status == "ChangeProposed" || r.Status == "InProgress" || r.Status == "HostCompleted")),
-                Status = x.Status == BookingStatus.Hold && x.HoldExpiresAt <= DateTime.UtcNow ? "Expired" : x.Status, x.CreatedAt,
+                Status = x.Status == BookingStatus.Hold && x.HoldExpiresAt <= DateTime.UtcNow ? BookingStatus.Expired : x.Status, x.CreatedAt,
                 CanReview = x.Status == BookingStatus.CheckedOut && x.ReviewCreateUntil >= BookingRules.Today && !db.Reviews.Any(r => r.BookingId == x.Id),
                 Review = db.Reviews.Where(r => r.BookingId == x.Id).Select(r => new { r.Id, r.Rating, r.Comment, r.CleanlinessRating, r.LocationRating, r.HostRating, r.ValueRating, r.HostReply, r.HostRepliedAt, r.CreatedAt, CanEdit = x.ReviewEditUntil >= BookingRules.Today }).FirstOrDefault(),
                 Cancellation = db.Cancellations.Where(c => c.BookingId == x.Id).Select(c => new { c.Reason, c.CancellationFee, c.RefundAmount, Status = c.Status == "Approved" && db.Payments.Any(p => p.BookingId == x.Id && p.TransactionType == "Refund" && p.Status == "Pending") ? "RefundPending" : c.Status, c.CancelledAt, c.ProcessedAt }).FirstOrDefault() })
@@ -136,14 +160,14 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
     {
         var userId = long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var item = await db.Bookings.AsNoTracking().Where(x => x.Id == bookingId && x.CustomerId == userId)
-            .Select(x => new { x.Id, x.BookingCode, x.HomestayId, HomestayName = db.Homestays.Where(h => h.Id == x.HomestayId).Select(h => h.Name).First(),
-                Address = db.Homestays.Where(h => h.Id == x.HomestayId).Select(h => h.AddressLine + ", " + h.Ward + ", " + h.District + ", " + h.Province).First(),
-                CheckInTime = db.Homestays.Where(h => h.Id == x.HomestayId).Select(h => h.CheckInTime).First(), CheckOutTime = db.Homestays.Where(h => h.Id == x.HomestayId).Select(h => h.CheckOutTime).First(),
-                HostName = db.Homestays.Where(h => h.Id == x.HomestayId).Select(h => db.Users.Where(u => u.Id == h.HostId).Select(u => u.FullName).First()).First(),
-                HostPhone = db.Homestays.Where(h => h.Id == x.HomestayId).Select(h => db.Users.Where(u => u.Id == h.HostId).Select(u => u.PhoneNumber).FirstOrDefault()).FirstOrDefault(),
-                HomestayImage = db.HomestayImages.Where(i => i.HomestayId == x.HomestayId).OrderByDescending(i => i.IsThumbnail).ThenBy(i => i.SortOrder).Select(i => i.ImageUrl).FirstOrDefault(),
-                Province = db.Homestays.Where(h => h.Id == x.HomestayId).Select(h => h.Province).First(),
-                x.CheckInDate, x.CheckOutDate, x.AdultCount, x.ChildCount, x.Subtotal, x.DiscountAmount, x.ServiceFee, x.TaxAmount, x.TotalAmount, x.RoomAmount, x.DepositAmount, x.PaymentStatus, x.HoldExpiresAt, x.Status, x.CustomerNote, x.CreatedAt,
+            .Select(x => new { x.Id, x.BookingCode, x.HomestayId, HomestayName = x.Homestay.Name,
+                Address = x.Homestay.AddressLine + ", " + x.Homestay.Ward + ", " + x.Homestay.District + ", " + x.Homestay.Province,
+                CheckInTime = x.Homestay.CheckInTime, CheckOutTime = x.Homestay.CheckOutTime,
+                HostName = db.Users.Where(u => u.Id == x.Homestay.HostId).Select(u => u.FullName).First(),
+                HostPhone = db.Users.Where(u => u.Id == x.Homestay.HostId).Select(u => u.PhoneNumber).FirstOrDefault(),
+                HomestayImage = x.Homestay.Images.OrderByDescending(i => i.IsThumbnail).ThenBy(i => i.SortOrder).Select(i => i.ImageUrl).FirstOrDefault(),
+                Province = x.Homestay.Province,
+                x.CheckInDate, x.CheckOutDate, x.AdultCount, x.ChildCount, x.Subtotal, x.DiscountAmount, x.ServiceFee, x.TaxAmount, x.TotalAmount, x.RoomAmount, x.DepositAmount, x.PaymentStatus, x.HoldExpiresAt, Status = x.Status == BookingStatus.Hold && x.HoldExpiresAt <= DateTime.UtcNow ? BookingStatus.Expired : x.Status, x.CustomerNote, x.CreatedAt,
                 ContactName = x.ContactName ?? db.Users.Where(u => u.Id == x.CustomerId).Select(u => u.FullName).First(),
                 ContactPhone = x.ContactPhone ?? db.Users.Where(u => u.Id == x.CustomerId).Select(u => u.PhoneNumber).FirstOrDefault(),
                 ContactEmail = x.ContactEmail ?? db.Users.Where(u => u.Id == x.CustomerId).Select(u => u.Email).First(),
@@ -226,7 +250,8 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
         var userId = long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var booking = await db.Bookings.Include(x => x.Guests).SingleOrDefaultAsync(x => x.Id == bookingId && x.CustomerId == userId);
         if (booking is null) return NotFound(new { message = "Không tìm thấy đơn đặt phòng." });
-        if (booking.CheckInDate.ToDateTime(TimeOnly.MinValue).AddHours(-24) < DateTime.Now)
+        var declarationDueAt = new DateTimeOffset(booking.CheckInDate.ToDateTime(TimeOnly.MinValue).AddHours(-24), TimeSpan.FromHours(7)).UtcDateTime;
+        if (declarationDueAt < DateTime.UtcNow)
             return BadRequest(new { message = "Đã quá hạn khai báo thông tin khách đi cùng." });
         var deferred = booking.Guests.Where(x => !x.IsPrimary).OrderBy(x => x.Id).ToList();
         if (request.Guests.Count != deferred.Count) return BadRequest(new { message = "Số khách khai báo không khớp với đơn đặt phòng." });
@@ -321,7 +346,7 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
                 .Select(e => e.SessionId).FirstOrDefaultAsync();
         }
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted);
-        await db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock({0})", request.RoomTypeId);
+        await AdvisoryLocks.RoomType(db, request.RoomTypeId);
 
         var roomType = await db.RoomTypes.Include(x => x.Rooms)
             .SingleOrDefaultAsync(x => x.Id == request.RoomTypeId && x.Status == "Active" && x.Homestay.Status == "Approved");
@@ -350,21 +375,24 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
         var specialPrices = await db.RoomPricePeriods.AsNoTracking().Where(x => x.RoomTypeId == roomType.Id && x.StartDate < inventoryCheckOut && x.EndDate >= request.CheckInDate).ToListAsync();
         var price = pricingService.Calculate(roomType, request.CheckInDate, request.CheckOutDate, request.AdultCount, request.ChildCount,
             request.Quantity, request.ChildAges, request.PaymentOption, specialPrices, policy, BookingRules.Today, request.DayUseHours);
+        VoucherQuote? voucher = null;
+        if (!string.IsNullOrWhiteSpace(request.VoucherCode))
+        {
+            var voucherId = await db.Vouchers.Where(x => x.Code == request.VoucherCode.Trim().ToUpper()).Select(x => (long?)x.Id).SingleOrDefaultAsync();
+            if (voucherId.HasValue) await AdvisoryLocks.Voucher(db, voucherId.Value);
+            var validation = await voucherService.Validate(request.VoucherCode, roomType.HomestayId, userId, price.RoomAmountBeforeDiscount, DateTime.UtcNow);
+            if (validation.Error is not null) return BadRequest(new { message = validation.Error });
+            voucher = validation.Quote;
+        }
+        var (appliedDiscount, voucherApplied, subtotal, customerTaxPercent, taxAmount, totalAmount, depositAmount) = await ComputeTotals(price, voucher);
         var nights = price.Nights;
-        var roomTotal = price.RoomAmount;
+        var roomTotal = Math.Max(0, price.RoomAmountBeforeDiscount - appliedDiscount);
         var extraFee = price.ExtraAdultFee + price.ChildSurcharge;
-        var extraGuestCount = price.ExtraAdults + (request.ChildAges is { Count: > 0 } ? request.ChildAges.Count(x => x >= 2) : 0);
-        var subtotal = price.TotalAmount;
-        var customerTaxPercent = await CustomerTaxSettings.ReadPercent(db);
-        var taxAmount = CustomerTaxSettings.Amount(subtotal, customerTaxPercent);
-        var totalAmount = subtotal + taxAmount;
-        var depositAmount = price.PaymentOption == "Full"
-            ? totalAmount
-            : Math.Round(totalAmount * price.DepositPercent / 100m, 0, MidpointRounding.AwayFromZero);
+        var extraGuestCount = price.ExtraAdults + ExtraChildren(request, roomType);
         var now = DateTime.UtcNow;
         var bookingCode = $"TRP{now:yyMMddHHmmss}{Guid.NewGuid():N}"[..24].ToUpperInvariant();
         var transactionCode = $"{now:yyyyMMddHHmmss}{Guid.NewGuid():N}"[..30].ToUpperInvariant();
-        var booking = new Booking { BookingCode = bookingCode, CustomerId = userId, HomestayId = roomType.HomestayId, CheckInDate = request.CheckInDate, CheckOutDate = inventoryCheckOut, AdultCount = request.AdultCount, ChildCount = request.ChildCount, RoomAmount = roomTotal, DepositAmount = depositAmount, PaymentStatus = PaymentStatus.Unpaid, HoldExpiresAt = now.AddMinutes(policy.HoldMinutes), Subtotal = subtotal, DiscountAmount = price.DiscountAmount, ServiceFee = 0, TaxAmount = taxAmount, TotalAmount = totalAmount, CommissionRate = policy.CommissionRate, Status = BookingStatus.Hold, CustomerNote = request.CustomerNote, RecommendationSessionId = recommendationSessionId, PricingSnapshotJson = JsonSerializer.Serialize(new { roomType.Id, roomType.Name, nightlyPrice = roomType.BasePrice, roomAmount = roomTotal, nights, isDayUse, dayUseHours = isDayUse ? request.DayUseHours : null, displayCheckOutDate = request.CheckOutDate, roomType.BaseCapacity, roomType.MaxCapacity, adultExtraFee = roomType.ExtraGuestFee, roomType.ExtraChildFee, roomType.ChildMaxAge, roomType.DepositPercent, request.ChildAges, customerTaxPercent, taxAmount, totalAmount, price }), PolicySnapshotJson = PolicyService.Serialize(policy), ReviewCreateUntil = inventoryCheckOut.AddDays(policy.ReviewCreateDays), ReviewEditUntil = inventoryCheckOut.AddDays(policy.ReviewEditDays), CreatedAt = now, UpdatedAt = now };
+        var booking = new Booking { BookingCode = bookingCode, CustomerId = userId, HomestayId = roomType.HomestayId, CheckInDate = request.CheckInDate, CheckOutDate = inventoryCheckOut, AdultCount = request.AdultCount, ChildCount = request.ChildCount, RoomAmount = roomTotal, DepositAmount = depositAmount, PaymentStatus = PaymentStatus.Unpaid, HoldExpiresAt = now.AddMinutes(policy.HoldMinutes), Subtotal = subtotal, DiscountAmount = appliedDiscount, ServiceFee = 0, TaxAmount = taxAmount, TotalAmount = totalAmount, CommissionRate = policy.CommissionRate, Status = BookingStatus.Hold, CustomerNote = request.CustomerNote, RecommendationSessionId = recommendationSessionId, PricingSnapshotJson = JsonSerializer.Serialize(new { roomType.Id, roomType.Name, nightlyPrice = roomType.BasePrice, roomAmount = roomTotal, nights, isDayUse, dayUseHours = isDayUse ? request.DayUseHours : null, displayCheckOutDate = request.CheckOutDate, roomType.BaseCapacity, roomType.MaxCapacity, adultExtraFee = roomType.ExtraGuestFee, roomType.ExtraChildFee, roomType.ChildMaxAge, roomType.DepositPercent, request.ChildAges, customerTaxPercent, taxAmount, totalAmount, voucherCode = voucherApplied ? voucher!.Code : null, promotionCode = voucherApplied ? null : price.PromotionCode, discountAmount = appliedDiscount, price }), PolicySnapshotJson = PolicyService.Serialize(policy), ReviewCreateUntil = inventoryCheckOut.AddDays(policy.ReviewCreateDays), ReviewEditUntil = inventoryCheckOut.AddDays(policy.ReviewEditDays), CreatedAt = now, UpdatedAt = now };
         booking.Guests.Add(new BookingGuest { IsPrimary = true, GuestType = request.PrimaryGuest.Type, FullName = request.PrimaryGuest.FullName.Trim(), BirthDate = request.PrimaryGuest.BirthDate, Gender = request.PrimaryGuest.Gender, Nationality = request.PrimaryGuest.Nationality, DocumentType = request.PrimaryGuest.DocumentType, DocumentNumber = request.PrimaryGuest.DocumentNumber?.Trim(), Address = request.PrimaryGuest.Address?.Trim(), DeclarationStatus = "Completed", CreatedAt = now, UpdatedAt = now });
         if (request.DeclareCompanionsLater)
         {
@@ -388,10 +416,17 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
         var ip = HttpContext.Connection.RemoteIpAddress?.MapToIPv4().ToString() ?? "127.0.0.1";
         var paymentUrl = vnPay.CreatePaymentUrl(transactionCode, depositAmount, $"Thanh toan coc {bookingCode}", ip, policy.HoldMinutes);
         await db.SaveChangesAsync();
+        if (voucherApplied)
+        {
+            db.VoucherUsages.Add(new VoucherUsage { VoucherId = voucher!.Id, BookingId = booking.Id, CustomerId = userId,
+                CodeUsed = voucher.Code, DiscountAmount = voucher.DiscountAmount, UsedAt = now });
+            await db.SaveChangesAsync();
+        }
         await transaction.CommitAsync();
         return Ok(new { bookingCode, amount = depositAmount, depositAmount, paymentUrl, paymentOption = price.PaymentOption,
             priceBreakdown = new { roomTotal, extraGuestCount, extraGuestFee = extraFee, extraFee, price.BaseRoomAmount,
-                price.SeasonalSurchargeAmount, price.DiscountAmount, price.PromotionCode, subtotal, customerTaxPercent, taxAmount, total = totalAmount,
+                price.SeasonalSurchargeAmount, discountAmount = appliedDiscount, promotionCode = voucherApplied ? null : price.PromotionCode,
+                voucherCode = voucherApplied ? voucher!.Code : null, subtotal, customerTaxPercent, taxAmount, total = totalAmount,
                 price.DepositPercent, price.NightsBreakdown, price.ChildrenBreakdown } });
     }
 
@@ -406,13 +441,13 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
         var booking = await db.Bookings.Include(x => x.Details)
             .SingleOrDefaultAsync(x => x.Id == bookingId && x.CustomerId == userId);
         if (booking is null) return NotFound(new { message = "Không tìm thấy booking." });
-        if (booking.Status is not (BookingStatus.Hold or "PaymentFailed" or "Expired")) return BadRequest(new { message = "Booking này không thể thanh toán lại." });
+        if (booking.Status is not (BookingStatus.Hold or BookingStatus.PaymentFailed or BookingStatus.Expired)) return BadRequest(new { message = "Booking này không thể thanh toán lại." });
         if (booking.CheckInDate < BookingRules.Today) return BadRequest(new { message = "Ngày nhận phòng đã qua." });
         var roomTypeId = booking.Details.Select(x => x.RoomTypeId).FirstOrDefault();
         var quantity = booking.Details.Sum(x => x.Quantity);
         if (roomTypeId == 0 || quantity < 1) return BadRequest(new { message = "Booking không có thông tin phòng hợp lệ." });
 
-        await db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock({0})", roomTypeId);
+        await AdvisoryLocks.RoomType(db, roomTypeId);
         var roomType = await db.RoomTypes.Include(x => x.Rooms)
             .SingleOrDefaultAsync(x => x.Id == roomTypeId && x.Status == "Active" && x.Homestay.Status == "Approved");
         if (roomType is null) return BadRequest(new { message = "Loại phòng không còn được kinh doanh." });
@@ -513,7 +548,7 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
         var result = success ? "success" : "failed";
         if (canConfirm)
         {
-            payment.Booking.Status = success ? BookingStatus.Confirmed : "PaymentFailed";
+            payment.Booking.Status = success ? BookingStatus.Confirmed : BookingStatus.PaymentFailed;
             payment.Booking.PaymentStatus = success
                 ? payment.Amount >= payment.Booking.TotalAmount ? PaymentStatus.Paid : PaymentStatus.Deposited
                 : PaymentStatus.Unpaid;
@@ -537,7 +572,7 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
             // A late payment must never reclaim rooms already released or allocated to another guest.
             if (payment.Booking.Status == BookingStatus.Hold && !BookingRules.IsActiveHold(payment.Booking.Status, payment.Booking.HoldExpiresAt ?? payment.Booking.UpdatedAt, now))
             {
-                payment.Booking.Status = "Expired";
+                payment.Booking.Status = BookingStatus.Expired;
                 payment.Booking.UpdatedAt = now;
             }
             if (success)
@@ -596,20 +631,8 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
     [HttpGet("vnpay-return")]
     public async Task<IActionResult> VnPayReturn()
     {
-        const string productionClientUrl = "https://booking-home-stay-omega.vercel.app";
         var configuredClientUrl = Environment.GetEnvironmentVariable("CLIENT_URL")?.Trim().TrimEnd('/');
-        var clientUrl = string.IsNullOrWhiteSpace(configuredClientUrl)
-            ? productionClientUrl
-            : configuredClientUrl;
-
-        // Migrate callbacks away from the retired preview site even when the
-        // deployment still has its former CLIENT_URL value cached.
-        if (Uri.TryCreate(clientUrl, UriKind.Absolute, out var configuredUri)
-            && configuredUri.Host.EndsWith("chatgpt.site", StringComparison.OrdinalIgnoreCase))
-        {
-            clientUrl = productionClientUrl;
-        }
-
+        var clientUrl = string.IsNullOrWhiteSpace(configuredClientUrl) ? "http://localhost:5173" : configuredClientUrl;
         var outcome = await ProcessGatewayResult();
         return Redirect($"{clientUrl}/?payment={outcome.Result}&bookingCode={Uri.EscapeDataString(outcome.BookingCode ?? "")}");
     }

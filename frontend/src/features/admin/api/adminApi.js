@@ -34,4 +34,8 @@ export const adminApi = {
   changeUserRole: (id, role, reason = '') => apiClient(`/admin/users/${id}/role`, { method: 'PATCH', body: JSON.stringify({ role, reason }) }),
   settings: () => apiClient('/admin/settings'),
   saveSettings: settings => apiClient('/admin/settings',{method:'PUT',body:JSON.stringify(settings)})
+  ,vouchers: filters => apiClient(`/admin/vouchers${query(filters)}`)
+  ,createVoucher: payload => apiClient('/admin/vouchers',{method:'POST',body:JSON.stringify(payload)})
+  ,updateVoucher: (id,payload) => apiClient(`/admin/vouchers/${id}`,{method:'PUT',body:JSON.stringify(payload)})
+  ,setVoucherStatus: (id,status) => apiClient(`/admin/vouchers/${id}/status`,{method:'PATCH',body:JSON.stringify({status})})
 };
