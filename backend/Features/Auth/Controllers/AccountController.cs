@@ -78,17 +78,10 @@ public sealed class AccountController(AppDbContext db, SupabaseStorageService st
     [RequestSizeLimit(8_000_000)]
     public async Task<IActionResult> UploadAvatar(IFormFile file, CancellationToken cancellationToken)
     {
-        if (file.Length == 0 || file.Length > 8_000_000)
+        if (file.Length == 0 || file.Length > ImageUpload.MaxBytes)
             return BadRequest(new { message = "Ảnh đại diện phải nhỏ hơn 8 MB." });
 
-        var allowed = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-        {
-            [".jpg"] = "image/jpeg", [".jpeg"] = "image/jpeg",
-            [".png"] = "image/png", [".webp"] = "image/webp"
-        };
-        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
-        if (!allowed.TryGetValue(extension, out var contentType) ||
-            !string.Equals(file.ContentType, contentType, StringComparison.OrdinalIgnoreCase))
+        if (await ImageUpload.Validate(file, cancellationToken) is not (var extension, var contentType))
             return BadRequest(new { message = "Chỉ hỗ trợ ảnh JPG, PNG hoặc WEBP hợp lệ." });
 
         var user = await db.Users.SingleAsync(x => x.Id == UserId);

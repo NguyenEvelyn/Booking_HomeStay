@@ -62,15 +62,15 @@ public sealed class AdminPaymentsController(AppDbContext db, VnPayService vnPay,
         }
         else if (!success && payment.Booking.Status == BookingStatus.Hold)
         {
-            payment.Booking.Status = "PaymentFailed";
+            payment.Booking.Status = BookingStatus.PaymentFailed;
             payment.Booking.UpdatedAt = now;
         }
         else if (success && payment.Booking.Status == BookingStatus.Hold && !BookingRules.IsActiveHold(payment.Booking.Status, payment.Booking.HoldExpiresAt ?? payment.Booking.UpdatedAt, now))
         {
-            payment.Booking.Status = "Expired";
+            payment.Booking.Status = BookingStatus.Expired;
             payment.Booking.UpdatedAt = now;
         }
-        if (success && payment.Booking.Status is (BookingStatus.Cancelled or "Expired" or "PaymentFailed")
+        if (success && payment.Booking.Status is (BookingStatus.Cancelled or BookingStatus.Expired or BookingStatus.PaymentFailed)
             && !await db.Payments.AnyAsync(p => p.TransactionCode == "RF" + payment.TransactionCode, cancellationToken))
         {
             db.Payments.Add(new Payment { BookingId = original.BookingId, TransactionCode = "RF" + payment.TransactionCode,
@@ -107,7 +107,7 @@ public sealed class AdminPaymentsController(AppDbContext db, VnPayService vnPay,
         if (to.HasValue) { var endUtc = VietNamStart(to.Value.AddDays(1)); query = query.Where(p => p.CreatedAt < endUtc); }
         if (discrepancy) query = query.Where(p => p.Status == "Success" &&
             ((p.TransactionType == "Deposit" && p.Amount < p.Booking.DepositAmount) || p.Booking.Status == BookingStatus.Hold ||
-             p.Booking.Status == BookingStatus.Cancelled || p.Booking.Status == "Expired" || p.Booking.Status == "PaymentFailed"));
+             p.Booking.Status == BookingStatus.Cancelled || p.Booking.Status == BookingStatus.Expired || p.Booking.Status == BookingStatus.PaymentFailed));
         query = sort switch { "createdAt_asc" => query.OrderBy(p => p.CreatedAt),
             "amount_desc" => query.OrderByDescending(p => p.Amount), "amount_asc" => query.OrderBy(p => p.Amount),
             _ => query.OrderByDescending(p => p.CreatedAt) };
@@ -119,7 +119,7 @@ public sealed class AdminPaymentsController(AppDbContext db, VnPayService vnPay,
             p.ResponseCode, p.BankCode, p.Status, p.CreatedAt, p.PaidAt,
             discrepancy = p.Status == "Success" && ((p.TransactionType == "Deposit" && p.Amount < p.Booking.DepositAmount) ||
                 p.Booking.Status == BookingStatus.Hold || p.Booking.Status == BookingStatus.Cancelled ||
-                p.Booking.Status == "Expired" || p.Booking.Status == "PaymentFailed")
+                p.Booking.Status == BookingStatus.Expired || p.Booking.Status == BookingStatus.PaymentFailed)
         }).ToListAsync();
         return Ok(new { items, page, pageSize, total, totalPages = (int)Math.Ceiling(total / (double)pageSize) });
     }

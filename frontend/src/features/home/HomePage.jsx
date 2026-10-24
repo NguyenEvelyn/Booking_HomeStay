@@ -3,6 +3,8 @@ import './styles/home.css';
 import { homestayApi } from '../homestays/api/homestayApi.js';
 import GuestPickerDropdown from '../../shared/components/GuestPickerDropdown.jsx';
 import { readFavoriteIds, toggleFavoriteId } from '../../shared/utils/favorites.js';
+import { apiClient } from '../../shared/api/apiClient.js';
+import { toast } from '../../shared/feedback/feedback.js';
 
 const heroImage = '/assets/figma/hero.png';
 const aboutImage = '/assets/figma/about.jpg';
@@ -272,6 +274,13 @@ export default function HomePage({
   const [heroPicks, setHeroPicks] = useState([]);
   const [heroPicksLoading, setHeroPicksLoading] = useState(true);
   const [favoriteIds, setFavoriteIds] = useState(readFavoriteIds);
+  const [vouchers, setVouchers] = useState([]);
+
+  useEffect(() => {
+    let active = true;
+    apiClient('/vouchers').then(result => { if (active) setVouchers(result.items || []); }).catch(() => {});
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     if (!userMenuOpen) return undefined;
@@ -1370,7 +1379,13 @@ export default function HomePage({
             ref={voucherListRef}
             onMouseDown={onVoucherMouseDown}
           >
-            {[
+            {(vouchers.length ? vouchers.map((voucher, index) => ({
+              ...voucher,
+              img: [voucherWeek, voucherHotDeal, voucherSummer][index % 3],
+              label: voucher.name,
+              title: `${voucher.code} · ${voucher.name}`,
+              desc: `${voucher.description || (voucher.discountType === 'Percentage' ? `Giảm ${voucher.discountValue}%` : `Giảm ${new Intl.NumberFormat('vi-VN').format(voucher.discountValue)}đ`)} · Đơn tối thiểu ${new Intl.NumberFormat('vi-VN').format(voucher.minimumBookingAmount || 0)}đ · Hạn ${new Date(voucher.validUntil).toLocaleDateString('vi-VN')}`,
+            })) : [
               {
                 img: voucherWeek,
                 label: 'Tuần lễ vàng',
@@ -1407,7 +1422,7 @@ export default function HomePage({
                 title: 'ƯU ĐÃI DỊP LỄ TẾT 2025',
                 desc: 'Đặt sớm – nghỉ ngon: ưu đãi đặc biệt dịp lễ Tết dành cho gia đình và nhóm bạn',
               },
-            ].map(({ img, label, title, desc }, index) => (
+            ]).map(({ img, label, title, desc, code }, index) => (
               <article
                 className="voucher-card"
                 key={`voucher-${index}`}
@@ -1426,9 +1441,9 @@ export default function HomePage({
                   <button
                     type="button"
                     className="voucher-save-btn"
-                    onClick={() => onDeveloping('Lưu voucher')}
+                    onClick={async () => { if (!code) return onDeveloping('Voucher'); await navigator.clipboard?.writeText(code); toast.success(`Đã sao chép mã ${code}.`); }}
                   >
-                    Lưu voucher
+                    {code ? `Sao chép ${code}` : 'Voucher sắp mở'}
                   </button>
                 </div>
 
@@ -1436,7 +1451,8 @@ export default function HomePage({
                   className="voucher-info-btn"
                   type="button"
                   aria-label="Thông tin ưu đãi"
-                  onClick={() => onDeveloping('Thông tin ưu đãi')}
+                  title={desc}
+                  onClick={() => toast.info(desc)}
                 >
                   <Icon name="info" />
                 </button>

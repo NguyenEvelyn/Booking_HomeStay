@@ -53,6 +53,8 @@ export async function apiClient(path, options = {}) {
       cache: method === 'GET' ? 'no-store' : undefined,
       headers: {
         ...(isForm ? {} : { 'Content-Type': 'application/json' }),
+        // Required by the backend CSRF guard for cookie-authenticated writes.
+        'X-Requested-With': 'XMLHttpRequest',
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         ...options.headers
       },

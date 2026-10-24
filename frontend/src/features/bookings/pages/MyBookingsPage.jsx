@@ -351,15 +351,17 @@ function Empty({ status, query, explore }) {
 function BookingCard({ item, detail, pay, cancel, review, rebook, service }) {
   const status = uiStatus(item.status),
     days = daysUntil(item.checkInDate),
+    // An expired hold for a future stay can be paid again; the server re-checks availability.
+    payable = ["PendingPayment", "PaymentFailed"].includes(status) || (status === "Expired" && days >= 0),
     action = (e) => {
       e.stopPropagation();
-      if (["PendingPayment", "PaymentFailed"].includes(status)) pay();
+      if (payable) pay();
       else if (status === "Completed") review();
       else if (groups.cancelled.includes(status)) rebook();
       else detail();
     },
-    text = ["PendingPayment", "PaymentFailed"].includes(status)
-      ? "Thanh toán ngay"
+    text = payable
+      ? status === "Expired" ? "Thanh toán lại" : "Thanh toán ngay"
       : status === "Completed"
         ? "Viết đánh giá"
         : groups.cancelled.includes(status)
@@ -422,7 +424,7 @@ function BookingCard({ item, detail, pay, cancel, review, rebook, service }) {
           <strong>{money(item.totalAmount)}</strong>
           <button
             className={
-              ["PendingPayment", "PaymentFailed", "CheckedIn"].includes(status)
+              payable || status === "CheckedIn"
                 ? "primary"
                 : ""
             }
