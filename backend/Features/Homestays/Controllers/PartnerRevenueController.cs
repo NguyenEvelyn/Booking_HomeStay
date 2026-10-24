@@ -15,7 +15,7 @@ namespace HomestayAuth.Api.Features.Homestays.Controllers;
 [ApiController]
 [Route("api/partner/revenue")]
 [Authorize(Roles = "Host")]
-public sealed class PartnerRevenueController(AppDbContext db) : ControllerBase
+public sealed class PartnerRevenueController(AppDbContext db, HomestayAuth.Api.Features.Bookings.VoucherService voucherService) : ControllerBase
 {
     private long HostId => long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
     private static readonly HashSet<string> RevenueStatuses = ["Confirmed", "CheckedIn", "Completed"];
@@ -50,6 +50,12 @@ public sealed class PartnerRevenueController(AppDbContext db) : ControllerBase
 
         var current = Metrics(bookings, period.From, period.To, paymentMethod, homestays.Select(x => x.Id).ToHashSet(), roomCounts);
         var previous = Metrics(bookings, previousFrom, previousTo, paymentMethod, homestays.Select(x => x.Id).ToHashSet(), roomCounts);
+        // Platform-funded vouchers lower what the guest paid, but Tripio reimburses the host that discount.
+        var bookingIds = bookings.Select(x => x.Id).ToList();
+        var subsidies = await voucherService.CountedUsages(DateTime.UtcNow)
+            .Where(u => u.FundedBy == VoucherFunding.Platform && bookingIds.Contains(u.BookingId))
+            .ToDictionaryAsync(u => u.BookingId, u => u.DiscountAmount);
+        decimal Subsidy(MetricResult m) => m.Bookings.Sum(b => subsidies.GetValueOrDefault(b.Id));
         var statusRows = bookings.Where(x => x.CheckInDate <= period.To && x.CheckOutDate >= period.From).GroupBy(x => x.Status)
             .Select(g => new { status = g.Key, count = g.Count() }).ToList();
         var statusTotal = statusRows.Sum(x => x.count);
@@ -96,7 +102,8 @@ public sealed class PartnerRevenueController(AppDbContext db) : ControllerBase
                 depositCollected = Kpi(current.DepositCollected, previous.DepositCollected),
                 depositOutstanding = Kpi(current.Outstanding, previous.Outstanding),
                 refunds = Kpi(current.Refunds, previous.Refunds),
-                netRevenue = Kpi(current.NetRevenue, previous.NetRevenue)
+                netRevenue = Kpi(current.NetRevenue, previous.NetRevenue),
+                platformVoucherSubsidy = Kpi(Round(Subsidy(current)), Round(Subsidy(previous)))
             },
             timeseries = series,
             occupancyMetrics = new { occupancyRate = current.Occupancy, adr = current.Adr, revpar = current.RevPar, averageLos = current.AverageLos, averageLeadTime = current.AverageLead },

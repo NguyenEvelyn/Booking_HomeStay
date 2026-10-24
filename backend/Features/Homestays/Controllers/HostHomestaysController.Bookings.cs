@@ -53,6 +53,9 @@ public sealed partial class HostHomestaysController
         };
         var rawItems = await query.Select(b => new {
                 b.Id, b.BookingCode, b.HomestayId,
+                b.ExpectedArrivalAt, b.LateArrivalNote, HomestayTimeZone = b.Homestay.TimeZoneId, HomestayCheckInTime = b.Homestay.CheckInTime,
+                NoShow = db.BookingNoShows.Where(n => n.BookingId == b.Id).Select(n => new { n.MarkedAt, n.ContactNote, n.Penalty, n.PaidAmount,
+                    n.RetainedAmount, n.RefundAmount, n.DisputeStatus, n.DisputeReason, n.DisputedAt, n.ResolutionNote }).FirstOrDefault(),
                 HomestayName = db.Homestays.Where(h => h.Id == b.HomestayId).Select(h => h.Name).First(),
                 CustomerName = b.ContactName ?? db.Users.Where(u => u.Id == b.CustomerId).Select(u => u.FullName).First(),
                 CustomerEmail = b.ContactEmail ?? db.Users.Where(u => u.Id == b.CustomerId).Select(u => u.Email).First(),
@@ -144,6 +147,11 @@ public sealed partial class HostHomestaysController
                 policy);
 
             var daysUntilCheckIn = b.CheckInDate.DayNumber - today.DayNumber;
+            // Past the grace period (or the guest's announced arrival) without check-in: the host should call the
+            // guest and may then release the room as a no-show.
+            DateTime? noShowDeadline = b.Status == BookingStatus.Confirmed && daysUntilCheckIn <= 0
+                ? NoShowRules.DeadlineUtc(b.CheckInDate, b.HomestayCheckInTime, NoShowRules.Zone(b.HomestayTimeZone), policy.NoShow ?? new NoShowPolicy(), b.ExpectedArrivalAt)
+                : null;
             var urgencyLevel = !upcomingStatuses.Contains(b.Status) ? "normal"
                 : daysUntilCheckIn < 0 ? "overdue"
                 : daysUntilCheckIn == 0 ? "today"
@@ -160,6 +168,9 @@ public sealed partial class HostHomestaysController
                 b.RoomChangeLogs, b.DateChanges, b.Extensions,
                 DaysUntilCheckin = daysUntilCheckIn,
                 UrgencyLevel = urgencyLevel,
+                b.ExpectedArrivalAt, b.LateArrivalNote, b.NoShow,
+                NoShowDeadline = noShowDeadline,
+                NoShowRisk = noShowDeadline.HasValue && DateTime.UtcNow >= noShowDeadline.Value,
                 Policy = policy,
                 PricingSnapshot = pricingSnapshot,
                 AuditLogs = auditLogs.Where(a => a.TargetId == b.Id.ToString()).Select(a => new {

@@ -5,6 +5,7 @@ import GuestPickerDropdown from '../../shared/components/GuestPickerDropdown.jsx
 import { readFavoriteIds, toggleFavoriteId } from '../../shared/utils/favorites.js';
 import { apiClient } from '../../shared/api/apiClient.js';
 import { toast } from '../../shared/feedback/feedback.js';
+import HotDealsSection from './HotDealsSection.jsx';
 
 const heroImage = '/assets/figma/hero.png';
 const aboutImage = '/assets/figma/about.jpg';
@@ -1069,6 +1070,8 @@ export default function HomePage({
         </div>
       </section>
 
+
+      <HotDealsSection onOpenHomestay={onOpenHomestay} onBrowseHomestays={onBrowseHomestays} />
 
       {/* =====================================================
           STAYS

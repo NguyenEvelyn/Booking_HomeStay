@@ -35,6 +35,12 @@ public class Booking
     public string? GuestName { get; set; }
     public int ContactNameEditCount { get; set; }
     public DateTime? ContactUpdatedAt { get; set; }
+    // Guest-announced late arrival: postpones the no-show deadline (see NoShowRules.DeadlineUtc).
+    public DateTime? ExpectedArrivalAt { get; set; }
+    public string? LateArrivalNote { get; set; }
+    public DateTime? NoShowReminderSentAt { get; set; }
+    // Last-minute deal this booking was sold under (non-refundable, counts toward RoomDeal.RoomsLimit).
+    public long? RoomDealId { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public ICollection<BookingDetail> Details { get; set; } = [];

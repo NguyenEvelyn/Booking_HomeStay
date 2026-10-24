@@ -17,7 +17,8 @@ public sealed record BookingGuestInput(string Type, string FullName, DateOnly? B
 public sealed record CreateBookingRequest(long RoomTypeId, DateOnly CheckInDate, DateOnly CheckOutDate, int AdultCount, int ChildCount, int Quantity,
     string? CustomerNote, string? RecommendationSessionId = null, IReadOnlyList<int>? ChildAges = null, string? PaymentOption = null,
     int? DayUseHours = null, BookingGuestInput? PrimaryGuest = null, IReadOnlyList<BookingGuestInput>? Companions = null,
-    bool DeclareCompanionsLater = false, bool PrivacyAccepted = false, bool PolicyAccepted = false, string? VoucherCode = null);
+    bool DeclareCompanionsLater = false, bool PrivacyAccepted = false, bool PolicyAccepted = false, string? VoucherCode = null,
+    long? ExpectedDealId = null);
 public sealed record CancelBookingRequest(string Reason);
 public sealed record UpdateGuestDeclarationsRequest(IReadOnlyList<BookingGuestInput> Guests, bool PrivacyAccepted);
 public sealed record UpdateBookingContactRequest(string ContactName, string Phone, string? Email, string? GuestName);
@@ -25,7 +26,7 @@ public sealed record UpdateBookingContactRequest(string ContactName, string Phon
 [ApiController]
 [Route("api/bookings")]
 public sealed class BookingsController(AppDbContext db, VnPayService vnPay, PaymentService paymentService, RoomInventoryService inventory,
-    PolicyService policyService, BookingPricingService pricingService, VoucherService voucherService) : ControllerBase
+    PolicyService policyService, BookingPricingService pricingService, VoucherService voucherService, DealService dealService) : ControllerBase
 {
     private static string? ValidateGuest(BookingGuestInput guest, bool primary)
     {
@@ -52,15 +53,17 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
         return new { booking.Id, booking.BookingCode, daysBeforeCheckIn, isFree = result.Penalty == 0, refundPercent = percent, cancellationFee = result.Penalty, refundAmount = result.Refund, policyVersion = policy.Version };
     }
 
-    private sealed record BookingTotals(decimal AppliedDiscount, bool VoucherApplied, decimal Subtotal, decimal CustomerTaxPercent,
+    private sealed record BookingTotals(decimal AppliedDiscount, bool VoucherApplied, bool PromotionKept, decimal Subtotal, decimal CustomerTaxPercent,
         decimal TaxAmount, decimal Total, decimal AmountDueNow);
 
     // Single source of truth for what the guest pays, shared by the quote and the real booking so the
-    // quoted amount can never drift from the charged amount. The better of promotion and voucher wins.
-    private async Task<BookingTotals> ComputeTotals(BookingPricingResult price, VoucherQuote? voucher)
+    // quoted amount can never drift from the charged amount. Normally the better of promotion and voucher
+    // wins; a deal that allows vouchers stacks them (the voucher was priced on the post-deal amount).
+    private async Task<BookingTotals> ComputeTotals(BookingPricingResult price, VoucherQuote? voucher, bool stackVoucher = false)
     {
-        var appliedDiscount = Math.Max(price.DiscountAmount, voucher?.DiscountAmount ?? 0);
-        var voucherApplied = voucher is not null && voucher.DiscountAmount >= price.DiscountAmount;
+        var voucherApplied = voucher is not null && (stackVoucher || voucher.DiscountAmount >= price.DiscountAmount);
+        var appliedDiscount = stackVoucher ? price.DiscountAmount + (voucher?.DiscountAmount ?? 0) : Math.Max(price.DiscountAmount, voucher?.DiscountAmount ?? 0);
+        var promotionKept = stackVoucher || !voucherApplied;
         var subtotal = Math.Max(0, price.TotalAmount + price.DiscountAmount - appliedDiscount);
         var customerTaxPercent = await CustomerTaxSettings.ReadPercent(db);
         var taxAmount = CustomerTaxSettings.Amount(subtotal, customerTaxPercent);
@@ -68,7 +71,15 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
         var amountDueNow = price.PaymentOption == "Full"
             ? total
             : Math.Round(total * price.DepositPercent / 100m, 0, MidpointRounding.AwayFromZero);
-        return new BookingTotals(appliedDiscount, voucherApplied, subtotal, customerTaxPercent, taxAmount, total, amountDueNow);
+        return new BookingTotals(appliedDiscount, voucherApplied, promotionKept, subtotal, customerTaxPercent, taxAmount, total, amountDueNow);
+    }
+
+    // A last-minute deal is used only if it covers the whole stay and still has enough rooms.
+    private async Task<DealQuote?> UsableDeal(long roomTypeId, CreateBookingRequest request, bool isDayUse, long? excludingBookingId = null)
+    {
+        if (isDayUse) return null;
+        var deal = await dealService.Find(roomTypeId, request.CheckInDate, request.CheckOutDate, DateTime.UtcNow, excludingBookingId);
+        return deal is not null && deal.Remaining >= request.Quantity ? deal : null;
     }
 
     private static int ExtraChildren(CreateBookingRequest request, RoomType roomType) =>
@@ -109,19 +120,23 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
             return Conflict(new { message = "Không còn đủ phòng trong khoảng ngày đã chọn." });
         }
         var periods = await db.RoomPricePeriods.AsNoTracking().Where(x => x.RoomTypeId == roomType.Id && x.StartDate < inventoryCheckOut && x.EndDate >= request.CheckInDate).ToListAsync();
+        var deal = await UsableDeal(roomType.Id, request, isDayUse);
+        if (deal is { AllowVoucher: false } && !string.IsNullOrWhiteSpace(request.VoucherCode))
+            return BadRequest(new { message = "Phòng đang bán giá deal phút chót nên không áp dụng thêm voucher." });
         var price = pricingService.Calculate(roomType, request.CheckInDate, request.CheckOutDate, request.AdultCount, request.ChildCount,
-            request.Quantity, request.ChildAges, request.PaymentOption, periods, policy, BookingRules.Today, request.DayUseHours);
+            request.Quantity, request.ChildAges, request.PaymentOption, periods, policy, BookingRules.Today, request.DayUseHours, deal?.DiscountPercent);
         var quoteCustomerId = long.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var parsedCustomerId) ? parsedCustomerId : (long?)null;
         var (voucher, voucherError) = await voucherService.Validate(request.VoucherCode, roomType.HomestayId, quoteCustomerId,
-            price.RoomAmountBeforeDiscount, DateTime.UtcNow);
+            deal is not null ? price.RoomAmount : price.RoomAmountBeforeDiscount, DateTime.UtcNow);
         if (voucherError is not null) return BadRequest(new { message = voucherError });
-        var totals = await ComputeTotals(price, voucher);
+        var totals = await ComputeTotals(price, voucher, stackVoucher: deal is not null);
         var extraChildren = ExtraChildren(request, roomType);
         return Ok(new { price.Nights, quantity = request.Quantity, roomTotal = price.RoomAmount, extraGuestCount = price.ExtraAdults + extraChildren,
             extraAdults = price.ExtraAdults, extraChildren, price.ExtraAdultFee, extraChildFee = price.ChildSurcharge,
             extraGuestFee = price.ExtraAdultFee + price.ChildSurcharge, extraFee = price.ExtraAdultFee + price.ChildSurcharge,
             subtotal = totals.Subtotal, totals.CustomerTaxPercent, totals.TaxAmount, total = totals.Total, availableRooms = available, price.BaseRoomAmount, price.SeasonalSurchargeAmount,
-            price.RoomAmountBeforeDiscount, promotionCode = totals.VoucherApplied ? null : price.PromotionCode, promotionPercent = totals.VoucherApplied ? 0 : price.PromotionPercent,
+            price.RoomAmountBeforeDiscount, promotionCode = totals.PromotionKept ? price.PromotionCode : null, promotionPercent = totals.PromotionKept ? price.PromotionPercent : 0,
+            deal = deal is null ? null : new { deal.Id, deal.DiscountPercent, deal.SaleEndsAt, deal.Remaining, deal.AllowVoucher, nonRefundable = true },
             discountAmount = totals.AppliedDiscount, voucherCode = totals.VoucherApplied ? voucher!.Code : null, voucherName = totals.VoucherApplied ? voucher!.Name : null,
             price.DepositPercent, depositAmount = totals.AmountDueNow, totals.AmountDueNow, price.PaymentOption,
             price.MinNightlyPrice, price.MaxNightlyPrice, price.NightlyRoomTotal, price.NightsBreakdown,
@@ -145,6 +160,9 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
                 Rooms = x.Details.Select(d => d.RoomId == null ? db.RoomTypes.Where(t => t.Id == d.RoomTypeId).Select(t => t.Name).First() : db.Rooms.Where(r => r.Id == d.RoomId).Select(r => r.RoomNumber).First()).ToList(),
                 RoomTypeId = x.Details.Select(d => (long?)d.RoomTypeId).FirstOrDefault(),
                 Details = x.Details.Select(d => new { d.RoomTypeId, d.RoomId }).ToList(),
+                x.ExpectedArrivalAt, x.LateArrivalNote,
+                NoShow = db.BookingNoShows.Where(n => n.BookingId == x.Id).Select(n => new { n.MarkedAt, n.PaidAmount, n.RetainedAmount, n.RefundAmount, n.DisputeStatus, n.ResolutionNote,
+                    CanDispute = n.DisputeStatus == null && n.MarkedAt > DateTime.UtcNow.AddHours(-NoShowRules.DisputeWindowHours) }).FirstOrDefault(),
                 ActiveServiceRequestCount = db.GuestServiceRequests.Count(r => r.BookingId == x.Id && (r.Status == "Pending" || r.Status == "Approved" || r.Status == "ChangeProposed" || r.Status == "InProgress" || r.Status == "HostCompleted")),
                 Status = x.Status == BookingStatus.Hold && x.HoldExpiresAt <= DateTime.UtcNow ? BookingStatus.Expired : x.Status, x.CreatedAt,
                 CanReview = x.Status == BookingStatus.CheckedOut && x.ReviewCreateUntil >= BookingRules.Today && !db.Reviews.Any(r => r.BookingId == x.Id),
@@ -173,6 +191,9 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
                 ContactEmail = x.ContactEmail ?? db.Users.Where(u => u.Id == x.CustomerId).Select(u => u.Email).First(),
                 GuestName = x.GuestName ?? x.Guests.Where(g => g.IsPrimary).Select(g => g.FullName).FirstOrDefault() ?? x.ContactName ?? db.Users.Where(u => u.Id == x.CustomerId).Select(u => u.FullName).First(),
                 x.ContactNameEditCount,
+                x.ExpectedArrivalAt, x.LateArrivalNote,
+                NoShow = db.BookingNoShows.Where(n => n.BookingId == x.Id).Select(n => new { n.MarkedAt, n.PaidAmount, n.RetainedAmount, n.RefundAmount, n.DisputeStatus, n.ResolutionNote,
+                    CanDispute = n.DisputeStatus == null && n.MarkedAt > DateTime.UtcNow.AddHours(-NoShowRules.DisputeWindowHours) }).FirstOrDefault(),
                 PaidAmount = x.Payments.Where(p => p.TransactionType != "Refund" && p.Status == "Success").Sum(p => (decimal?)p.Amount) ?? 0,
                 RefundedAmount = x.Payments.Where(p => p.TransactionType == "Refund" && p.Status == "Success").Sum(p => (decimal?)p.Amount) ?? 0,
                 RoomTypeId = x.Details.Select(d => (long?)d.RoomTypeId).FirstOrDefault(),
@@ -373,18 +394,33 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
         }
 
         var specialPrices = await db.RoomPricePeriods.AsNoTracking().Where(x => x.RoomTypeId == roomType.Id && x.StartDate < inventoryCheckOut && x.EndDate >= request.CheckInDate).ToListAsync();
+        // The guest must have seen the deal in the quote (ExpectedDealId): a booking is never silently turned
+        // non-refundable, and a deal that sold out meanwhile is reported instead of silently dropped.
+        DealQuote? deal = null;
+        if (request.ExpectedDealId is { } expectedDealId)
+        {
+            await AdvisoryLocks.Deal(db, expectedDealId);
+            deal = await UsableDeal(roomType.Id, request, isDayUse);
+            if (deal?.Id != expectedDealId)
+                return Conflict(new { message = "Deal phút chót vừa hết phòng hoặc đã kết thúc. Giá đã thay đổi, vui lòng xem lại trước khi thanh toán." });
+            if (!deal.AllowVoucher && !string.IsNullOrWhiteSpace(request.VoucherCode))
+                return BadRequest(new { message = "Phòng đang bán giá deal phút chót nên không áp dụng thêm voucher." });
+            policy = DealRules.NonRefundable(policy);
+        }
         var price = pricingService.Calculate(roomType, request.CheckInDate, request.CheckOutDate, request.AdultCount, request.ChildCount,
-            request.Quantity, request.ChildAges, request.PaymentOption, specialPrices, policy, BookingRules.Today, request.DayUseHours);
+            request.Quantity, request.ChildAges, request.PaymentOption, specialPrices, policy, BookingRules.Today, request.DayUseHours, deal?.DiscountPercent);
         VoucherQuote? voucher = null;
         if (!string.IsNullOrWhiteSpace(request.VoucherCode))
         {
             var voucherId = await db.Vouchers.Where(x => x.Code == request.VoucherCode.Trim().ToUpper()).Select(x => (long?)x.Id).SingleOrDefaultAsync();
             if (voucherId.HasValue) await AdvisoryLocks.Voucher(db, voucherId.Value);
-            var validation = await voucherService.Validate(request.VoucherCode, roomType.HomestayId, userId, price.RoomAmountBeforeDiscount, DateTime.UtcNow);
+            var validation = await voucherService.Validate(request.VoucherCode, roomType.HomestayId, userId,
+                deal is not null ? price.RoomAmount : price.RoomAmountBeforeDiscount, DateTime.UtcNow);
             if (validation.Error is not null) return BadRequest(new { message = validation.Error });
             voucher = validation.Quote;
         }
-        var (appliedDiscount, voucherApplied, subtotal, customerTaxPercent, taxAmount, totalAmount, depositAmount) = await ComputeTotals(price, voucher);
+        var (appliedDiscount, voucherApplied, promotionKept, subtotal, customerTaxPercent, taxAmount, totalAmount, depositAmount) =
+            await ComputeTotals(price, voucher, stackVoucher: deal is not null);
         var nights = price.Nights;
         var roomTotal = Math.Max(0, price.RoomAmountBeforeDiscount - appliedDiscount);
         var extraFee = price.ExtraAdultFee + price.ChildSurcharge;
@@ -392,7 +428,7 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
         var now = DateTime.UtcNow;
         var bookingCode = $"TRP{now:yyMMddHHmmss}{Guid.NewGuid():N}"[..24].ToUpperInvariant();
         var transactionCode = $"{now:yyyyMMddHHmmss}{Guid.NewGuid():N}"[..30].ToUpperInvariant();
-        var booking = new Booking { BookingCode = bookingCode, CustomerId = userId, HomestayId = roomType.HomestayId, CheckInDate = request.CheckInDate, CheckOutDate = inventoryCheckOut, AdultCount = request.AdultCount, ChildCount = request.ChildCount, RoomAmount = roomTotal, DepositAmount = depositAmount, PaymentStatus = PaymentStatus.Unpaid, HoldExpiresAt = now.AddMinutes(policy.HoldMinutes), Subtotal = subtotal, DiscountAmount = appliedDiscount, ServiceFee = 0, TaxAmount = taxAmount, TotalAmount = totalAmount, CommissionRate = policy.CommissionRate, Status = BookingStatus.Hold, CustomerNote = request.CustomerNote, RecommendationSessionId = recommendationSessionId, PricingSnapshotJson = JsonSerializer.Serialize(new { roomType.Id, roomType.Name, nightlyPrice = roomType.BasePrice, roomAmount = roomTotal, nights, isDayUse, dayUseHours = isDayUse ? request.DayUseHours : null, displayCheckOutDate = request.CheckOutDate, roomType.BaseCapacity, roomType.MaxCapacity, adultExtraFee = roomType.ExtraGuestFee, roomType.ExtraChildFee, roomType.ChildMaxAge, roomType.DepositPercent, request.ChildAges, customerTaxPercent, taxAmount, totalAmount, voucherCode = voucherApplied ? voucher!.Code : null, promotionCode = voucherApplied ? null : price.PromotionCode, discountAmount = appliedDiscount, price }), PolicySnapshotJson = PolicyService.Serialize(policy), ReviewCreateUntil = inventoryCheckOut.AddDays(policy.ReviewCreateDays), ReviewEditUntil = inventoryCheckOut.AddDays(policy.ReviewEditDays), CreatedAt = now, UpdatedAt = now };
+        var booking = new Booking { BookingCode = bookingCode, CustomerId = userId, HomestayId = roomType.HomestayId, CheckInDate = request.CheckInDate, CheckOutDate = inventoryCheckOut, AdultCount = request.AdultCount, ChildCount = request.ChildCount, RoomAmount = roomTotal, DepositAmount = depositAmount, PaymentStatus = PaymentStatus.Unpaid, HoldExpiresAt = now.AddMinutes(policy.HoldMinutes), Subtotal = subtotal, DiscountAmount = appliedDiscount, ServiceFee = 0, TaxAmount = taxAmount, TotalAmount = totalAmount, CommissionRate = policy.CommissionRate, Status = BookingStatus.Hold, CustomerNote = request.CustomerNote, RoomDealId = deal?.Id, RecommendationSessionId = recommendationSessionId, PricingSnapshotJson = JsonSerializer.Serialize(new { roomType.Id, roomType.Name, nightlyPrice = roomType.BasePrice, roomAmount = roomTotal, nights, isDayUse, dayUseHours = isDayUse ? request.DayUseHours : null, displayCheckOutDate = request.CheckOutDate, roomType.BaseCapacity, roomType.MaxCapacity, adultExtraFee = roomType.ExtraGuestFee, roomType.ExtraChildFee, roomType.ChildMaxAge, roomType.DepositPercent, request.ChildAges, customerTaxPercent, taxAmount, totalAmount, voucherCode = voucherApplied ? voucher!.Code : null, promotionCode = promotionKept ? price.PromotionCode : null, dealId = deal?.Id, discountAmount = appliedDiscount, price }), PolicySnapshotJson = PolicyService.Serialize(policy), ReviewCreateUntil = inventoryCheckOut.AddDays(policy.ReviewCreateDays), ReviewEditUntil = inventoryCheckOut.AddDays(policy.ReviewEditDays), CreatedAt = now, UpdatedAt = now };
         booking.Guests.Add(new BookingGuest { IsPrimary = true, GuestType = request.PrimaryGuest.Type, FullName = request.PrimaryGuest.FullName.Trim(), BirthDate = request.PrimaryGuest.BirthDate, Gender = request.PrimaryGuest.Gender, Nationality = request.PrimaryGuest.Nationality, DocumentType = request.PrimaryGuest.DocumentType, DocumentNumber = request.PrimaryGuest.DocumentNumber?.Trim(), Address = request.PrimaryGuest.Address?.Trim(), DeclarationStatus = "Completed", CreatedAt = now, UpdatedAt = now });
         if (request.DeclareCompanionsLater)
         {
@@ -419,13 +455,13 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
         if (voucherApplied)
         {
             db.VoucherUsages.Add(new VoucherUsage { VoucherId = voucher!.Id, BookingId = booking.Id, CustomerId = userId,
-                CodeUsed = voucher.Code, DiscountAmount = voucher.DiscountAmount, UsedAt = now });
+                CodeUsed = voucher.Code, DiscountAmount = voucher.DiscountAmount, FundedBy = voucher.FundedBy, UsedAt = now });
             await db.SaveChangesAsync();
         }
         await transaction.CommitAsync();
         return Ok(new { bookingCode, amount = depositAmount, depositAmount, paymentUrl, paymentOption = price.PaymentOption,
             priceBreakdown = new { roomTotal, extraGuestCount, extraGuestFee = extraFee, extraFee, price.BaseRoomAmount,
-                price.SeasonalSurchargeAmount, discountAmount = appliedDiscount, promotionCode = voucherApplied ? null : price.PromotionCode,
+                price.SeasonalSurchargeAmount, discountAmount = appliedDiscount, promotionCode = promotionKept ? price.PromotionCode : null,
                 voucherCode = voucherApplied ? voucher!.Code : null, subtotal, customerTaxPercent, taxAmount, total = totalAmount,
                 price.DepositPercent, price.NightsBreakdown, price.ChildrenBreakdown } });
     }
@@ -451,6 +487,20 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
         var roomType = await db.RoomTypes.Include(x => x.Rooms)
             .SingleOrDefaultAsync(x => x.Id == roomTypeId && x.Status == "Active" && x.Homestay.Status == "Approved");
         if (roomType is null) return BadRequest(new { message = "Loại phòng không còn được kinh doanh." });
+        if (booking.RoomDealId is { } retryDealId)
+        {
+            // The deal price is only honoured while the deal is on sale and still has a room for this booking.
+            await AdvisoryLocks.Deal(db, retryDealId);
+            var dealNow = await dealService.Find(roomTypeId, booking.CheckInDate, booking.CheckOutDate, DateTime.UtcNow, booking.Id);
+            if (dealNow?.Id != retryDealId || dealNow.Remaining < quantity)
+                return Conflict(new { message = "Deal phút chót của đơn này đã kết thúc hoặc hết phòng. Vui lòng đặt lại để nhận giá hiện tại." });
+        }
+        if (await voucherService.VoucherIdForBooking(booking.Id) is { } retryVoucherId)
+        {
+            await AdvisoryLocks.Voucher(db, retryVoucherId);
+            if (await voucherService.RevalidateForRetry(booking.Id, userId, DateTime.UtcNow) is { } voucherError)
+                return Conflict(new { message = voucherError });
+        }
         var rooms = (await BookingAvailability.AvailableRoomIds(db, roomTypeId, booking.CheckInDate, booking.CheckOutDate, DateTime.UtcNow, booking.Id)).Take(quantity).ToList();
         if (rooms.Count < quantity)
         {
