@@ -114,7 +114,7 @@ public sealed class RecommendationEventsController(AppDbContext db, Recommendati
         return Ok(new { days, attributionDays, modelVersion = weights.Version, modelIsLearned = weights.IsLearned,
             trainingMinimum = 100, attributedBookingSamples = searchesWithBooking,
             searches = searches.Count, views = views.Count,
-            confirmedBookings = bookings.Count,
+            bookingEvents = bookings.Count,
             uniqueSessions = events.Select(e => e.SessionId).Distinct().Count(), recommendedSearches,
             searchesWithRecommendationView,
             recommendationViewRate = recommendedSearches == 0 ? 0 : Math.Round(100d * searchesWithRecommendationView / recommendedSearches, 2),

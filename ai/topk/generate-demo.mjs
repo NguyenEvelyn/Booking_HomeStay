@@ -20,8 +20,8 @@ const catalog = (await Promise.all(page.items.map(async (item) => {
     averageRating: item.averageRating, reviewCount: item.reviewCount,
     amenities: detail.amenities.map((amenity) => amenity.name),
     roomTypes: detail.roomTypes.map(({ id, name, basePrice, baseCapacity, maxCapacity,
-      maxAdults, maxChildren, extraGuestAllowed, extraGuestFee, availableRoomCount }) => ({ id, name, basePrice,
-      baseCapacity, maxCapacity, maxAdults, maxChildren, extraGuestAllowed, extraGuestFee, availableRoomCount })),
+      maxAdults, maxChildren, extraGuestAllowed, extraGuestFee, extraChildFee, maxExtraChildren, availableRoomCount }) => ({ id, name, basePrice,
+      baseCapacity, maxCapacity, maxAdults, maxChildren, extraGuestAllowed, extraGuestFee, extraChildFee, maxExtraChildren, availableRoomCount })),
   };
 }))).sort((a, b) => a.id - b.id);
 if (!catalog.length) throw new Error('Neon catalog has no approved homestays.');

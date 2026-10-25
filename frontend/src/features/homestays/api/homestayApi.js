@@ -13,8 +13,13 @@ export const homestayApi = {
   detail: (id) => apiClient(`/homestays/${id}`),
   effectivePolicies: (id) => apiClient(`/homestays/${id}/effective-policies`),
   availability: (id, { checkIn, checkOut, guests, rooms }) => apiClient(`/homestays/${id}/availability?${new URLSearchParams({ checkIn, checkOut, guests, rooms })}`),
-  recommendations: ({ search = '', location = '', checkIn = '', checkOut = '', guests = 2, adults = 2, children = 0, rooms = 1, totalBudget = '', amenities = [], roomType = '', minRating = 0, topK = 3 } = {}) => {
+  recommendations: ({ search = '', location = '', checkIn = '', checkOut = '', guests = 2, adults = 2, children = 0, rooms = 1, totalBudget = '', amenities = [], roomType = '', minRating = 0, topK = 3, tallChildren, smallChildren } = {}) => {
     const params = new URLSearchParams({ search, location, guests, adults, children, rooms, roomType, minRating, topK, sessionId: recommendationSessionId() });
+    // Chiều cao trẻ em là tuỳ chọn; thiếu thì backend tính mọi trẻ là trẻ cao (giống báo giá).
+    if (tallChildren != null || smallChildren != null) {
+      params.set('tallChildren', tallChildren ?? 0);
+      params.set('smallChildren', smallChildren ?? 0);
+    }
     if (checkIn) params.set('checkIn', checkIn);
     if (checkOut) params.set('checkOut', checkOut);
     if (totalBudget) params.set('totalBudget', totalBudget);

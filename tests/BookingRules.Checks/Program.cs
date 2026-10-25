@@ -152,4 +152,11 @@ var familyRoom = new HomestayAuth.Api.Domain.Entities.RoomType { Name = "Phòng 
 var stay = new BookingPricingService().Calculate(familyRoom, new DateOnly(2026, 12, 1), new DateOnly(2026, 12, 3), 2, 3, 1, null, "Deposit", [],
     PolicyService.DefaultSnapshot(), new DateOnly(2026, 11, 1), party: new Party(2, 2, 1));
 Check(stay.ChildSurcharge == 300_000 && stay.Occupancy.Ok, "pricing: 1 extra tall child x 150,000 x 2 nights = 300,000; the small child is free");
+
+// Top-K golden cases shared with ai/topk/model.test.mjs — change both together.
+var baselineWeights = HomestayAuth.Api.Features.Recommendations.RecommendationWeights.Baseline;
+Check(HomestayAuth.Api.Features.Recommendations.RecommendationScoring.Score(baselineWeights,
+    new(2_000_000, 1_800_000, 2, 1, 4.5, 3, 1, 2)) == 72.82, "Top-K score golden case with budget, amenities, rating and history");
+Check(HomestayAuth.Api.Features.Recommendations.RecommendationScoring.Score(baselineWeights,
+    new(null, 3_000_000, 0, 0, null, 0, 0, 0)) == 43, "Top-K score golden case for a new guest without budget");
 Console.WriteLine("Booking rule checks passed.");
