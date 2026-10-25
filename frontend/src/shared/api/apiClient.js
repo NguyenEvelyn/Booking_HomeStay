@@ -72,6 +72,12 @@ export async function apiClient(path, options = {}) {
     clearAccessToken();
     window.dispatchEvent(new CustomEvent('tripio:unauthorized', { detail: { path } }));
   }
-  if (!response.ok) throw new Error(data.message || data.title || `Yêu cầu thất bại (HTTP ${response.status}).`);
+  if (!response.ok) {
+    // Keep the body (e.g. room suggestions on a 409) for callers that need more than the message.
+    const error = new Error(data.message || data.title || `Yêu cầu thất bại (HTTP ${response.status}).`);
+    error.status = response.status;
+    error.data = data;
+    throw error;
+  }
   return data;
 }

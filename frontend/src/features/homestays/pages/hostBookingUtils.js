@@ -169,27 +169,35 @@ export const calcLateCheckOutPolicy = (timeStr, nightlyPrice, policyCheckInOut) 
   return { fee: Math.round(nightlyPrice), percent: 100, label: 'Phụ thu 100% giá phòng/đêm (Sau 18:00)', badge: 'danger' };
 };
 
-export const calcExtraGuestSurcharge = (actual, bookedAdults, bookedChildren, capacity, guestPolicy, nightlyPrice, nights) => {
-  const totalActualAdults = (actual.adults || 0) + (actual.childOver12 || 0);
-  const extraAdults = Math.max(0, totalActualAdults - (bookedAdults || 0));
-  const adultFeePerNight = Number(capacity?.extraGuestFee) || Number(guestPolicy?.adultExtraBedFee) || Math.round(nightlyPrice * 0.3);
-  const adultSurcharge = extraAdults * adultFeePerNight * (nights || 1);
+// Mirror of backend OccupancyRules (preview only; the server recomputes): adults and children from 1.2 m fill the
+// standard capacity, small children never count, tall children beyond it pay ExtraChildFee per night, extra
+// tall + small children are capped by maxExtraChildren, and adults beyond capacity need a room change.
+export const occupancyCheck = (party, room, quantity = 1) => {
+  const adults = party.adults || 0, tall = party.tallChildren || 0, small = party.smallChildren || 0;
+  const base = Math.max(1, Number(room?.baseCapacity) || 1) * quantity;
+  const adultLimit = (room?.extraGuestAllowed ? Math.max(Number(room?.baseCapacity) || 1, Number(room?.maxCapacity) || 1) : Math.max(1, Number(room?.baseCapacity) || 1)) * quantity;
+  const maxExtra = Math.max(0, Number(room?.maxExtraChildren ?? 2)) * quantity;
+  if (adults < quantity) return { problem: "NoAdult", message: "Mỗi phòng cần ít nhất 1 người lớn.", extraAdults: 0, extraTall: 0, maxExtra };
+  if (adults > adultLimit) return { problem: "TooManyAdults", message: `Phòng chỉ nhận tối đa ${adultLimit} người lớn — cần đổi phòng hoặc thêm phòng.`, extraAdults: 0, extraTall: 0, maxExtra };
+  const extraAdults = Math.max(0, adults - base);
+  const extraTall = Math.max(0, adults + tall - base) - extraAdults;
+  if (extraTall + small > maxExtra) return { problem: "OverExtraLimit", message: `Vượt số trẻ ở thêm tối đa (${maxExtra}) — cần đổi phòng hoặc thêm phòng.`, extraAdults, extraTall, maxExtra };
+  return { problem: null, message: null, extraAdults, extraTall, maxExtra };
+};
 
-  const totalActualChildren = (actual.childUnder2 || 0) + (actual.child2To6 || 0) + (actual.child6To10 || 0) + (actual.child10To12 || 0);
-  const extraChildrenCount = Math.max(0, totalActualChildren - (bookedChildren || 0));
-
-  let childSurcharge = 0;
-  if (extraChildrenCount > 0) {
-    const childFeePerNight = Number(capacity?.extraChildFee) || Math.round(nightlyPrice * 0.15);
-    childSurcharge = extraChildrenCount * childFeePerNight * (nights || 1);
-  }
-
+export const calcExtraGuestSurcharge = (actual, capacity, nights) => {
+  const check = occupancyCheck(actual, capacity);
+  const units = nights || 1;
+  const adultSurcharge = check.extraAdults * (Number(capacity?.extraGuestFee) || 0) * units;
+  const childSurcharge = check.extraTall * (Number(capacity?.extraChildFee) || 0) * units;
   return {
-    totalActualGuests: totalActualAdults + totalActualChildren,
-    extraAdults,
-    extraChildrenCount,
+    totalActualGuests: (actual.adults || 0) + (actual.tallChildren || 0) + (actual.smallChildren || 0),
+    extraAdults: check.extraAdults,
+    extraChildrenCount: check.extraTall,
     adultSurcharge,
     childSurcharge,
-    totalSurcharge: adultSurcharge + childSurcharge
+    totalSurcharge: check.problem ? 0 : adultSurcharge + childSurcharge,
+    problem: check.problem,
+    message: check.message
   };
 };

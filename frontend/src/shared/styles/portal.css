@@ -3617,3 +3617,10 @@
   color: #9f1239;
 }
 .payment-summary .payment-deal small { color: #881337; }
+
+/* Room suggestions when the party does not fit the selected room (HomestayDetailPage, OccupancyRules). */
+.occupancy-suggestions { grid-column: 1 / -1; display: grid; gap: 8px; padding: 12px; border-radius: 12px; border: 1px solid #fde68a; background: #fffbeb; color: #78350f; }
+.occupancy-suggestions > b { font-size: 14px; }
+.occupancy-suggestions button { display: grid; gap: 2px; text-align: left; padding: 10px 12px; border-radius: 10px; border: 1px solid #fcd34d; background: #fff; color: #0f172a; cursor: pointer; }
+.occupancy-suggestions button:hover, .occupancy-suggestions button:focus-visible { border-color: #f59e0b; box-shadow: 0 0 0 3px rgba(245, 158, 11, .2); }
+.occupancy-suggestions small { color: #92400e; }

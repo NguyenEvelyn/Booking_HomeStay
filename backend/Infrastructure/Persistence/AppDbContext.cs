@@ -267,6 +267,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         roomType.Property(x => x.ExtraGuestFee).HasColumnName("extra_guest_fee").HasPrecision(18, 2).HasDefaultValue(0);
         roomType.Property(x => x.ExtraChildFee).HasColumnName("extra_child_fee").HasPrecision(18, 2).HasDefaultValue(0);
         roomType.Property(x => x.ChildMaxAge).HasColumnName("child_max_age").HasDefaultValue(11);
+        roomType.Property(x => x.MaxExtraChildren).HasColumnName("max_extra_children").HasDefaultValue(2);
         roomType.Property(x => x.DepositPercent).HasColumnName("deposit_percent").HasPrecision(5, 4).HasDefaultValue(.3m);
         roomType.Property(x => x.BedType).HasColumnName("bed_type").HasMaxLength(100).IsRequired();
         roomType.Property(x => x.RoomSize).HasColumnName("room_size").HasPrecision(8, 2);
@@ -377,6 +378,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         booking.Property(x => x.CheckOutDate).HasColumnName("check_out_date");
         booking.Property(x => x.AdultCount).HasColumnName("adult_count");
         booking.Property(x => x.ChildCount).HasColumnName("child_count");
+        booking.Property(x => x.TallChildCount).HasColumnName("tall_child_count");
+        booking.Property(x => x.SmallChildCount).HasColumnName("small_child_count");
         booking.Property(x => x.Subtotal).HasColumnName("subtotal").HasPrecision(18, 2);
         booking.Property(x => x.DiscountAmount).HasColumnName("discount_amount").HasPrecision(18, 2);
         booking.Property(x => x.ServiceFee).HasColumnName("service_fee").HasPrecision(18, 2);

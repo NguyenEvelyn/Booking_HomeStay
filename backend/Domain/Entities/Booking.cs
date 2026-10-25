@@ -10,6 +10,9 @@ public class Booking
     public DateOnly CheckOutDate { get; set; }
     public int AdultCount { get; set; }
     public int ChildCount { get; set; }
+    // Split of ChildCount by height as declared at booking (null for bookings made before the split existed).
+    public int? TallChildCount { get; set; }
+    public int? SmallChildCount { get; set; }
     public decimal Subtotal { get; set; }
     public decimal DiscountAmount { get; set; }
     public decimal ServiceFee { get; set; }

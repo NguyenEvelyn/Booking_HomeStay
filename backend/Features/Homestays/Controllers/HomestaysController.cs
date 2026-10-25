@@ -67,7 +67,7 @@ public sealed class HomestaysController(IHomestayQueryService service, AppDbCont
         var items = new List<object>();
         foreach (var roomType in roomTypes)
         {
-            var capacity = roomType.ExtraGuestAllowed ? roomType.MaxCapacity : roomType.BaseCapacity;
+            var capacity = OccupancyRules.MaxOccupancy(roomType.BaseCapacity, roomType.MaxCapacity, roomType.ExtraGuestAllowed, roomType.MaxExtraChildren);
             if (capacity * rooms < guests) continue;
             var available = (await BookingAvailability.AvailableRoomIds(db, roomType.Id, checkIn, checkOut, DateTime.UtcNow)).Count;
             if (available >= rooms) items.Add(new { roomTypeId = roomType.Id, availableRooms = available });

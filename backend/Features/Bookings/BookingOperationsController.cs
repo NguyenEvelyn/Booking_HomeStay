@@ -10,7 +10,8 @@ using Microsoft.EntityFrameworkCore;
 namespace HomestayAuth.Api.Features.Bookings;
 
 public sealed record ManualBookingRequest(long RoomId, DateOnly CheckIn, DateOnly CheckOut, int AdultCount, int ChildCount,
-    string GuestName, string GuestEmail, string GuestPhone, string? Note, IReadOnlyList<long>? ServiceIds = null);
+    string GuestName, string GuestEmail, string GuestPhone, string? Note, IReadOnlyList<long>? ServiceIds = null,
+    int? TallChildren = null, int? SmallChildren = null);
 public sealed record DepositRequest(decimal? Amount, string PaymentMethod = "Manual", string? TransactionCode = null);
 public sealed record CheckInRequest(string Notes, object? Evidence = null);
 public sealed record ChargeRequest(string Type, string Description, int Quantity, decimal UnitPrice, object? Evidence = null);
@@ -44,13 +45,16 @@ public sealed class BookingOperationsController(AppDbContext db, RoomInventorySe
         var room = await db.Rooms.Include(x => x.RoomType).ThenInclude(x => x.PricePeriods)
             .SingleOrDefaultAsync(x => x.Id == request.RoomId && x.Status == "Available" && x.RoomType.Homestay.HostId == UserId);
         if (room is null) return NotFound(new { message = "Phòng không tồn tại hoặc không kinh doanh." });
-        var allowedCapacity = room.RoomType.ExtraGuestAllowed ? room.RoomType.MaxCapacity : room.RoomType.BaseCapacity;
-        if (guestCount > allowedCapacity) return BadRequest(new { message = "Số khách vượt sức chứa được phép." });
+        // Same occupancy rules as online booking; without a height split the children are charged as from 1.2 m.
+        var party = OccupancyRules.FromCounts(request.AdultCount, request.ChildCount, request.TallChildren, request.SmallChildren, null, 12);
+        if (party.Children != request.ChildCount) return BadRequest(new { message = "Số trẻ em theo chiều cao không khớp với tổng số trẻ em." });
+        var occupancy = OccupancyRules.Evaluate(party, 1, room.RoomType.BaseCapacity, room.RoomType.MaxCapacity, room.RoomType.ExtraGuestAllowed, room.RoomType.MaxExtraChildren);
+        if (!occupancy.Ok) return BadRequest(new { message = occupancy.Message });
         if (!await inventory.IsAvailable(room.Id, request.CheckIn, request.CheckOut))
             return Conflict(new { message = "Phòng đã được giữ hoặc đặt trong khoảng thời gian này." });
         var policy = await policyService.Resolve(room.RoomType.HomestayId, DateTime.UtcNow);
         var price = pricingService.Calculate(room.RoomType, request.CheckIn, request.CheckOut, request.AdultCount, request.ChildCount, 1, null,
-            "Deposit", room.RoomType.PricePeriods.ToList(), policy, BookingRules.Today);
+            "Deposit", room.RoomType.PricePeriods.ToList(), policy, BookingRules.Today, party: party);
         var requestedServiceIds = request.ServiceIds?.Distinct().Take(20).ToArray() ?? [];
         var selectedServices = await db.HomestayServices.AsNoTracking().Where(x => requestedServiceIds.Contains(x.Id) &&
             x.HomestayId == room.RoomType.HomestayId && x.IsActive).ToListAsync();
@@ -77,7 +81,7 @@ public sealed class BookingOperationsController(AppDbContext db, RoomInventorySe
         }
         var booking = new Booking { BookingCode = $"TRP{now:yyMMddHHmmss}{Guid.NewGuid():N}"[..24].ToUpperInvariant(), CustomerId = customer.Id,
             HomestayId = room.RoomType.HomestayId, CheckInDate = request.CheckIn, CheckOutDate = request.CheckOut, AdultCount = request.AdultCount,
-            ChildCount = request.ChildCount, RoomAmount = roomAmount, DepositAmount = price.DepositAmount,
+            ChildCount = request.ChildCount, TallChildCount = party.TallChildren, SmallChildCount = party.SmallChildren, RoomAmount = roomAmount, DepositAmount = price.DepositAmount,
             Subtotal = price.TotalAmount + serviceTotal, TotalAmount = price.TotalAmount + serviceTotal, DiscountAmount = price.DiscountAmount, ServiceFee = serviceTotal, TaxAmount = 0, CommissionRate = policy.CommissionRate,
             Status = BookingStatus.Hold, PaymentStatus = PaymentStatus.Unpaid, HoldExpiresAt = now.AddMinutes(policy.HoldMinutes), CustomerNote = request.Note,
             ContactName = request.GuestName.Trim(), ContactEmail = email, ContactPhone = phone, GuestName = request.GuestName.Trim(),

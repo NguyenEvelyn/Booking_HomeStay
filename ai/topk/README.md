@@ -22,9 +22,9 @@ Có thể đổi API bằng `BOOKING_API_URL`. Bộ sinh dùng seed `20260920` (
 
 Mỗi homestay được chuẩn hóa thành: `homestayId`, tỉnh/huyện, tập tiện nghi, điểm và số đánh giá, danh sách loại phòng với giá/giới hạn khách/tồn phòng. Mỗi truy vấn có địa điểm, số khách/phòng, số đêm, ngân sách **tổng kỳ nghỉ**, tiện nghi bắt buộc/ưa thích và có thể có ngày lưu trú.
 
-1. **Lọc cứng:** địa điểm, tiện nghi bắt buộc, sức chứa, số phòng, ngân sách tổng. Bản trên web kiểm tra phòng trống theo ngày và các đơn đang giữ phòng trước khi xếp hạng; ảnh chụp offline chỉ biết trạng thái phòng tại lúc xuất dữ liệu.
-2. **Điểm Top-K:** mức phù hợp ngân sách (40%), tiện nghi ưa thích (30%), điểm đánh giá đã làm mượt theo số lượng đánh giá (20%), hành vi trước đó (10%). Hành vi trống vẫn chạy được cho khách mới.
-3. Trả Top 5 cùng loại phòng phù hợp, chi phí dự kiến và lý do gợi ý. Chi phí offline chỉ là ước tính theo giá cơ bản và phụ thu khách; khi đặt phòng phải dùng `/api/bookings/quote` để lấy giá đúng theo ngày.
+1. **Lọc cứng:** địa điểm, tiện nghi bắt buộc, số phòng, ngân sách tổng và **sức chứa theo đúng luật đặt phòng** (`OccupancyRules`): người lớn và trẻ từ 1,2 m lấp sức chứa chuẩn; trẻ dưới 1,2 m không tính chỗ; số trẻ ở thêm bị giới hạn bởi `MaxExtraChildren`; người lớn vượt sức chứa thì phải đổi phòng, trừ khi host cho phép ở thêm có phí. Nếu không khai chiều cao (`tallChildren`/`smallChildren`), mọi trẻ được tính là trẻ cao, giống báo giá. Bản trên web kiểm tra phòng trống theo ngày và các đơn đang giữ phòng trước khi xếp hạng; ảnh chụp offline chỉ biết trạng thái phòng tại lúc xuất dữ liệu.
+2. **Điểm Top-K:** mức phù hợp ngân sách (40%), tiện nghi ưa thích (30%), điểm đánh giá đã làm mượt theo số lượng đánh giá (20%), hành vi trước đó (10%: booking đã xác nhận chiếm 70%, lượt xem trong phiên chiếm 30%). Hành vi trống vẫn chạy được cho khách mới. Công thức nằm ở `RecommendationScoring.cs` (backend) và `model.mjs` (offline); hai bên được khoá bằng cùng các ca "golden" trong `tests/BookingRules.Checks` và `model.test.mjs`, nên trọng số học offline mang đúng ý nghĩa khi đưa lên web.
+3. Trả Top 5 cùng loại phòng phù hợp, chi phí dự kiến và lý do gợi ý. Trên web, chi phí được tính bằng chính `BookingPricingService` của báo giá (giá theo kỳ, phụ thu mùa, khuyến mãi tự động, phụ thu người lớn/trẻ cao, thuế), nên khớp `/api/bookings/quote` khi không dùng voucher hay deal. Chi phí offline chỉ là ước tính theo giá cơ bản và phụ thu.
 
 Đây là **baseline có giải thích được**, chưa phải mô hình ML được huấn luyện. Không đánh giá chất lượng thật bằng các event giả, vì event được sinh theo thuộc tính của chính homestay.
 
@@ -73,3 +73,13 @@ Response của `/api/recommendations` có `modelVersion` để kiểm tra phiên
 
 Dữ liệu `demo-events.jsonl` vẫn chỉ dùng để kiểm thử đường ống. Pipeline trên từ chối file không có
 `source=real`; không sử dụng số liệu demo để quảng bá mô hình hoặc báo cáo chất lượng thực tế.
+
+## Giới hạn và hướng phát triển
+
+- Đây là mô hình chấm điểm có trọng số; "học" chỉ là tìm trọng số tốt nhất trên lưới. Khi dữ liệu thật
+  chưa đạt 100 booking được quy kết, web luôn chạy baseline 40/30/20/10 (`modelVersion` cho biết bản đang chạy).
+- Recall@5/NDCG@5 trên Admin là số quan sát của hệ thống đang chạy, không phải tác động nhân quả; cần
+  A/B test để kết luận gợi ý làm tăng tỷ lệ đặt phòng.
+- `catalog.json` là ảnh chụp tại một thời điểm và chỉ có giá cơ bản; đánh giá offline có thể lệch nếu giá
+  hoặc tồn phòng đã đổi kể từ lúc xảy ra sự kiện. Chạy lại `generate-demo.mjs` để làm mới.
+- Deal phút chót không được tính vào chi phí ước tính vì deal chỉ áp dụng khi khách chọn đúng deal đã báo giá.

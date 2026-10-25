@@ -53,6 +53,7 @@ public sealed partial class HostHomestaysController
         };
         var rawItems = await query.Select(b => new {
                 b.Id, b.BookingCode, b.HomestayId,
+                b.TallChildCount, b.SmallChildCount,
                 b.ExpectedArrivalAt, b.LateArrivalNote, HomestayTimeZone = b.Homestay.TimeZoneId, HomestayCheckInTime = b.Homestay.CheckInTime,
                 NoShow = db.BookingNoShows.Where(n => n.BookingId == b.Id).Select(n => new { n.MarkedAt, n.ContactNote, n.Penalty, n.PaidAmount,
                     n.RetainedAmount, n.RefundAmount, n.DisputeStatus, n.DisputeReason, n.DisputedAt, n.ResolutionNote }).FirstOrDefault(),
@@ -91,6 +92,7 @@ public sealed partial class HostHomestaysController
                         r.ExtraGuestFee,
                         r.ExtraChildFee,
                         r.ChildMaxAge,
+                        r.MaxExtraChildren,
                         r.BasePrice
                     }).FirstOrDefault()
                 }).ToList(),
@@ -168,6 +170,7 @@ public sealed partial class HostHomestaysController
                 b.RoomChangeLogs, b.DateChanges, b.Extensions,
                 DaysUntilCheckin = daysUntilCheckIn,
                 UrgencyLevel = urgencyLevel,
+                b.TallChildCount, b.SmallChildCount,
                 b.ExpectedArrivalAt, b.LateArrivalNote, b.NoShow,
                 NoShowDeadline = noShowDeadline,
                 NoShowRisk = noShowDeadline.HasValue && DateTime.UtcNow >= noShowDeadline.Value,
