@@ -66,6 +66,15 @@ if (Uri.TryCreate(connectionString, UriKind.Absolute, out var databaseUri) &&
     }.ConnectionString;
 }
 
+// Neon suspends idle compute and closes idle connections; without this the pool hands out dead sockets
+// ("forcibly closed by the remote host" / read timeouts). No EF retry strategy: the booking flows use
+// user-initiated transactions (advisory locks), which EnableRetryOnFailure does not allow.
+var npgsqlSettings = new Npgsql.NpgsqlConnectionStringBuilder(connectionString);
+npgsqlSettings.KeepAlive = npgsqlSettings.KeepAlive > 0 ? npgsqlSettings.KeepAlive : 30;
+npgsqlSettings.ConnectionIdleLifetime = Math.Min(npgsqlSettings.ConnectionIdleLifetime, 60);
+npgsqlSettings.Timeout = Math.Max(npgsqlSettings.Timeout, 15);
+connectionString = npgsqlSettings.ConnectionString;
+
 /*
  * The connection string is intentionally never logged: it contains credentials.
  * Configure it in the hosting platform's secret/environment-variable settings.

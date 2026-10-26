@@ -1386,6 +1386,192 @@
 .policy-refund-tiers span.no-refund { border-color: #f1d0cd; background: #fff5f4; }
 .policy-refund-tiers span.no-refund strong { color: #b5352c; }
 
+.policy-explain {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 26px;
+}
+
+.policy-explain-card {
+  padding: 22px 24px;
+  border: 1px solid #dce6f4;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.policy-explain-card h3 {
+  margin: 0 0 6px;
+  color: #09275f;
+  font-size: 16px;
+}
+
+.policy-explain-lead {
+  margin: 0 0 14px;
+  color: #64748b;
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.policy-explain-lead b { color: #09275f; }
+
+.policy-tier-list,
+.policy-timeline-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.policy-tier-list li,
+.policy-timeline-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-left: 4px solid #f2b705;
+  border-radius: 10px;
+  background: #fff8e1;
+  font-size: 13px;
+}
+
+.policy-tier-list li span,
+.policy-timeline-list li span { color: #334155; }
+.policy-tier-list li strong,
+.policy-timeline-list li strong { color: #8a6100; font-weight: 700; text-align: right; }
+.policy-tier-list li.tone-full,
+.policy-timeline-list li.tone-full { border-left-color: #16a36b; background: #effbf5; }
+.policy-tier-list li.tone-full strong,
+.policy-timeline-list li.tone-full strong { color: #087a52; }
+.policy-tier-list li.tone-none,
+.policy-timeline-list li.tone-none { border-left-color: #d9473d; background: #fff5f4; }
+.policy-tier-list li.tone-none strong,
+.policy-timeline-list li.tone-none strong { color: #b5352c; }
+
+.policy-timeline-list li em {
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #e8efff;
+  color: #0b4ae6;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 600;
+}
+
+.policy-notes {
+  margin: 14px 0 0;
+  padding-left: 18px;
+  color: #475569;
+  font-size: 12.5px;
+  line-height: 1.65;
+}
+
+.policy-notes b { color: #09275f; }
+
+.policy-estimate-alert {
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #fff5f4;
+  color: #b5352c;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.policy-estimate-note {
+  display: block;
+  margin-top: 12px;
+  color: #7885a0;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.policy-estimate-empty {
+  margin: 8px 0 0;
+  padding: 18px;
+  border: 1px dashed #b9c8e3;
+  border-radius: 12px;
+  color: #53647d;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.policy-more {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.policy-more details {
+  padding: 18px 20px;
+  border: 1px solid #dce6f4;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.policy-more summary {
+  color: #09275f;
+  font-size: 14.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.policy-more ul {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  color: #475569;
+  font-size: 12.5px;
+  line-height: 1.65;
+}
+
+.policy-more ul b { color: #09275f; }
+
+.policy-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  margin-top: 20px;
+}
+
+.policy-footer small {
+  color: #7885a0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.policy-full-btn {
+  flex-shrink: 0;
+  padding: 10px 18px;
+  border: 1px solid #0b4ae6;
+  border-radius: 999px;
+  background: #fff;
+  color: #0b4ae6;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.policy-full-btn:hover { background: #0b4ae6; color: #fff; }
+
+@media(max-width:1050px) {
+  .policy-more { grid-template-columns: 1fr; }
+}
+
+@media(max-width:800px) {
+  .policy-explain { grid-template-columns: 1fr; }
+  .policy-explain-card { padding: 18px 16px; }
+  .policy-tier-list li,
+  .policy-timeline-list li { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .policy-tier-list li strong,
+  .policy-timeline-list li strong { text-align: left; }
+  .policy-footer { flex-direction: column; align-items: stretch; }
+}
+
 @media(max-width:700px) {
   .detail-content > .policy-section {
     padding: 28px 16px 30px;
