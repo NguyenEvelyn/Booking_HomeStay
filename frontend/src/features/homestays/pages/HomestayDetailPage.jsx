@@ -9,7 +9,7 @@ import { readFavoriteIds, toggleFavoriteId } from '../../../shared/utils/favorit
 import { bookingApi } from '../../bookings/api/bookingApi.js';
 import { findMissingCompanionIndex } from './bookingGuestValidation.js';
 import HomestayPolicyModal from './HomestayPolicyModal.jsx';
-import { cancellationHeadline, cancellationTimeline, describeCancellationTiers, describeDeposit, describeLateCheckout, describeNoShow, estimateRefund, vietnamToday } from './policyExplain.js';
+import HomestayPolicySection from './HomestayPolicySection.jsx';
 import pineHomestayImage from '../../../../assets/f6cd6879081dc8e8d4ff18669308ea86.jpg';
 import azureHomestayImage from '../../../../assets/ecf184f6b6cd2b6e2aa898ff3195ab7e.jpg';
 import sunsetHomestayImage from '../../../../assets/2fc6b619bb0af3dc94971c099d25bbae.jpg';
@@ -230,6 +230,12 @@ const groupNightlyPrices = (nights = []) => {
     .filter((night) => night.date >= run.start && night.date <= run.end)
     .map((night) => ({ start: night.date, end: night.date, count: 1, price: Number(night.price ?? night.finalPrice ?? night.basePrice ?? 0), label: night.label || '', isSpecial: Boolean(night.isSpecial), isHigher: Boolean(night.isHigherThanDefault), grouped: false })));
 };
+// Short nightly price for a calendar cell: 560K, 1,06tr.
+const compactPrice = (value) => {
+  const amount = Number(value) || 0;
+  if (amount >= 1_000_000) return `${(Math.round(amount / 10_000) / 100).toLocaleString('vi-VN')}tr`;
+  return `${Math.round(amount / 1000)}K`;
+};
 const calendarDays = (year, month) => {
   const firstWeekday = (new Date(year, month, 1).getDay() + 6) % 7;
   const first = new Date(year, month, 1 - firstWeekday);
@@ -239,7 +245,7 @@ const calendarDays = (year, month) => {
   });
 };
 
-export default function HomestayDetailPage({ id, initialSearch, user, onOpenHomestay, onHome, onBack, onBookings, onFavorites, onAccount, onChangePassword, onLogout, onDeveloping, refreshKey = 0 }) {
+export default function HomestayDetailPage({ id, initialSearch, user, onOpenHomestay, onHome, onBack, onBookings, accountLinks, onFavorites, onAccount, onChangePassword, onLogout, onDeveloping, refreshKey = 0 }) {
   const [data, setData] = useState(null);
   const [policy, setPolicy] = useState(null);
   const [error, setError] = useState('');
@@ -302,8 +308,15 @@ export default function HomestayDetailPage({ id, initialSearch, user, onOpenHome
   const [appliedVoucherCode, setAppliedVoucherCode] = useState('');
   const [showCancellationPolicy, setShowCancellationPolicy] = useState(false);
   const [showPolicyModal, setShowPolicyModal] = useState(false);
-  // Policy details start expanded on wide screens and collapsed on phones to keep the page short.
-  const [policyDetailsOpen] = useState(() => typeof window === 'undefined' || !window.matchMedia || window.matchMedia('(min-width: 801px)').matches);
+  // The homestay's own host cannot book it as a guest (BookingRules.IsOwnHomestay); they book for guests from the dashboard.
+  const [isOwnHomestay, setIsOwnHomestay] = useState(false);
+  useEffect(() => {
+    if (user?.role !== 'Host') { setIsOwnHomestay(false); return undefined; }
+    let active = true;
+    homestayApi.ownership(id).then((result) => { if (active) setIsOwnHomestay(Boolean(result?.isOwner)); }).catch(() => {});
+    return () => { active = false; };
+  }, [id, user?.role]);
+  const [activePolicyTile, setActivePolicyTile] = useState(null);
   useEffect(() => {
     const count = Math.max(0, adultCount + childCount - 1);
     setCompanions((current) => Array.from({ length: count }, (_, index) => current[index] || {
@@ -426,7 +439,7 @@ export default function HomestayDetailPage({ id, initialSearch, user, onOpenHome
 
   useEffect(() => {
     const sameDayUse = arrival && departure === arrival && policy?.document?.dayUse?.enabled;
-    if (!selectedRoom?.id || !arrival || !departure || (departure < arrival) || (departure === arrival && !sameDayUse)) {
+    if (isOwnHomestay || !selectedRoom?.id || !arrival || !departure || (departure < arrival) || (departure === arrival && !sameDayUse)) {
       setPriceQuote(null);
       setQuoteLoading(false);
       return undefined;
@@ -465,7 +478,7 @@ export default function HomestayDetailPage({ id, initialSearch, user, onOpenHome
       active = false;
       window.clearTimeout(timer);
     };
-  }, [selectedRoom?.id, arrival, departure, adultCount, childCount, smallChildCount, roomQuantity, dayUseHours, paymentOption, appliedVoucherCode, policy?.document?.dayUse?.enabled, refreshKey]);
+  }, [selectedRoom?.id, arrival, departure, adultCount, childCount, smallChildCount, roomQuantity, dayUseHours, paymentOption, appliedVoucherCode, policy?.document?.dayUse?.enabled, refreshKey, isOwnHomestay]);
 
   useEffect(() => {
     if (!selectedRoom?.id) { setRoomCalendarData(null); return undefined; }
@@ -652,6 +665,19 @@ export default function HomestayDetailPage({ id, initialSearch, user, onOpenHome
   const quotedChildFeeTotal = priceQuote?.extraChildFee ?? childFeeTotal;
   const quotedGrandTotal = priceQuote?.total ?? bookingGrandTotal;
   const maximumRooms = Math.max(1, selectedRoomAvailableCount ?? selectedRoom?.availableRoomCount ?? 1);
+  // A room type with a single physical room never offers a room-count choice.
+  const singleRoomType = roomCalendarData?.totalRooms === 1;
+  // Occupancy summary in the height-based terms of OccupancyRules; fees are only mentioned when they exist.
+  const capacityNote = selectedRoom ? (() => {
+    const extraChildren = selectedRoom.maxExtraChildren ?? 0;
+    const extraAdults = selectedRoom.extraGuestAllowed ? Math.max(0, selectedRoom.maxCapacity - selectedRoom.baseCapacity) : 0;
+    const parts = [`Giá gồm ${selectedRoom.baseCapacity} khách/phòng (người lớn và trẻ từ 1m2). Trẻ dưới 1m2 miễn phí, không tính vào sức chứa.`];
+    if (extraChildren > 0) parts.push(`Nhận thêm tối đa ${extraChildren} trẻ em/phòng${Number(selectedRoom.extraChildFee) > 0 ? `, trẻ từ 1m2 ở thêm phụ thu ${money(selectedRoom.extraChildFee)}/đêm` : ', không phụ thu'}.`);
+    parts.push(extraAdults > 0
+      ? `Người lớn ở thêm tối đa ${extraAdults} người/phòng${Number(selectedRoom.extraGuestFee) > 0 ? `, phụ thu ${money(selectedRoom.extraGuestFee)}/đêm` : ', không phụ thu'}.`
+      : singleRoomType ? 'Đoàn đông hơn vui lòng chọn loại phòng lớn hơn.' : 'Người lớn vượt sức chứa cần đặt thêm phòng hoặc chọn phòng lớn hơn.');
+    return parts.join(' ');
+  })() : '';
   const maximumAdults = selectedRoom ? (selectedRoom.extraGuestAllowed ? selectedRoom.maxCapacity : selectedRoom.baseCapacity) * roomQuantity : 1;
   const maximumGuests = selectedRoom ? maximumAdults + (selectedRoom.maxExtraChildren ?? 2) * roomQuantity : 1;
   // Switch to a suggested room type/quantity while keeping the party the guest entered.
@@ -770,7 +796,7 @@ export default function HomestayDetailPage({ id, initialSearch, user, onOpenHome
       input?.focus({ preventScroll: true });
     };
     return <main className="payment-page">
-      <CustomerNav active="homestays" user={user} onHome={onHome} onHomestays={onBack} onBookings={onBookings} onFavorites={onFavorites} onAccount={onAccount} onChangePassword={onChangePassword} onLogout={onLogout} />
+      <CustomerNav active="homestays" user={user} onHome={onHome} onHomestays={onBack} onBookings={onBookings} onFavorites={onFavorites} onAccount={onAccount} onChangePassword={onChangePassword} onLogout={onLogout} {...accountLinks} />
       <div className={`payment-countdown ${paymentSecondsLeft <= 60 ? 'urgent' : ''}`} role="timer" aria-live="polite"><span>{paymentSecondsLeft > 0 ? 'Chúng tôi đang giữ giá cho quý khách...' : 'Thời gian giữ giá đã hết'}</span><i>◷</i><strong>{countdown}</strong></div>
       <nav className="room-breadcrumb" aria-label="Đường dẫn trang"><button onClick={onHome}>Trang chủ</button><span>›</span><button onClick={onBack}>Homestay</button><span>›</span><button onClick={() => setShowPaymentPage(false)}>{selectedRoom.name}</button><span>›</span><strong>Thanh toán</strong></nav>
       <section className="payment-shell">
@@ -827,15 +853,47 @@ export default function HomestayDetailPage({ id, initialSearch, user, onOpenHome
           </div>
           <aside className="payment-summary" aria-live="polite">
             <h2>Chi tiết thanh toán</h2>
-            {priceQuote?.deal&&<div className="payment-deal" role="note"><b>🔥 Deal phút chót −{priceQuote.deal.discountPercent}%</b><small>Còn {priceQuote.deal.remaining} phòng · ngừng bán {new Date(priceQuote.deal.saleEndsAt).toLocaleString('vi-VN',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit'})}</small><small><b>Giá deal không hoàn tiền khi hủy.</b>{priceQuote.deal.allowVoucher?' Có thể dùng thêm voucher.':' Không áp dụng thêm voucher.'}</small></div>}<div className="payment-voucher"><label htmlFor="voucher-code">Mã voucher</label><div className="inline-search"><input id="voucher-code" disabled={Boolean(priceQuote?.deal&&!priceQuote.deal.allowVoucher)} value={voucherCode} maxLength="50" placeholder="Nhập mã do Tripio phát hành" onChange={e=>setVoucherCode(e.target.value.toUpperCase())}/><button type="button" disabled={!voucherCode.trim()||quoteLoading} onClick={()=>{setBookingError('');setAppliedVoucherCode(voucherCode.trim())}}>Áp dụng</button></div>{priceQuote?.voucherCode&&<small>✓ Đã áp dụng {priceQuote.voucherCode}: {priceQuote.voucherName}</small>}{appliedVoucherCode&&!priceQuote?.voucherCode&&!quoteLoading&&<button type="button" className="policy-link" onClick={()=>{setAppliedVoucherCode('');setVoucherCode('')}}>Bỏ mã voucher</button>}</div>
-            <div><span>{selectedRoom.name} · {isDayUse?`${dayUseHours<=6?dayUseHours:'trên 6'} giờ`:`${bookingNights} đêm`}</span><strong>{money(quotedRoomTotal)}</strong></div>
+            {priceQuote?.deal&&<div className="payment-deal" role="note"><b>🔥 Deal phút chót −{priceQuote.deal.discountPercent}%</b><small>Còn {priceQuote.deal.remaining} phòng · ngừng bán {new Date(priceQuote.deal.saleEndsAt).toLocaleString('vi-VN',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit'})}</small><small><b>Giá deal không hoàn tiền khi hủy.</b>{priceQuote.deal.allowVoucher?' Có thể dùng thêm voucher.':' Không áp dụng thêm voucher.'}</small></div>}            <div><span>{selectedRoom.name} · {isDayUse?`${dayUseHours<=6?dayUseHours:'trên 6'} giờ`:`${bookingNights} đêm`}</span><strong>{money(quotedRoomTotal)}</strong></div>
             {(quotedExtraAdultTotal+quotedChildFeeTotal)>0&&<div><span>Phụ thu khách</span><strong>{money(quotedExtraAdultTotal+quotedChildFeeTotal)}</strong></div>}
-            <div><span>Phí dịch vụ</span><strong>0 đ</strong></div>
             {Number(priceQuote?.discountAmount)>0&&<div><span>{priceQuote?.voucherCode?`Voucher ${priceQuote.voucherCode}`:(priceQuote?.deal?`Deal phút chót ${priceQuote.deal.discountPercent}%`:`Ưu đãi ${priceQuote?.promotionPercent||''}%`)}</span><strong>− {money(priceQuote.discountAmount)}</strong></div>}
             {Number(priceQuote?.taxAmount)>0&&<div><span>Thuế khách hàng ({priceQuote.customerTaxPercent}%)</span><strong>{money(priceQuote.taxAmount)}</strong></div>}
             <hr/>
-            <div><span>Tổng tiền</span><strong>{money(quotedGrandTotal)}</strong></div>
-            <div className="payment-due"><span>Cần thanh toán hôm nay</span><strong>{money(paymentOption==='Full'?quotedGrandTotal:(priceQuote?.depositAmount??quotedGrandTotal*.3))}</strong>{paymentOption==='Deposit'&&<small>Còn lại trả tại homestay: {money(quotedGrandTotal-(priceQuote?.depositAmount??quotedGrandTotal*.3))}</small>}</div>
+            <div className="payment-grand-total"><span>Tổng tiền</span><strong>{money(quotedGrandTotal)}</strong></div>
+            {(() => {
+              const voucherBlocked = Boolean(priceQuote?.deal && !priceQuote.deal.allowVoucher);
+              const applyVoucher = () => { setBookingError(''); setAppliedVoucherCode(voucherCode.trim()); };
+              const removeVoucher = () => { setAppliedVoucherCode(''); setVoucherCode(''); };
+              if (priceQuote?.voucherCode) return <div className="pay-voucher applied">
+                <i aria-hidden="true">%</i>
+                <span><b>{priceQuote.voucherCode}</b><small>{priceQuote.voucherName} · đã giảm {money(priceQuote.discountAmount)}</small></span>
+                <button type="button" onClick={removeVoucher}>Bỏ mã</button>
+              </div>;
+              return <div className={`pay-voucher ${voucherBlocked ? 'blocked' : ''}`}>
+                <label htmlFor="voucher-code">Mã giảm giá</label>
+                {voucherBlocked
+                  ? <small>Giá deal phút chót không áp dụng thêm voucher.</small>
+                  : <form className="pay-voucher-input" onSubmit={(event) => { event.preventDefault(); if (voucherCode.trim() && !quoteLoading) applyVoucher(); }}>
+                    <input id="voucher-code" value={voucherCode} maxLength="50" placeholder="Nhập mã, vd. S20VC001" autoComplete="off" onChange={e=>setVoucherCode(e.target.value.toUpperCase())}/>
+                    <button type="submit" disabled={!voucherCode.trim()||quoteLoading}>Áp dụng</button>
+                  </form>}
+                {appliedVoucherCode && !quoteLoading && <button type="button" className="pay-voucher-clear" onClick={removeVoucher}>Bỏ mã {appliedVoucherCode}</button>}
+              </div>;
+            })()}
+            {(() => {
+              const dueNow = paymentOption==='Full' ? quotedGrandTotal : (priceQuote?.depositAmount ?? quotedGrandTotal*.3);
+              const remaining = Math.max(0, quotedGrandTotal - dueNow);
+              const share = quotedGrandTotal > 0 ? Math.min(100, Math.round(dueNow * 100 / quotedGrandTotal)) : 100;
+              return <div className="pay-due">
+                <div className="pay-due-row now">
+                  <span>{paymentOption==='Full' ? 'Thanh toán toàn bộ hôm nay' : `Thanh toán hôm nay · cọc ${Number(priceQuote?.depositPercent ?? share)}%`}</span>
+                  <strong>{money(dueNow)}</strong>
+                </div>
+                <div className="pay-due-bar" role="img" aria-label={`Trả trước ${share}% tổng tiền`}><i style={{ width: `${share}%` }} /></div>
+                {paymentOption==='Full'
+                  ? <small>Không còn khoản nào phải trả tại homestay.</small>
+                  : <div className="pay-due-row later"><span>Thanh toán còn lại tại homestay</span><strong>{money(remaining)}</strong></div>}
+              </div>;
+            })()}
             <div className="payment-readiness" role="status">
               <strong>Trước khi thanh toán</strong>
               {paymentSecondsLeft>0&&(!privacyAccepted||!policyAccepted)&&<p className="payment-readiness-hint">Nút thanh toán sẽ mở sau khi bạn xác nhận các mục còn thiếu bên dưới.</p>}
@@ -868,6 +926,7 @@ export default function HomestayDetailPage({ id, initialSearch, user, onOpenHome
         onAccount={onAccount}
         onChangePassword={onChangePassword}
         onLogout={onLogout}
+        {...accountLinks}
         transparentAtTop={true}
       />
 
@@ -1247,6 +1306,12 @@ export default function HomestayDetailPage({ id, initialSearch, user, onOpenHome
                 </div>
               </article>
               <aside className="room-page-booking booking-card-redesign">
+                {isOwnHomestay ? <div className="own-homestay-notice" role="note">
+                  <i aria-hidden="true">⌂</i>
+                  <b>Đây là homestay của bạn</b>
+                  <p>Chủ homestay không thể tự đặt phòng của mình. Để giữ phòng cho khách, hãy dùng chức năng <strong>Đặt phòng hộ khách</strong> trong trang quản lý.</p>
+                  {accountLinks?.onHostPortal && <button type="button" onClick={accountLinks.onHostPortal}>Mở trang quản lý →</button>}
+                </div> : <>
                 <small className="booking-price-label">GIÁ PHÒNG</small>
                 <div className={`booking-base-price ${hasMultipleNightlyPrices ? 'has-range' : ''}`}>
                   <strong>{priceQuote
@@ -1257,8 +1322,9 @@ export default function HomestayDetailPage({ id, initialSearch, user, onOpenHome
                   <span>/ phòng / đêm</span>
                   {hasMultipleNightlyPrices && <small>Giá thay đổi theo ngày</small>}
                 </div>
-                <p className={`booking-availability ${selectedRoomAvailableCount === 1 ? 'scarce' : ''}`}><i aria-hidden="true" />{selectedRoomAvailableCount === null
+                <p className={`booking-availability ${selectedRoomAvailableCount === 1 && !singleRoomType ? 'scarce' : ''}`}><i aria-hidden="true" />{selectedRoomAvailableCount === null
                   ? 'Chọn ngày để kiểm tra phòng trống'
+                  : singleRoomType ? (selectedRoomAvailableCount > 0 ? 'Phòng còn trống trong ngày đã chọn' : 'Phòng đã kín trong ngày đã chọn')
                   : selectedRoomAvailableCount === 1 ? 'Chỉ còn 1 phòng' : `Còn ${selectedRoomAvailableCount} phòng`}</p>
                 <button type="button" className="booking-date-trigger" onClick={() => setCalendarOpen((open) => !open)}>
                   <span><small>NGÀY NHẬN</small><b>{arrival ? formatDateVN(arrival) : 'Chọn ngày'}</b></span>
@@ -1277,21 +1343,28 @@ export default function HomestayDetailPage({ id, initialSearch, user, onOpenHome
                     const booked = isBookedDate(item.value); const past = item.value < todayValue;
                     const selected = item.value === arrival || item.value === departure;
                     const inRange = arrival && departure && item.value > arrival && item.value < departure;
+                    const dayInfo = roomCalendarData?.dailyStatus?.[item.value];
+                    const showPrice = item.current && !past && !booked && dayInfo?.price != null;
                     return <button type="button" key={item.value} disabled={!item.current || past || booked}
                       className={`${booked ? 'booked' : 'available'} ${selected ? 'selected' : ''} ${inRange ? 'in-range' : ''}`}
-                      onClick={() => chooseCalendarDate(item.value)}>{item.day}</button>;
+                      title={showPrice ? `${formatDateVN(item.value)}: ${money(dayInfo.price)}/đêm${dayInfo.label ? ` · ${dayInfo.label}` : ''}` : undefined}
+                      onClick={() => chooseCalendarDate(item.value)}>
+                      <span className="calendar-day-number">{item.day}</span>
+                      {showPrice && <small className={`calendar-day-price ${dayInfo.isSpecial ? (dayInfo.isHigher ? 'higher' : 'lower') : ''}`}>{compactPrice(dayInfo.price)}</small>}
+                    </button>;
                   })}</div>
                   <footer><span><i className="available" /> Còn trống</span><span><i className="booked" /> Đã kín</span><span><i className="selected" /> Đang chọn</span></footer>
+                  {roomCalendarData?.dailyStatus && <p className="calendar-price-note">Giá 1 phòng/đêm, chưa gồm ưu đãi · <span className="higher">cam</span>: cao hơn giá thường · <span className="lower">xanh</span>: thấp hơn</p>}
                 </div>}
                 {isDayUse&&<div className="day-use-duration"><div><b>Thời lượng sử dụng</b><small>Trong khung {String(policy.document.dayUse.from).slice(0,5)}–{String(policy.document.dayUse.to).slice(0,5)}</small></div><select aria-label="Thời lượng đặt phòng trong ngày" value={dayUseHours} onChange={e=>setDayUseHours(Number(e.target.value))}><option value="3">Tối đa 3 giờ · {policy.document.dayUse.upToThreeHoursPercent}%</option><option value="6">Tối đa 6 giờ · {policy.document.dayUse.upToSixHoursPercent}%</option><option value="9">Trên 6 giờ · {policy.document.dayUse.overSixHoursPercent}%</option></select></div>}
                 <div className="booking-steppers">
                   <BookingStepper label="Người lớn" description="Từ 12 tuổi" value={adultCount} min={1} max={Math.max(1,maximumAdults)} onChange={(value)=>{setAdultCount(value);setBookingError('')}}/>
-                  <BookingStepper label="Trẻ em cao từ 1m2" description={`Dưới 12 tuổi · tính vào sức chứa, vượt thì phụ thu ${money(selectedRoom?.extraChildFee || 0)}/đêm`} value={tallChildCount} min={0} max={Math.max(0,maximumGuests-adultCount-smallChildCount)} onChange={(value)=>{setChildCount(value+smallChildCount);setBookingError('')}}/>
+                  <BookingStepper label="Trẻ em cao từ 1m2" description={Number(selectedRoom?.extraChildFee) > 0 ? `Dưới 12 tuổi · tính vào sức chứa, ở thêm phụ thu ${money(selectedRoom.extraChildFee)}/đêm` : 'Dưới 12 tuổi · tính vào sức chứa'} value={tallChildCount} min={0} max={Math.max(0,maximumGuests-adultCount-smallChildCount)} onChange={(value)=>{setChildCount(value+smallChildCount);setBookingError('')}}/>
                   <BookingStepper label="Trẻ em dưới 1m2" description="Miễn phí, không tính vào sức chứa" value={smallChildCount} min={0} max={Math.max(0,maximumGuests-adultCount-tallChildCount)} onChange={(value)=>{setSmallChildCount(value);setChildCount(tallChildCount+value);setBookingError('')}}/>
-                  <BookingStepper label="Số phòng" description={selectedRoomAvailableCount==null?'Chọn ngày để kiểm tra':`Tối đa ${maximumRooms} phòng còn trống`} value={roomQuantity} min={1} max={maximumRooms} onChange={(quantity)=>{setRoomQuantity(quantity);const allowed=(selectedRoom.extraGuestAllowed?selectedRoom.maxCapacity:selectedRoom.baseCapacity)*quantity;setAdultCount(value=>Math.max(1,Math.min(value,allowed)));setChildCount(value=>Math.min(value,Math.max(0,allowed-adultCount)));setBookingError('')}}/>
+                  {!singleRoomType && <BookingStepper label="Số phòng" description={selectedRoomAvailableCount==null?'Chọn ngày để kiểm tra':`Tối đa ${maximumRooms} phòng còn trống`} value={roomQuantity} min={1} max={maximumRooms} onChange={(quantity)=>{setRoomQuantity(quantity);const allowed=(selectedRoom.extraGuestAllowed?selectedRoom.maxCapacity:selectedRoom.baseCapacity)*quantity;setAdultCount(value=>Math.max(1,Math.min(value,allowed)));setChildCount(value=>Math.min(value,Math.max(0,allowed-adultCount)));setBookingError('')}}/>}
                   {occupancyIssue && <div className="occupancy-suggestions" role="alert"><b>{occupancyIssue.message}</b>{occupancyIssue.suggestions.length === 0 ? <small>Hiện không còn phòng phù hợp cho đoàn trong những ngày này.</small> : occupancyIssue.suggestions.map((x) => <button type="button" key={`${x.kind}-${x.roomTypeId}-${x.quantity}`} onClick={() => chooseSuggestion(x)}><span>{x.kind === 'ChangeRoom' ? 'Đổi sang' : x.kind === 'AddRoom' ? `Đặt ${x.quantity} phòng` : 'Homestay khác:'} <b>{x.kind === 'OtherHomestay' ? `${x.homestayName} · ${x.roomTypeName}` : x.roomTypeName}</b></span><small>{x.capacity} người/phòng{x.maxExtraChildren > 0 ? ` + ${x.maxExtraChildren} trẻ ở thêm` : ''} · {money(x.basePrice)}/đêm/phòng{x.kind !== 'OtherHomestay' && x.nightlyDifference > 0 ? ` (thêm ${money(x.nightlyDifference)}/đêm)` : ''}</small></button>)}</div>}
                 </div>
-                <div className="capacity-note"><i aria-hidden="true">i</i><span>Giá gồm {selectedRoom.baseCapacity} khách/phòng; tối đa {selectedRoom.extraGuestAllowed?selectedRoom.maxCapacity:selectedRoom.baseCapacity} khách/phòng, bao gồm cả trẻ em.{selectedRoom.extraGuestAllowed&&selectedRoom.maxCapacity>selectedRoom.baseCapacity?` Phụ thu người lớn ${money(selectedRoom.extraGuestFee)}, trẻ em 0–${selectedRoom.childMaxAge??11} tuổi ${money(selectedRoom.extraChildFee)}/đêm.`:''}</span></div>
+                <div className="capacity-note"><i aria-hidden="true">i</i><span>{capacityNote}</span></div>
                 {(bookingNights > 0 || isDayUse) && (
                   <div className={`booking-price-breakdown ${quoteLoading?'is-loading':''}`} aria-live="polite" aria-busy={quoteLoading}>
                     {quoteLoading&&<div className="quote-loading"><i/> Đang cập nhật giá…</div>}
@@ -1317,11 +1390,11 @@ export default function HomestayDetailPage({ id, initialSearch, user, onOpenHome
                     <div className="booking-total"><span>Tổng cộng{averageNightlyPrice > 0 && <small>Trung bình ~{money(Math.round(averageNightlyPrice))}/đêm</small>}</span><strong>{money(quotedGrandTotal)}</strong></div>
                     <small>Đã bao gồm các khoản phí hiển thị</small>
                     <div className="guest-tax-note"><i aria-hidden="true">i</i><span>Thuế khách hàng được tính theo tỷ lệ do Admin cấu hình và đã bao gồm trong tổng tiền.</span></div>
-                    <button type="button" className="cancellation-policy-link" onClick={()=>document.getElementById('policy')?.scrollIntoView({behavior:'smooth'})}>Chính sách hủy phòng</button>
+                    <button type="button" className="cancellation-policy-link" onClick={()=>{setActivePolicyTile('cancel');document.getElementById('policy')?.scrollIntoView({behavior:'smooth'})}}>Chính sách hủy phòng</button>
                   </div>
                 )}
                 {bookingError && <div className="booking-error" role="alert">⚠ {bookingError}</div>}
-                <div className="booking-summary-line">{adultCount} người lớn{childCount?` · ${childCount} trẻ em`:''} · {roomQuantity} phòng · {isDayUse?`${dayUseHours<=6?dayUseHours:'trên 6'} giờ trong ngày`:`${bookingNights||0} đêm`}</div>
+                <div className="booking-summary-line">{adultCount} người lớn{childCount?` · ${childCount} trẻ em`:''}{singleRoomType?'':` · ${roomQuantity} phòng`} ·{isDayUse?`${dayUseHours<=6?dayUseHours:'trên 6'} giờ trong ngày`:`${bookingNights||0} đêm`}</div>
                 <button
                   className="booking-primary-action"
                   type="button"
@@ -1331,165 +1404,14 @@ export default function HomestayDetailPage({ id, initialSearch, user, onOpenHome
                   {quoteLoading?'Đang cập nhật giá…':!hasValidStayDates?'Chọn ngày để kiểm tra':isDayUse?'Đặt phòng trong ngày':(selectedRoomAvailableCount > 0?'Tiếp tục thanh toán →':'Phòng đã hết trong ngày đã chọn')}
                 </button>
                 <em className="booking-reassurance">♢ Chưa phát sinh giao dịch ở bước này</em>
+                </>}
               </aside>
             </div>
           </section>
         )}
 
-        <section id="policy" className="detail-box policy-section">
-          <header className="section-title">
-            <small>THÔNG TIN CẦN BIẾT</small>
-            <h2>Chính sách homestay</h2>
-          </header>
-          <div className="policy-grid">
-            <article className="policy-time-card policy-checkin-card">
-              <i><Icon name="clock" size={24} /></i>
-              <div>
-                <b>Nhận phòng</b>
-                <strong>Từ {data.checkInTime.slice(0, 5)}</strong>
-                <small>Mang CCCD/hộ chiếu; mọi khách, kể cả trẻ em, đều phải khai báo lưu trú</small>
-              </div>
-            </article>
-            <article className="policy-time-card policy-checkout-card">
-              <i><Icon name="clock" size={24} /></i>
-              <div>
-                <b>Trả phòng</b>
-                <strong>Trước {data.checkOutTime.slice(0, 5)}</strong>
-                <small>{policy?.lateCheckoutTiers?.length ? 'Trả phòng trễ tính phụ phí theo số giờ, xem bên dưới' : 'Vui lòng trả phòng đúng giờ để chủ nhà kịp dọn phòng'}</small>
-              </div>
-            </article>
-            <article className="policy-cancellation-card">
-              <i><Icon name="fileText" size={24} /></i>
-              <div>
-                <b>Hủy phòng</b>
-                <strong>{cancellationHeadline(policy?.cancellationTiers)}</strong>
-                <small>Hoàn theo % số tiền bạn đã thanh toán, càng hủy sớm càng được hoàn nhiều</small>
-              </div>
-            </article>
-            <article className="policy-rules-card">
-              <i><Icon name="shield" size={24} /></i>
-              <div>
-                <b>Quy định chung</b>
-                <ul>
-                  <li>{policy?.document?.houseRules?.smokingInRoomAllowed ? 'Cho phép hút thuốc theo khu vực quy định' : 'Không hút thuốc trong phòng'}</li>
-                  <li>{policy?.document?.pets?.allowed ? `Cho phép tối đa ${policy.document.pets.maximumPerRoom} thú cưng/phòng · ${money(policy.document.pets.feePerNight)}/đêm` : 'Không mang thú cưng'}</li>
-                  <li>Giữ yên tĩnh từ {String(policy?.document?.houseRules?.quietHoursFrom || '22:00').slice(0,5)} đến {String(policy?.document?.houseRules?.quietHoursTo || '07:00').slice(0,5)}</li>
-                  <li>{policy?.document?.houseRules?.partiesRequireApproval === false ? 'Không tổ chức tiệc, sự kiện' : 'Tiệc, sự kiện cần chủ nhà duyệt trước'}</li>
-                </ul>
-              </div>
-            </article>
-            {policy?.document?.dayUse?.enabled && <article className="day-use-policy-card">
-              <i><Icon name="calendar" size={24} /></i>
-              <div>
-                <b>Đặt và trả trong ngày</b>
-                <strong>{String(policy.document.dayUse.from).slice(0,5)} – {String(policy.document.dayUse.to).slice(0,5)}</strong>
-                <ul>
-                  <li>Tối đa 3 giờ: {policy.document.dayUse.upToThreeHoursPercent}% giá phòng/đêm</li>
-                  <li>Tối đa 6 giờ: {policy.document.dayUse.upToSixHoursPercent}% giá phòng/đêm</li>
-                  <li>Trên 6 giờ: {policy.document.dayUse.overSixHoursPercent}% giá phòng/đêm</li>
-                  <li>Đặt cọc {policy.document.dayUse.depositPercent}%; hủy theo bảng hoàn tiền bên dưới, không tự hủy được trong ngày sử dụng</li>
-                </ul>
-              </div>
-            </article>}
-          </div>
-
-          {policy && (() => {
-            const dealActive = Boolean(priceQuote?.deal);
-            const effectiveTiers = dealActive ? [{ minimumDays: 0, maximumDays: null, refundPercent: 0 }] : policy.cancellationTiers;
-            const today = vietnamToday();
-            const timeline = hasValidStayDates ? cancellationTimeline(effectiveTiers, arrival, today) : [];
-            const paidNow = priceQuote?.amountDueNow;
-            const deposit = describeDeposit(policy, priceQuote, isDayUse);
-            const noShow = describeNoShow(policy.document?.noShow, data.checkInTime);
-            const lateRows = describeLateCheckout(policy.lateCheckoutTiers);
-            const refundDays = policy.document?.payment;
-            const rangeLabel = (entry) => entry.from === entry.to ? formatDateVN(entry.from) : `${formatDateVN(entry.from)} – ${formatDateVN(entry.to)}`;
-            return <>
-              <div className="policy-explain">
-                <article className="policy-explain-card">
-                  <h3>Hủy phòng & hoàn tiền</h3>
-                  <p className="policy-explain-lead">Số ngày tính bằng ngày nhận phòng trừ ngày bạn hủy (theo giờ Việt Nam).</p>
-                  <ol className="policy-tier-list" aria-label="Các mức hoàn tiền khi hủy phòng">
-                    {describeCancellationTiers(policy.cancellationTiers).map((row) => (
-                      <li key={row.label} className={`tone-${row.tone}`}>
-                        <span>{row.label}</span>
-                        <strong>{row.result}</strong>
-                      </li>
-                    ))}
-                  </ol>
-                  <ul className="policy-notes">
-                    <li>% hoàn tính trên <b>số tiền bạn đã thanh toán</b> (tiền cọc hoặc toàn bộ), không phải trên tổng giá phòng.</li>
-                    <li>Bạn tự hủy được trên ứng dụng đến hết ngày trước ngày nhận phòng; trong ngày nhận phòng vui lòng liên hệ chủ nhà.</li>
-                    <li>Giá deal phút chót <b>không hoàn tiền</b> khi hủy.</li>
-                    {refundDays && <li>Tiền hoàn về tài khoản thanh toán ban đầu trong {refundDays.refundProcessingMinimumBusinessDays}–{refundDays.refundProcessingMaximumBusinessDays} ngày làm việc.</li>}
-                  </ul>
-                </article>
-
-                <article className="policy-explain-card policy-estimate-card">
-                  <h3>Tính thử theo ngày bạn chọn</h3>
-                  {timeline.length ? <>
-                    <p className="policy-explain-lead">
-                      Nhận phòng <b>{formatDateVN(arrival)}</b>
-                      {paidNow != null && <> · thanh toán khi đặt <b>{money(paidNow)}</b> ({priceQuote.paymentOption === 'Full' ? 'toàn bộ' : `cọc ${Number(priceQuote.depositPercent)}%`})</>}
-                    </p>
-                    {dealActive && <p className="policy-estimate-alert">Bạn đang chọn giá deal phút chót: hủy vào bất kỳ ngày nào cũng không được hoàn tiền.</p>}
-                    <ol className="policy-timeline-list">
-                      {timeline.map((entry) => entry.checkInDay ? (
-                        <li key="check-in" className="tone-none">
-                          <span>{formatDateVN(entry.from)} <em>ngày nhận phòng</em></span>
-                          <strong>Không tự hủy được; nếu không đến, áp dụng quy định không đến nhận phòng</strong>
-                        </li>
-                      ) : (
-                        <li key={entry.from} className={`tone-${entry.tone}`}>
-                          <span>{rangeLabel(entry)}{entry.isToday && <em>gồm hôm nay</em>}</span>
-                          <strong>
-                            {entry.refundPercent >= 100 ? 'Hoàn 100%' : entry.refundPercent <= 0 ? 'Không hoàn tiền' : `Hoàn ${entry.refundPercent}%`}
-                            {paidNow != null && entry.refundPercent > 0 && <> · ≈ {money(estimateRefund(paidNow, entry.refundPercent))}</>}
-                          </strong>
-                        </li>
-                      ))}
-                    </ol>
-                    <small className="policy-estimate-note">Số tiền là ước tính theo báo giá hiện tại; khi đặt, chính sách được lưu lại cùng đơn và dùng để tính tiền hoàn thực tế.</small>
-                  </> : <p className="policy-estimate-empty">Chọn ngày nhận phòng ở khung đặt phòng để xem bạn được hủy miễn phí đến ngày nào và được hoàn bao nhiêu nếu hủy muộn hơn.</p>}
-                </article>
-              </div>
-
-              <div className="policy-more">
-                <details open={policyDetailsOpen}>
-                  <summary>Thanh toán & giữ phòng</summary>
-                  <ul>
-                    <li>Sau khi bấm đặt, phòng được giữ <b>{policy.holdMinutes} phút</b> để bạn thanh toán. Quá thời gian này đơn tự hết hiệu lực, bạn có thể đặt lại.</li>
-                    {deposit && (deposit.fromQuote
-                      ? <li>Phòng bạn chọn cần đặt cọc <b>{deposit.percent}%</b> tổng tiền, hoặc bạn có thể thanh toán toàn bộ.</li>
-                      : <li>Đặt cọc từ <b>{deposit.percent}%</b> tổng tiền, hoặc thanh toán toàn bộ. Một số loại phòng, biệt thự nguyên căn hoặc dịp lễ có thể yêu cầu cọc cao hơn; con số chính xác hiện trong báo giá.</li>)}
-                    <li>Giá cuối cùng là giá trong báo giá khi bạn bấm đặt (đã gồm phụ thu cuối tuần/lễ, phụ thu thêm người và ưu đãi).</li>
-                  </ul>
-                </details>
-                <details open={policyDetailsOpen}>
-                  <summary>Không đến nhận phòng</summary>
-                  <ul>
-                    <li>Nếu đến <b>{noShow.deadline}</b> ngày nhận phòng (giờ nhận phòng + {noShow.graceHours} giờ) bạn chưa đến và chưa hủy, chủ nhà có thể giải phóng phòng.</li>
-                    <li>Đến muộn? Báo giờ đến dự kiến trong đơn (chậm nhất 06:00 sáng hôm sau) để được giữ phòng thêm.</li>
-                    <li>Khi bị tính là không đến: chủ nhà giữ lại {noShow.penalty}; phần đã trả còn lại được hoàn {noShow.remainingRefundPercent}%.</li>
-                    <li>Bạn có 48 giờ để khiếu nại nếu không đồng ý với quyết định của chủ nhà.</li>
-                  </ul>
-                </details>
-                {lateRows.length > 0 && <details open={policyDetailsOpen}>
-                  <summary>Trả phòng trễ</summary>
-                  <ul>
-                    {lateRows.map((row) => <li key={row.label}>{row.label} sau {data.checkOutTime.slice(0, 5)}: <b>{row.fee.type === 'fixed' ? money(row.fee.value) : `${row.fee.value}% giá 1 đêm`}</b></li>)}
-                    <li>{policy.autoApproveLateCheckoutWithoutNextBooking ? 'Yêu cầu trả trễ được tự động duyệt nếu sau đó chưa có khách nhận phòng.' : 'Yêu cầu trả trễ cần chủ nhà duyệt.'}</li>
-                  </ul>
-                </details>}
-              </div>
-
-              <div className="policy-footer">
-                <small>Chính sách trên được lưu kèm đơn tại thời điểm đặt phòng; nếu homestay thay đổi chính sách sau đó, đơn của bạn không bị ảnh hưởng.</small>
-                <button type="button" className="policy-full-btn" onClick={() => setShowPolicyModal(true)}>Xem toàn bộ chính sách →</button>
-              </div>
-            </>;
-          })()}
-        </section>
+        {policy && <HomestayPolicySection data={data} policy={policy} priceQuote={priceQuote} arrival={arrival} hasValidStayDates={hasValidStayDates} isDayUse={isDayUse}
+          activeTile={activePolicyTile} onSelectTile={setActivePolicyTile} onOpenFullPolicy={() => setShowPolicyModal(true)} />}
         <HomestayPolicyModal isOpen={showPolicyModal} onClose={() => setShowPolicyModal(false)} homestayName={data.name} policies={policy} defaultCheckIn={data.checkInTime} defaultCheckOut={data.checkOutTime} />
 
         <section id="reviews" className="detail-box review-section">

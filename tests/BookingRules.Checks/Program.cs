@@ -22,6 +22,23 @@ Check(!BookingRules.CanConfirm("CancellationRequested", start, start, now), "can
 Check(BookingRules.CanCancel("Confirmed", start, today.AddDays(2), today, now), "confirmed future stay may cancel");
 Check(!BookingRules.CanCancel(BookingStatus.Hold, expired, today.AddDays(2), today, now), "expired hold cannot cancel");
 Check(!BookingRules.CanCancel("Confirmed", start, today, today, now), "stay starting today cannot cancel");
+Check(HomestayAuth.Api.Features.News.NewsRules.Slugify("Đà Lạt mùa thấp điểm!") == "da-lat-mua-thap-diem", "news slug drops Vietnamese accents");
+Check(HomestayAuth.Api.Features.News.NewsRules.Slugify("  5 điểm đến -- biển  ") == "5-diem-den-bien", "news slug collapses separators");
+Check(HomestayAuth.Api.Features.News.NewsRules.IsPublic("Published", now.AddMinutes(-1), now)
+    && !HomestayAuth.Api.Features.News.NewsRules.IsPublic("Published", now.AddHours(1), now)
+    && !HomestayAuth.Api.Features.News.NewsRules.IsPublic("Draft", now.AddDays(-1), now), "only due published posts are public");
+Check(HomestayAuth.Api.Features.News.NewsRules.NormalizeEmail(" Khach@Tripio.VN ") == "khach@tripio.vn"
+    && HomestayAuth.Api.Features.News.NewsRules.NormalizeEmail("khong-hop-le") is null
+    && HomestayAuth.Api.Features.News.NewsRules.NormalizeEmail("a b@x.vn") is null, "newsletter email is normalized and validated");
+var confirmedNotice = HomestayAuth.Api.Features.Notifications.NotificationTemplates.BookingConfirmed(7, "TRP1", "Mây Thông House", new DateOnly(2026, 11, 20), new DateOnly(2026, 11, 22));
+Check(confirmedNotice.Email && confirmedNotice.Link?.Type == "Booking" && confirmedNotice.Link.Id == 7
+    && confirmedNotice.Body.Contains("20/11/2026 – 22/11/2026"), "booking confirmed notice links the booking and is emailed");
+Check(HomestayAuth.Api.Features.Notifications.NotificationTemplates.CancelledByHost(7, "TRP1", "Mây Thông", 1_250_000).Body.Contains("1.250.000đ"),
+    "host cancellation notice states the refund in VND");
+Check(HomestayAuth.Api.Features.Notifications.NotificationTemplates.StaffHomestaySubmitted("X").Link?.Extra == "homestays", "staff notice opens the admin tab");
+Check(BookingRules.IsOwnHomestay(42, 42), "host cannot book their own homestay");
+Check(!BookingRules.IsOwnHomestay(42, 7), "host may book another host's homestay");
+Check(!BookingRules.IsOwnHomestay(42, null) && !BookingRules.IsOwnHomestay(42, 0), "anonymous quote is not an own-homestay booking");
 Check(BookingRules.ValidateDates(today.AddDays(1), today.AddDays(2), today) is null, "valid stay dates");
 Check(BookingRules.ValidateDates(today, today, today) is not null, "zero-night stay rejected");
 Check(BookingRules.ValidateGuests(2, 1, 1) is null, "valid guests");

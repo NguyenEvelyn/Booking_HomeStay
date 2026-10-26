@@ -29,7 +29,9 @@ public sealed class HomestayQueryService(AppDbContext db) : IHomestayQueryServic
             query = query.Where(h => EF.Functions.ILike(h.Province, province.Trim()));
 
         var now = DateTime.UtcNow;
-        var futureCheckIn = checkIn.HasValue && checkIn.Value > BookingRules.Today;
+        // A room's current status (Occupied/Cleaning today) only matters for a stay starting today; without dates
+        // or for a future stay every operable room counts, so a busy homestay is not hidden from the catalog.
+        var futureCheckIn = !checkIn.HasValue || checkIn.Value > BookingRules.Today;
         query = query.Where(h => h.RoomTypes.Any(r => r.Status == "Active"
             && ((r.ExtraGuestAllowed ? r.MaxCapacity : r.BaseCapacity) + r.MaxExtraChildren) * rooms >= guests
             && (!maxPrice.HasValue || r.BasePrice <= maxPrice.Value)

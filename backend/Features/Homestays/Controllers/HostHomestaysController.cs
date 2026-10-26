@@ -1,3 +1,4 @@
+using HomestayAuth.Api.Features.Notifications;
 using HomestayAuth.Api.Features.Bookings;
 using System.Security.Claims;
 using System.Text.Json;
@@ -76,7 +77,7 @@ public sealed record HostCheckoutRequest(
 [Route("api/host/homestays")]
 [Authorize(Roles = "Host")]
 public sealed partial class HostHomestaysController(IHomestayQueryService service, AppDbContext db, SupabaseStorageService storage, RoomInventoryService roomInventory, VnPayService vnPay, PaymentService paymentService,
-    OccupancySuggestionService occupancySuggestions) : ControllerBase
+    OccupancySuggestionService occupancySuggestions, NotificationService notifications) : ControllerBase
 {
     private long HostId => long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 

@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './CustomerAccountMenu.css';
+import AccountMenu from './AccountMenu.jsx';
+import NotificationBell from './NotificationBell.jsx';
 
 const logoWhite = '/assets/figma/tripio-logo-white.png';
 
@@ -13,6 +15,11 @@ export default function CustomerNav({
   onAccount,
   onChangePassword,
   onLogout,
+  onHostPortal,
+  onAdminPortal,
+  onRegisterHost,
+  onNotificationLink,
+  onNews,
   transparentAtTop = false,
 }) {
   const [scrolled, setScrolled] = useState(false);
@@ -64,7 +71,7 @@ export default function CustomerNav({
           <button type="button" onClick={() => goHomeSection('stays')}>Địa điểm</button>
           <button type="button" className={active === 'homestays' ? 'active' : ''} onClick={() => navigate(onHomestays)}>Homestay</button>
           <button type="button" onClick={() => goHomeSection('offers')}>Ưu đãi</button>
-          <button type="button" onClick={() => goHomeSection('news')}>Tin tức</button>
+          <button type="button" className={active === 'news' ? 'active' : ''} onClick={() => (onNews ? navigate(onNews) : goHomeSection('news'))}>Tin tức</button>
         </div>
 
         <button
@@ -92,7 +99,7 @@ export default function CustomerNav({
               aria-expanded={accountOpen}
             >
               {user.fullName ? user.fullName.charAt(0).toUpperCase() : 'U'}
-            </button>{accountOpen&&<div className="customer-account-menu" role="menu"><header><span>{user.fullName?.charAt(0).toUpperCase()||'U'}</span><div><b>{user.fullName}</b><small>{user.email}</small></div></header><button role="menuitem" onClick={()=>navigate(onAccount)}>Hồ sơ của tôi</button><button role="menuitem" onClick={()=>navigate(onBookings)}>Đơn đặt phòng</button><button role="menuitem" onClick={()=>navigate(onFavorites)}>Danh sách yêu thích</button><button role="menuitem" onClick={()=>navigate(onChangePassword)}>Đổi mật khẩu</button><button className="logout" role="menuitem" onClick={()=>navigate(onLogout)}>Đăng xuất</button></div>}</div>
+            </button>{accountOpen&&<AccountMenu user={user} onClose={()=>{setAccountOpen(false);setMenuOpen(false)}} onHostPortal={onHostPortal} onAdminPortal={onAdminPortal} onBookings={onBookings} onFavorites={onFavorites} onProfile={onAccount} onChangePassword={onChangePassword} onRegisterHost={onRegisterHost} onLogout={onLogout}/>}</div>
           ) : (
             <button
               type="button"
@@ -107,6 +114,8 @@ export default function CustomerNav({
               </svg>
             </button>
           )}
+
+          {user && <NotificationBell user={user} onNavigate={onNotificationLink} />}
 
           {['Customer', 'Host'].includes(user?.role) && (
             <button

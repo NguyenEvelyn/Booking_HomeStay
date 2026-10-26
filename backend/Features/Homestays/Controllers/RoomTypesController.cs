@@ -1,3 +1,4 @@
+using HomestayAuth.Api.Domain.Entities;
 using HomestayAuth.Api.Features.Bookings;
 using HomestayAuth.Api.Features.Homestays.Services;
 using HomestayAuth.Api.Infrastructure.Persistence;
@@ -8,7 +9,7 @@ namespace HomestayAuth.Api.Features.Homestays.Controllers;
 
 [ApiController]
 [Route("api/room-types")]
-public sealed class RoomTypesController(IHomestayQueryService service, AppDbContext db) : ControllerBase
+public sealed class RoomTypesController(IHomestayQueryService service, AppDbContext db, PolicyService policyService) : ControllerBase
 {
     [HttpGet("{roomTypeId:long}")]
     public async Task<IActionResult> GetDetail(long roomTypeId)
@@ -21,9 +22,9 @@ public sealed class RoomTypesController(IHomestayQueryService service, AppDbCont
     public async Task<IActionResult> GetCalendar(long roomTypeId, [FromQuery] int months = 6)
     {
         months = Math.Clamp(months, 1, 12);
-        var roomTypeExists = await db.RoomTypes.AsNoTracking()
-            .AnyAsync(x => x.Id == roomTypeId && x.Status == "Active" && x.Homestay.Status == "Approved");
-        if (!roomTypeExists) return NotFound(new { message = "Không tìm thấy loại phòng." });
+        var roomType = await db.RoomTypes.AsNoTracking()
+            .SingleOrDefaultAsync(x => x.Id == roomTypeId && x.Status == "Active" && x.Homestay.Status == "Approved");
+        if (roomType is null) return NotFound(new { message = "Không tìm thấy loại phòng." });
 
         var totalRooms = await db.Rooms.AsNoTracking()
             .CountAsync(x => x.RoomTypeId == roomTypeId && BookingRules.InventoryStatuses.Contains(x.Status));
@@ -40,6 +41,11 @@ public sealed class RoomTypesController(IHomestayQueryService service, AppDbCont
             .Select(x => new { x.Booking.CheckInDate, x.Booking.CheckOutDate, Quantity = x.Quantity > 0 ? x.Quantity : 1 })
             .ToListAsync();
 
+        // Nightly price per date, computed like the quote (price periods + seasonal surcharges, before promotions).
+        var pricePeriods = await db.RoomPricePeriods.AsNoTracking()
+            .Where(p => p.RoomTypeId == roomTypeId && p.StartDate <= endDate && p.EndDate >= today).ToListAsync();
+        var document = (await policyService.Resolve(roomType.HomestayId, now)).Document ?? OperationalPolicyDocument.SunriseGardenDefault();
+
         var bookedDates = new List<string>();
         var dailyStatus = new Dictionary<string, object>();
         for (var date = today; date <= endDate; date = date.AddDays(1))
@@ -47,10 +53,12 @@ public sealed class RoomTypesController(IHomestayQueryService service, AppDbCont
             var booked = bookings.Where(x => x.CheckInDate <= date && x.CheckOutDate > date).Sum(x => x.Quantity);
             var available = Math.Max(0, totalRooms - booked);
             if (available == 0) bookedDates.Add(date.ToString("yyyy-MM-dd"));
-            dailyStatus[date.ToString("yyyy-MM-dd")] = new { status = available == 0 ? "booked" : "available", availableRooms = available, totalRooms };
+            var night = BookingPricingService.Night(roomType, date, pricePeriods, document).Line;
+            dailyStatus[date.ToString("yyyy-MM-dd")] = new { status = available == 0 ? "booked" : "available", availableRooms = available, totalRooms,
+                price = night.FinalPrice, night.IsSpecial, isHigher = night.IsHigherThanDefault, night.Label };
         }
 
-        return Ok(new { roomTypeId, totalRooms, bookedDates, dailyStatus });
+        return Ok(new { roomTypeId, totalRooms, basePrice = roomType.BasePrice, bookedDates, dailyStatus });
     }
 }
 

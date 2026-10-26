@@ -12,7 +12,10 @@ export default function HostDealsPage({ rooms = [] }) {
   const [creating, setCreating] = useState(false);
   const roomTypes = useMemo(() => {
     const map = new Map();
-    rooms.forEach(r => { if (!map.has(r.roomTypeId)) map.set(r.roomTypeId, { id: r.roomTypeId, name: r.roomTypeName, homestayName: r.homestayName, basePrice: r.basePrice }); });
+    rooms.forEach(r => {
+      if (!map.has(r.roomTypeId)) map.set(r.roomTypeId, { id: r.roomTypeId, name: r.roomTypeName, homestayName: r.homestayName, basePrice: r.basePrice, roomCount: 0 });
+      if (['Available', 'Occupied', 'Cleaning'].includes(r.status)) map.get(r.roomTypeId).roomCount += 1;
+    });
     return [...map.values()];
   }, [rooms]);
   const load = async () => {
@@ -34,7 +37,15 @@ export default function HostDealsPage({ rooms = [] }) {
         <div><small>SĂN PHÒNG GIÁ RẺ</small><h2>Deal phút chót</h2><p>Bán nhanh phòng còn trống trong 0–3 ngày tới. Deal đang chạy được hiển thị cho khách ở trang chủ và trang homestay.</p></div>
         <button type="button" className="btn-primary-action" disabled={!roomTypes.length} onClick={() => setCreating(true)}><HostIcon name="plus" size={16} /> Tạo deal</button>
       </header>
-      {loading ? <p>Đang tải…</p> : items.length === 0 ? <p>Chưa có deal nào. Khi khách không đến, bạn có thể tạo deal ngay từ đơn đặt phòng.</p> : (
+      {loading ? <p>Đang tải…</p> : items.length === 0 ? (
+        <div className="deal-empty">
+          <b>Chưa có deal nào cho homestay của bạn</b>
+          <p>{roomTypes.length
+            ? 'Còn phòng trống trong 3 ngày tới? Mở bán deal để khách thấy ngay trên trang chủ. Khi khách không đến, bạn cũng có thể tạo deal từ đơn đặt phòng.'
+            : 'Hãy thêm loại phòng và phòng ở mục Homestay & phòng trước khi tạo deal.'}</p>
+          {roomTypes.length > 0 && <button type="button" className="btn-primary-action" onClick={() => setCreating(true)}><HostIcon name="plus" size={16} /> Tạo deal đầu tiên</button>}
+        </div>
+      ) : (
         <div className="host-table-scroll"><table><thead><tr><th>Phòng</th><th>Đêm</th><th>Giá deal</th><th>Đã bán</th><th>Doanh thu</th><th>Ngừng bán</th><th>Trạng thái</th><th></th></tr></thead><tbody>
           {items.map(x => <tr key={x.id}>
             <td><b>{x.roomTypeName}</b><small>{x.homestayName}{x.source === 'NoShow' ? ' · từ đơn không đến' : ''}</small></td>

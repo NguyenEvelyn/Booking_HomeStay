@@ -1,3 +1,4 @@
+using HomestayAuth.Api.Features.Notifications;
 using System.Security.Claims;
 using System.Text.Json;
 using HomestayAuth.Api.Domain.Entities;
@@ -19,7 +20,7 @@ public sealed record NoShowDisputeDecisionRequest(bool Accept, string? Note);
 // room (keeping the penalty, refunding the rest); the guest may dispute within 48 hours; an admin decides.
 [ApiController, Route("api"), Authorize]
 public sealed class NoShowController(AppDbContext db, NoShowService noShows, PaymentService payments,
-    IEmailOtpSender email, ILogger<NoShowController> logger) : ControllerBase
+    IEmailOtpSender email, ILogger<NoShowController> logger, NotificationService notifications) : ControllerBase
 {
     private long UserId => long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
     private string Role => User.FindFirstValue(ClaimTypes.Role) ?? "Customer";
@@ -39,6 +40,8 @@ public sealed class NoShowController(AppDbContext db, NoShowService noShows, Pay
         if (note?.Length > 500) return BadRequest(new { message = "Ghi chú tối đa 500 ký tự." });
         booking.ExpectedArrivalAt = expected; booking.LateArrivalNote = string.IsNullOrEmpty(note) ? null : note; booking.UpdatedAt = DateTime.UtcNow;
         Audit("booking.late_arrival", id, new { expectedArrivalAt = expected, note }, null);
+        await notifications.NotifyHostOfHomestay(booking.HomestayId, NotificationTemplates.LateArrival(booking.Id, booking.BookingCode,
+            booking.ContactName ?? "Khách", TimeZoneInfo.ConvertTimeFromUtc(expected, context.Zone)));
         db.OutboxMessages.Add(new OutboxMessage { Type = "booking.late_arrival", PayloadJson = JsonSerializer.Serialize(new { bookingId = id, booking.BookingCode, expectedArrivalAt = expected }), Status = "Pending", AvailableAt = DateTime.UtcNow, CreatedAt = DateTime.UtcNow });
         await db.SaveChangesAsync(); await tx.CommitAsync();
         var newDeadline = NoShowRules.DeadlineUtc(booking.CheckInDate, context.CheckInTime, context.Zone, context.Policy, expected);
@@ -84,6 +87,7 @@ public sealed class NoShowController(AppDbContext db, NoShowService noShows, Pay
         db.BookingNoShows.Add(new BookingNoShow { BookingId = id, MarkedBy = UserId, MarkedAt = now, ContactNote = note, Penalty = context.Policy.Penalty,
             PaidAmount = context.PaidAmount, RetainedAmount = context.Retained, RefundAmount = context.Refund });
         Audit("booking.no_show", id, new { context.PaidAmount, context.Retained, context.Refund, context.Policy.Penalty, deadline = context.DeadlineUtc }, note);
+        notifications.Notify(booking.CustomerId, NotificationTemplates.NoShowMarked(booking.Id, booking.BookingCode));
         await db.SaveChangesAsync(); await tx.CommitAsync();
 
         await Notify(booking, "Tripio: đơn của bạn đã được ghi nhận không đến nhận phòng",
@@ -108,6 +112,7 @@ public sealed class NoShowController(AppDbContext db, NoShowService noShows, Pay
         if (DateTime.UtcNow > record.MarkedAt.AddHours(NoShowRules.DisputeWindowHours)) return Conflict(new { message = $"Đã quá {NoShowRules.DisputeWindowHours} giờ kể từ khi ghi nhận không đến." });
         record.DisputeStatus = NoShowDisputeStatus.Pending; record.DisputeReason = reason; record.DisputedAt = DateTime.UtcNow;
         Audit("booking.no_show_disputed", id, new { record.RetainedAmount }, reason);
+        await notifications.NotifyStaff(NotificationTemplates.StaffNoShowDispute(await db.Bookings.Where(x => x.Id == id).Select(x => x.BookingCode).SingleAsync()));
         await db.SaveChangesAsync(); await tx.CommitAsync();
         return Ok(new { message = "Đã gửi khiếu nại. Quản trị viên sẽ xem xét và phản hồi qua email." });
     }
@@ -149,6 +154,7 @@ public sealed class NoShowController(AppDbContext db, NoShowService noShows, Pay
             booking.PaymentStatus = PaymentStatus.RefundPending; booking.UpdatedAt = now;
         }
         Audit(request.Accept ? "booking.no_show_dispute_accepted" : "booking.no_show_dispute_rejected", bookingId, new { extraRefund }, note);
+        notifications.Notify(booking.CustomerId, NotificationTemplates.NoShowDisputeResult(booking.Id, booking.BookingCode, request.Accept));
         await db.SaveChangesAsync(); await tx.CommitAsync();
         await Notify(booking, "Tripio: kết quả xử lý khiếu nại đơn không đến",
             request.Accept

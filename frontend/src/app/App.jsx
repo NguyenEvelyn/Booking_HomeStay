@@ -14,6 +14,9 @@ import CustomerProfilePage from '../features/profile/pages/CustomerProfilePage.j
 
 import DevelopmentDialog from '../shared/components/DevelopmentDialog.jsx';
 import ErrorPage from '../shared/components/ErrorPage.jsx';
+import { notificationDestination } from '../shared/utils/notificationLink.js';
+import NewsListPage from '../features/news/pages/NewsListPage.jsx';
+import NewsDetailPage from '../features/news/pages/NewsDetailPage.jsx';
 import '../shared/styles/responsive-audit.css';
 
 export default function App() {
@@ -44,11 +47,15 @@ export default function App() {
    * 'host'     = Bảng điều khiển Host
    * 'admin'    = Bảng quản trị Admin
    */
-  const [view, setView] = useState('home');
+  const [view, setView] = useState(() => new URLSearchParams(window.location.search).get('news') ? 'news-detail' : 'home');
   const [selectedHomestayId, setSelectedHomestayId] = useState(null);
   const [homestaySearch, setHomestaySearch] = useState(null);
   const [paymentResult, setPaymentResult] = useState(null);
   const [catalogVersion, setCatalogVersion] = useState(0);
+  const [newsSlug, setNewsSlug] = useState(() => new URLSearchParams(window.location.search).get('news'));
+  // Tab to open when a notification sends the user to the host/admin dashboard (a new object re-triggers it).
+  const [hostTarget, setHostTarget] = useState(null);
+  const [adminTarget, setAdminTarget] = useState(null);
 
   /* =========================================================
      ERROR PAGE CHECK
@@ -362,6 +369,44 @@ export default function App() {
     setView('detail');
   };
 
+  const openNews = (slug = null) => {
+    setNewsSlug(slug);
+    setView(slug ? 'news-detail' : 'news');
+    window.scrollTo(0, 0);
+  };
+
+  // Bell click: map the typed link to a view this user may open (see shared/utils/notificationLink.js).
+  const openNotificationLink = (link) => {
+    const target = notificationDestination(link);
+    if (!target) return;
+    if (target.view === 'host') {
+      if (user?.role !== 'Host') { setView('home'); return; }
+      setHostTarget({ tab: target.hostTab });
+      setView('host');
+    } else if (target.view === 'admin') {
+      if (!['Admin', 'Support'].includes(user?.role)) return;
+      const query = new URLSearchParams(window.location.search);
+      query.set('adminTab', target.adminTab);
+      window.history.pushState(null, '', `${window.location.pathname}?${query}`);
+      setAdminTarget({ tab: target.adminTab });
+      setView('admin');
+    } else if (target.view === 'detail') openHomestay(target.homestayId);
+    else if (target.view === 'news-detail') openNews(target.slug);
+    else if (target.view === 'news') openNews();
+    else setView(target.view);
+  };
+
+  // News list / article for any visitor; `extra` carries the account handlers of the current branch.
+  const renderNews = (extra) => {
+    const common = { onHome: () => setView('home'), onHomestays: () => openCatalog(), onDeveloping: showDeveloping, onOpenPost: openNews, onNewsList: () => openNews(), ...extra };
+    return (
+      <>
+        {view === 'news-detail' && newsSlug ? <NewsDetailPage slug={newsSlug} {...common} /> : <NewsListPage {...common} />}
+        {dialog}
+      </>
+    );
+  };
+
   const showDeveloping = (feature) => {
     setDevelopingFeature(feature);
   };
@@ -440,11 +485,31 @@ export default function App() {
      USER ĐÃ ĐĂNG NHẬP
      ========================================================= */
   if (user) {
+    // Shortcuts of the shared account menu (AccountMenu), identical on the home page and every customer page.
+    const accountLinks = {
+      onHostPortal: () => setView('host'),
+      onAdminPortal: () => setView('admin'),
+      onRegisterHost: () => setView('register-host'),
+      onNotificationLink: openNotificationLink,
+      onNews: () => openNews(),
+    };
+
+    if (view === 'news' || view === 'news-detail') return renderNews({
+      user, accountLinks,
+      onBookings: () => setView('bookings'),
+      onFavorites: () => setView('favorites'),
+      onAccount: () => setView('profile'),
+      onChangePassword: () => { setMode('change-password'); setNotice(null); },
+      onLogout: logout,
+    });
+
     if (['Admin', 'Support'].includes(user.role) && view === 'admin') {
       return (
         <>
           <AdminDashboardPage
             user={user}
+            target={adminTarget}
+            onNotificationLink={openNotificationLink}
             onLogout={logout}
             onChangePassword={() => {
               setMode('change-password');
@@ -461,6 +526,8 @@ export default function App() {
         <>
           <HostDashboardPage
             user={user}
+            target={hostTarget}
+            onNotificationLink={openNotificationLink}
             onLogout={logout}
             onCustomerMode={() => setView('home')}
             onCatalogChanged={markCatalogChanged}
@@ -483,9 +550,11 @@ export default function App() {
             onHome={() => setView('home')}
             onHomestays={() => setView('catalog')}
             onOpenHomestay={openHomestay}
+            onFavorites={() => setView('favorites')}
             onAccount={() => setView('profile')}
             onChangePassword={() => { setMode('change-password'); setNotice(null); }}
             onLogout={logout}
+            accountLinks={accountLinks}
           />
           {dialog}
         </>
@@ -549,6 +618,7 @@ export default function App() {
             onAccount={() => setView('profile')}
             onChangePassword={() => { setMode('change-password'); setNotice(null); }}
             onLogout={logout}
+            accountLinks={accountLinks}
           />
           {dialog}
         </>
@@ -569,6 +639,7 @@ export default function App() {
             onAccount={() => setView('profile')}
             onChangePassword={() => { setMode('change-password'); setNotice(null); }}
             onLogout={logout}
+            accountLinks={accountLinks}
           />
           {dialog}
         </>
@@ -586,6 +657,7 @@ export default function App() {
             user={user}
             onHome={() => setView('home')}
             onBack={() => setView('catalog')}
+            accountLinks={accountLinks}
             onBookings={() => setView('bookings')}
             onFavorites={() => setView('favorites')}
             onAccount={() => setView('profile')}
@@ -613,9 +685,11 @@ export default function App() {
           onOpenHomestay={openHomestay}
           onBookings={() => setView('bookings')}
           onFavorites={() => setView('favorites')}
-          onHostPortal={() => setView('host')}
-          onAdminPortal={() => setView('admin')}
-          onRegisterHomestay={() => setView('register-host')}
+          onHostPortal={accountLinks.onHostPortal}
+          onAdminPortal={accountLinks.onAdminPortal}
+          onRegisterHomestay={accountLinks.onRegisterHost}
+          onNotificationLink={openNotificationLink}
+          onOpenNews={openNews}
           onProfile={() => setView('profile')}
           onDeveloping={showDeveloping}
         />
@@ -638,6 +712,12 @@ export default function App() {
      KHÁCH CHƯA ĐĂNG NHẬP
      ========================================================= */
   if (showHome) {
+    if (view === 'news' || view === 'news-detail') return renderNews({
+      user: null,
+      onFavorites: () => setView('favorites'),
+      onAccount: () => { setShowHome(false); setMode('login'); },
+    });
+
     if (view === 'catalog') {
       return (
         <>

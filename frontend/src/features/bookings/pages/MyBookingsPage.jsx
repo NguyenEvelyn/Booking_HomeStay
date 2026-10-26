@@ -95,9 +95,11 @@ export default function MyBookingsPage({
   onHome,
   onHomestays,
   onOpenHomestay,
+  onFavorites,
   onAccount,
   onChangePassword,
   onLogout,
+  accountLinks,
 }) {
   const [items, setItems] = useState([]),
     [status, setStatus] = useState(
@@ -215,9 +217,11 @@ export default function MyBookingsPage({
         onHome={onHome}
         onHomestays={onHomestays}
         onBookings={() => {}}
+        onFavorites={onFavorites}
         onAccount={onAccount}
         onChangePassword={onChangePassword}
         onLogout={onLogout}
+        {...accountLinks}
       />
       <section className="my-bookings-shell">
         <header className="booking-page-head">

@@ -13,6 +13,7 @@ import './CustomerHomestaysMobile.css';
 import './CustomerHomestaysMobilePolish.css';
 
 const money = (value) => value == null ? 'Liên hệ' : `${new Intl.NumberFormat('vi-VN').format(value)} ₫`;
+const PRICE_SLIDER_MAX = 3000000;
 const covers = [pineHomestayImage, azureHomestayImage, sunsetHomestayImage];
 const roomFilters = ['Phòng đơn', 'Phòng đôi', 'Phòng có ban công', 'Phòng gia đình'];
 const amenityOptions = ['WiFi', 'Bể bơi', 'Bếp', 'Ban công', 'Điều hòa', 'Chỗ đỗ xe', 'Máy giặt', 'Cho phép thú cưng'];
@@ -84,11 +85,11 @@ function Icon({ name, filled = false, size }) {
   );
 }
 
-export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings, onFavorites, onAccount, onChangePassword, onLogout, refreshKey = 0, initialSearch, favoritesOnly = false }) {
+export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings, onFavorites, onAccount, onChangePassword, onLogout, accountLinks, refreshKey = 0, initialSearch, favoritesOnly = false }) {
   const [search, setSearch] = useState(initialSearch?.search || initialSearch?.location || '');
   const [location, setLocation] = useState(initialSearch?.location || '');
   const [result, setResult] = useState({ items: [], total: 0 });
-  const [maxPrice, setMaxPrice] = useState(3000000);
+  const [maxPrice, setMaxPrice] = useState(PRICE_SLIDER_MAX);
   const [checkIn, setCheckIn] = useState(initialSearch?.checkIn || '');
   const [checkOut, setCheckOut] = useState(initialSearch?.checkOut || '');
   const [guestsConfig, setGuestsConfig] = useState({
@@ -112,6 +113,8 @@ export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings
 
   const totalGuests = guestsConfig.adults + guestsConfig.children;
   const isDayUseSearch = Boolean(checkIn && checkOut && checkIn === checkOut);
+  // The slider's top position means "no price limit", so homestays priced above it are not hidden.
+  const priceLimit = maxPrice >= PRICE_SLIDER_MAX ? '' : maxPrice;
   const criteria = (targetPage = page) => ({
     search,
     location,
@@ -119,7 +122,7 @@ export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings
     checkOut,
     guests: totalGuests,
     rooms: guestsConfig.rooms,
-    maxPrice,
+    maxPrice: priceLimit,
     roomType,
     minRating,
     sort,
@@ -151,7 +154,7 @@ export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings
               adults: guestsConfig.adults,
               children: guestsConfig.children,
               rooms: guestsConfig.rooms,
-              totalBudget: maxPrice * guestsConfig.rooms * nights,
+              totalBudget: priceLimit ? priceLimit * guestsConfig.rooms * nights : '',
               amenities: preferredAmenities,
               roomType,
               minRating,
@@ -208,7 +211,7 @@ export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings
           adults: guestsConfig.adults,
           children: guestsConfig.children,
           rooms: guestsConfig.rooms,
-          totalBudget: maxPrice * guestsConfig.rooms * nights,
+          totalBudget: priceLimit ? priceLimit * guestsConfig.rooms * nights : null,
           amenities: preferredAmenities,
           recommendedIds:
             recommendationResult.status === 'fulfilled'
@@ -250,7 +253,7 @@ export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings
   }, [favoritesOnly]);
 
   const resetFilters = () => {
-    setMaxPrice(3000000);
+    setMaxPrice(PRICE_SLIDER_MAX);
     setRoomType('');
     setMinRating(0);
     setPreferredAmenities([]);
@@ -281,6 +284,7 @@ export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings
         onAccount={onAccount}
         onChangePassword={onChangePassword}
         onLogout={onLogout}
+        {...accountLinks}
         transparentAtTop={true}
       />
 
@@ -380,14 +384,14 @@ export default function CustomerHomestaysPage({ user, onBack, onOpen, onBookings
             <input
               type="range"
               min="500000"
-              max="3000000"
+              max={PRICE_SLIDER_MAX}
               step="100000"
               value={maxPrice}
               onChange={(e) => setMaxPrice(Number(e.target.value))}
             />
             <div className="price-range">
               <span>500.000 ₫</span>
-              <span>{money(maxPrice)}</span>
+              <span>{priceLimit ? money(maxPrice) : 'Không giới hạn'}</span>
             </div>
           </div>
 

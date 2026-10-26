@@ -1,3 +1,4 @@
+using HomestayAuth.Api.Features.Notifications;
 using HomestayAuth.Api.Features.Bookings;
 using System.Security.Claims;
 using System.Text.Json;
@@ -501,6 +502,8 @@ public sealed partial class HostHomestaysController
             PaidAt = now, GatewayResponse = "Host confirmed offline payment", CreatedAt = now, UpdatedAt = now });
         booking.Status = BookingStatus.Confirmed; booking.PaymentStatus = PaymentStatus.Deposited;
         booking.UpdatedAt = now;
+        notifications.Notify(booking.CustomerId, NotificationTemplates.BookingConfirmed(booking.Id, booking.BookingCode,
+            await db.Homestays.Where(h => h.Id == booking.HomestayId).Select(h => h.Name).SingleAsync(), booking.CheckInDate, booking.CheckOutDate));
         await db.SaveChangesAsync();
         await transaction.CommitAsync();
         return Ok(new { message = "Đã xác nhận tiền cọc và giữ phòng cho khách.", amount = booking.DepositAmount });
@@ -581,7 +584,9 @@ public sealed partial class HostHomestaysController
         var hasImage = await db.HomestayImages.AnyAsync(x => x.HomestayId == id);
         var hasRoom = await db.Rooms.AnyAsync(x => x.RoomType.HomestayId == id);
         if (!hasImage || !hasRoom) return BadRequest(new { message = "Cần ít nhất một ảnh Homestay và một phòng trước khi gửi Admin duyệt." });
-        item.Status = "Pending"; item.UpdatedAt = DateTime.UtcNow; await db.SaveChangesAsync();
+        item.Status = "Pending"; item.UpdatedAt = DateTime.UtcNow;
+        await notifications.NotifyStaff(NotificationTemplates.StaffHomestaySubmitted(item.Name));
+        await db.SaveChangesAsync();
         return Ok(new { message = "Đã gửi homestay chờ Admin duyệt." });
     }
 }

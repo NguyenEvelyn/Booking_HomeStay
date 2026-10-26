@@ -1,3 +1,4 @@
+using HomestayAuth.Api.Features.Notifications;
 using System.Security.Claims;
 using System.Text.Json;
 using HomestayAuth.Api.Domain.Entities;
@@ -13,7 +14,7 @@ public sealed record CreateDealRequest(long RoomTypeId, DateOnly StartDate, Date
 public sealed record PromoteDealRequest(string? Title, string? Subtitle);
 
 [ApiController, Route("api/host/deals"), Authorize(Roles = "Host")]
-public sealed class HostDealsController(AppDbContext db, DealService deals) : ControllerBase
+public sealed class HostDealsController(AppDbContext db, DealService deals, NotificationService notifications) : ControllerBase
 {
     private long HostId => long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
@@ -115,6 +116,7 @@ public sealed class HostDealsController(AppDbContext db, DealService deals) : Co
         if (title.Length is < 3 or > 80 || subtitle.Length > 160) return BadRequest(new { message = "Tiêu đề 3–80 ký tự, mô tả tối đa 160 ký tự." });
         db.Banners.Add(new Banner { Title = title, Subtitle = subtitle, ImageUrl = deal.Image!, Placement = BannerPlacement.HomeHero, TargetType = BannerTarget.Deal,
             TargetId = id, StartsAt = now, EndsAt = deal.SaleEndsAt, Priority = 50, Status = BannerStatus.Pending, RequestedBy = HostId, CreatedAt = now, UpdatedAt = now });
+        await notifications.NotifyStaff(NotificationTemplates.StaffBannerProposed(title));
         await db.SaveChangesAsync();
         return Ok(new { message = "Đã gửi đề xuất lên banner trang chủ. Quản trị viên sẽ duyệt sớm." });
     }

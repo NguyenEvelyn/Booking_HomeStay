@@ -1,0 +1,105 @@
+.op-modal-container.deal-modal { width: min(620px, 100%); max-width: 620px; }
+.deal-modal-body { display: grid; gap: 14px; }
+
+.deal-rules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.deal-rules li {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #ecfdf5;
+  color: #166534;
+  font-size: 12px;
+}
+.deal-rules li:nth-child(3) { background: #fff1f0; color: #b5352c; }
+
+.deal-step {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid #e3e9f3;
+  border-radius: 14px;
+  background: #fff;
+}
+.deal-step h4 { display: flex; align-items: center; gap: 8px; margin: 0; color: #0b2a5b; font-size: 14px; }
+.deal-step h4 span {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #0b4ae6;
+  color: #fff;
+  font-size: 12px;
+}
+.deal-fixed { margin: 0; color: #475569; font-size: 13px; }
+
+.deal-chips { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.deal-chips.compact { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.deal-chips button,
+.deal-segment button {
+  display: grid;
+  gap: 2px;
+  padding: 9px 8px;
+  border: 1px solid #d4deec;
+  border-radius: 11px;
+  background: #fff;
+  color: #1e3a61;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+}
+.deal-chips button small { color: #7a879b; font-size: 11px; font-weight: 500; }
+.deal-chips button.active,
+.deal-segment button.active { border-color: #0b4ae6; background: #eef4ff; color: #0b4ae6; box-shadow: 0 0 0 1px #0b4ae6; }
+.deal-chips button.active small { color: #0b4ae6; }
+
+.deal-nights { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.deal-nights > span { color: #334155; font-size: 13px; font-weight: 600; }
+.deal-segment { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px; }
+.deal-segment.wide { width: 100%; }
+.deal-hint { margin: 0; color: #64748b; font-size: 12px; }
+.deal-hint b { color: #0b2a5b; }
+
+.deal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.deal-grid label,
+.deal-time { display: grid; gap: 6px; color: #334155; font-size: 12.5px; font-weight: 600; }
+.deal-stepper { display: flex; align-items: center; justify-content: space-between; height: 42px; padding: 0 4px; border: 1px solid #d4deec; border-radius: 10px; }
+.deal-stepper button { width: 34px; height: 34px; border: 0; border-radius: 8px; background: #f1f5fb; color: #0b2a5b; font-size: 18px; cursor: pointer; }
+.deal-stepper button:disabled { opacity: .4; cursor: not-allowed; }
+.deal-stepper output { color: #0b2a5b; font-size: 15px; font-weight: 800; }
+
+.deal-price-preview { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; padding: 12px 14px; border-radius: 12px; background: #fff7ed; }
+.deal-price-preview s { color: #94a3b8; font-size: 13px; }
+.deal-price-preview strong { color: #e5252a; font-size: 20px; font-weight: 900; }
+.deal-price-preview strong small { margin-left: 2px; color: #64748b; font-size: 12px; font-weight: 600; }
+.deal-price-preview em { color: #9a3412; font-size: 12px; font-style: normal; }
+
+.deal-toggle { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; }
+.deal-toggle input { width: 18px; height: 18px; margin-top: 2px; accent-color: #0b4ae6; }
+.deal-toggle span { display: grid; gap: 2px; }
+.deal-toggle b { color: #0b2a5b; font-size: 13px; }
+.deal-toggle small { color: #64748b; font-size: 12px; }
+
+.deal-summary { padding: 12px 14px; border-radius: 12px; background: #f6f9ff; color: #334155; font-size: 13px; line-height: 1.6; }
+.deal-summary b { color: #0b2a5b; }
+.deal-error { margin: 0; }
+
+@media (max-width: 560px) {
+  .deal-chips { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .deal-chips.compact { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .deal-grid { grid-template-columns: 1fr; }
+  .deal-nights { flex-direction: column; align-items: stretch; }
+}
+
+/* Empty state of the host deals page */
+.deal-empty { display: grid; justify-items: start; gap: 8px; margin-top: 8px; padding: 22px; border: 1.5px dashed #c9d6ee; border-radius: 16px; background: #f8fafe; }
+.deal-empty b { color: #0b2a5b; font-size: 15px; }
+.deal-empty p { margin: 0; max-width: 640px; color: #53647d; font-size: 13px; line-height: 1.6; }

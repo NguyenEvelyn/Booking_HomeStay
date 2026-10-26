@@ -6,6 +6,12 @@ import { readFavoriteIds, toggleFavoriteId } from '../../shared/utils/favorites.
 import { apiClient } from '../../shared/api/apiClient.js';
 import { toast } from '../../shared/feedback/feedback.js';
 import HotDealsSection from './HotDealsSection.jsx';
+import SalePopup from './SalePopup.jsx';
+import AccountMenu from '../../shared/components/AccountMenu.jsx';
+import NotificationBell from '../../shared/components/NotificationBell.jsx';
+import NewsletterForm from '../../shared/components/NewsletterForm.jsx';
+import { newsApi } from '../news/api/newsApi.js';
+import { newsDate } from '../news/newsContent.js';
 
 const heroImage = '/assets/figma/hero.png';
 const aboutImage = '/assets/figma/about.jpg';
@@ -20,6 +26,27 @@ const supportBanner = '/assets/figma/herobanner.png';
 const voucherWeek = '/assets/figma/voucher-week.png';
 const voucherHotDeal = '/assets/figma/voucher-hotdeal.png';
 const voucherSummer = '/assets/figma/voucher-summer.png';
+
+// Home voucher card from a public voucher (GET /api/vouchers): the discount is the headline, conditions below.
+const vnd = (value) => `${new Intl.NumberFormat('vi-VN').format(Number(value) || 0)}đ`;
+const voucherCardContent = (voucher) => {
+  const percent = voucher.discountType === 'Percentage';
+  const conditions = [
+    Number(voucher.minimumBookingAmount) > 0 ? `Đơn từ ${vnd(voucher.minimumBookingAmount)}` : 'Không yêu cầu đơn tối thiểu',
+    percent && Number(voucher.maximumDiscount) > 0 ? `Giảm tối đa ${vnd(voucher.maximumDiscount)}` : null,
+    `Hạn ${new Date(voucher.validUntil).toLocaleDateString('vi-VN')}`,
+    voucher.homestayName ? `Chỉ áp dụng tại ${voucher.homestayName}` : null
+  ].filter(Boolean);
+  const meta = conditions.join(' · ');
+  return {
+    code: voucher.code,
+    label: voucher.name,
+    title: voucher.name,
+    discount: percent ? `Giảm ${Number(voucher.discountValue)}%` : `Giảm ${vnd(voucher.discountValue)}`,
+    meta,
+    details: [voucher.description, meta].filter(Boolean).join(' · ')
+  };
+};
 const blogOne = '/assets/figma/blog-1.jpg';
 const blogTwo = '/assets/figma/blog-2.jpg';
 const blogThree = '/assets/figma/blog-3.jpg';
@@ -244,6 +271,8 @@ export default function HomePage({
   onRegisterHomestay,
   onRegisterHost,
   onProfile,
+  onNotificationLink,
+  onOpenNews,
 }) {
   const [menuScrolled, setMenuScrolled] = useState(false);
   const [activeNav, setActiveNav] = useState('home');
@@ -276,12 +305,20 @@ export default function HomePage({
   const [heroPicksLoading, setHeroPicksLoading] = useState(true);
   const [favoriteIds, setFavoriteIds] = useState(readFavoriteIds);
   const [vouchers, setVouchers] = useState([]);
+  const [newsPosts, setNewsPosts] = useState([]);
 
   useEffect(() => {
     let active = true;
     apiClient('/vouchers').then(result => { if (active) setVouchers(result.items || []); }).catch(() => {});
+    newsApi.list({ pageSize: 6 }).then(result => { if (active) setNewsPosts(result.items || []); }).catch(() => {});
     return () => { active = false; };
   }, []);
+
+  // Latest published posts; the three built-in guides remain as a fallback until admins publish some.
+  const newsCards = newsPosts.length
+    ? newsPosts.map((post) => ({ key: post.id, title: post.title, image: post.coverImageUrl, date: post.publishedAt, summary: post.summary, slug: post.slug }))
+    : posts.map(([title, image]) => ({ key: title, title, image, date: null, slug: null,
+      summary: 'Những kinh nghiệm hữu ích giúp bạn dễ dàng tìm được không gian lưu trú phù hợp với nhu cầu, ngân sách và phong cách du lịch của mình' }));
 
   useEffect(() => {
     if (!userMenuOpen) return undefined;
@@ -707,118 +744,21 @@ export default function HomePage({
             </button>
 
             {userMenuOpen && user && user.fullName !== 'Khách' && (
-              <div className="home-user-menu" role="menu" aria-label="Menu tài khoản">
-                <div className="home-user-menu__identity">
-                  <span className="home-user-menu__avatar" aria-hidden="true">
-                    {user.fullName?.charAt(0).toUpperCase() || 'U'}
-                  </span>
-                  <div>
-                    <strong>{user.fullName}</strong>
-                    <span>{user.email || user.role}</span>
-                  </div>
-                </div>
-
-                {user.role === 'Host' && (
-                  <button
-                    type="button"
-                    className="home-user-menu__item is-primary"
-                    role="menuitem"
-                    onClick={() => {
-                      setUserMenuOpen(false);
-                      onHostPortal?.();
-                    }}
-                  >
-                    <i><Icon name="homePlus" /></i>
-                    <span><b>Quản lý Homestay</b><small>Đi đến trung tâm đối tác</small></span>
-                  </button>
-                )}
-
-                {user.role === 'Admin' && (
-                  <button
-                    type="button"
-                    className="home-user-menu__item is-primary"
-                    role="menuitem"
-                    onClick={() => {
-                      setUserMenuOpen(false);
-                      onAdminPortal?.();
-                    }}
-                  >
-                    <i><Icon name="profile" /></i>
-                    <span><b>Trang quản trị</b><small>Quản lý hệ thống Tripio</small></span>
-                  </button>
-                )}
-
-                <button
-                  type="button"
-                  className="home-user-menu__item"
-                  role="menuitem"
-                  onClick={() => {
-                    setUserMenuOpen(false);
-                    onBookings?.();
-                  }}
-                >
-                  <i><Icon name="suitcase" /></i>
-                  <span><b>Chuyến đi của tôi</b><small>Xem và quản lý các kỳ lưu trú</small></span>
-                </button>
-
-                <button
-                  type="button"
-                  className="home-user-menu__item"
-                  role="menuitem"
-                  onClick={() => {
-                    setUserMenuOpen(false);
-                    onDeveloping('Danh sách yêu thích');
-                  }}
-                >
-                  <i><Icon name="heart" /></i>
-                  <span><b>Danh sách yêu thích</b><small>Những nơi bạn đã lưu</small></span>
-                </button>
-
-                <button type="button" className="home-user-menu__item" role="menuitem" onClick={() => { setUserMenuOpen(false); onDeveloping('Nhận xét của tôi'); }}>
-                  <i><Icon name="star" /></i>
-                  <span><b>Nhận xét của tôi</b><small>Quản lý đánh giá đã viết</small></span>
-                </button>
-
-                <button type="button" className="home-user-menu__item" role="menuitem" onClick={() => { setUserMenuOpen(false); onProfile?.(); }}>
-                  <i><Icon name="profile" /></i>
-                  <span><b>Hồ sơ của tôi</b><small>Thông tin và tùy chọn cá nhân</small></span>
-                </button>
-
-                <button type="button" className="home-user-menu__item" role="menuitem" onClick={() => { setUserMenuOpen(false); onChangePassword?.(); }}>
-                  <i><Icon name="lock" /></i>
-                  <span><b>Đổi mật khẩu</b><small>Bảo mật tài khoản của bạn</small></span>
-                </button>
-
-                {user.role !== 'Host' && user.role !== 'Admin' && (
-                  <section className="home-user-menu__host-card" aria-label="Đăng ký cơ sở lưu trú">
-                    <span className="home-user-menu__host-orbit" aria-hidden="true" />
-                    <small>TRỞ THÀNH ĐỐI TÁC TRIPIO</small>
-                    <strong>Biến không gian của bạn thành một hành trình đáng nhớ.</strong>
-                    <button type="button" role="menuitem" onClick={() => {
-                      setUserMenuOpen(false);
-                      if (onRegisterHomestay) onRegisterHomestay();
-                      else onRegisterHost?.();
-                    }}>
-                      <span>Đăng ký cho thuê nhà</span>
-                      <Icon name="arrowUpRight" />
-                    </button>
-                  </section>
-                )}
-
-                <button
-                  type="button"
-                  className="home-user-menu__item is-logout"
-                  role="menuitem"
-                  onClick={() => {
-                    setUserMenuOpen(false);
-                    onLogout();
-                  }}
-                >
-                  <i><Icon name="logout" /></i>
-                  <span><b>Đăng xuất</b></span>
-                </button>
-              </div>
+              <AccountMenu
+                user={user}
+                onClose={() => setUserMenuOpen(false)}
+                onHostPortal={onHostPortal}
+                onAdminPortal={onAdminPortal}
+                onBookings={onBookings}
+                onFavorites={onFavorites}
+                onProfile={onProfile}
+                onChangePassword={onChangePassword}
+                onRegisterHost={onRegisterHomestay || onRegisterHost}
+                onLogout={onLogout}
+              />
             )}
+
+            {user && user.fullName !== 'Khách' && <NotificationBell user={user} onNavigate={onNotificationLink} />}
 
             <button
               type="button"
@@ -1072,6 +1012,7 @@ export default function HomePage({
 
 
       <HotDealsSection onOpenHomestay={onOpenHomestay} onBrowseHomestays={onBrowseHomestays} />
+      <SalePopup onOpenHomestay={onOpenHomestay} onBrowseHomestays={onBrowseHomestays} />
 
       {/* =====================================================
           STAYS
@@ -1383,11 +1324,8 @@ export default function HomePage({
             onMouseDown={onVoucherMouseDown}
           >
             {(vouchers.length ? vouchers.map((voucher, index) => ({
-              ...voucher,
+              ...voucherCardContent(voucher),
               img: [voucherWeek, voucherHotDeal, voucherSummer][index % 3],
-              label: voucher.name,
-              title: `${voucher.code} · ${voucher.name}`,
-              desc: `${voucher.description || (voucher.discountType === 'Percentage' ? `Giảm ${voucher.discountValue}%` : `Giảm ${new Intl.NumberFormat('vi-VN').format(voucher.discountValue)}đ`)} · Đơn tối thiểu ${new Intl.NumberFormat('vi-VN').format(voucher.minimumBookingAmount || 0)}đ · Hạn ${new Date(voucher.validUntil).toLocaleDateString('vi-VN')}`,
             })) : [
               {
                 img: voucherWeek,
@@ -1425,10 +1363,10 @@ export default function HomePage({
                 title: 'ƯU ĐÃI DỊP LỄ TẾT 2025',
                 desc: 'Đặt sớm – nghỉ ngon: ưu đãi đặc biệt dịp lễ Tết dành cho gia đình và nhóm bạn',
               },
-            ]).map(({ img, label, title, desc, code }, index) => (
+            ]).map(({ img, label, title, desc, code, discount, meta, details }, index) => (
               <article
                 className="voucher-card"
-                key={`voucher-${index}`}
+                key={code || `voucher-${index}`}
               >
                 <img
                   className="voucher-card-thumb"
@@ -1437,9 +1375,10 @@ export default function HomePage({
                 />
 
                 <div className="voucher-card-body">
+                  {discount && <span className="voucher-card-discount">{discount}</span>}
                   <h3>{title}</h3>
 
-                  <p>{desc}</p>
+                  <p>{meta || desc}</p>
 
                   <button
                     type="button"
@@ -1454,8 +1393,8 @@ export default function HomePage({
                   className="voucher-info-btn"
                   type="button"
                   aria-label="Thông tin ưu đãi"
-                  title={desc}
-                  onClick={() => toast.info(desc)}
+                  title={details || desc}
+                  onClick={() => toast.info(details || desc)}
                 >
                   <Icon name="info" />
                 </button>
@@ -1523,6 +1462,7 @@ export default function HomePage({
           </div>
 
           <div className="guide-arrows">
+            {onOpenNews && <button type="button" className="guide-all-link" onClick={() => onOpenNews()}>Xem tất cả</button>}
             <button
               type="button"
               className={`guide-arrow${canBlogPrev ? ' active' : ''}`}
@@ -1549,11 +1489,11 @@ export default function HomePage({
           ref={blogTrackRef}
           onMouseDown={onBlogMouseDown}
         >
-          {posts.map(([title, image]) => (
-            <article className="post-card" key={title}>
+          {newsCards.map(({ key, title, image, date, summary, slug }) => (
+            <article className="post-card" key={key}>
               <img
                 className="post-card-img"
-                src={image}
+                src={image || blogOne}
                 alt={title}
                 draggable="false"
               />
@@ -1561,23 +1501,19 @@ export default function HomePage({
               <div className="post-card-body">
                 <p className="post-date">
                   <Icon name="calendar" />
-                  <span>30 Tháng 1, 2026</span>
+                  <span>{date ? newsDate(date) : 'Cẩm nang Tripio'}</span>
                 </p>
 
                 <h3>{title}</h3>
 
-                <p className="post-desc">
-                  Những kinh nghiệm hữu ích giúp bạn dễ dàng
-                  tìm được không gian lưu trú phù hợp với nhu
-                  cầu, ngân sách và phong cách du lịch của mình
-                </p>
+                <p className="post-desc">{summary}</p>
 
                 <button
                   type="button"
                   className="post-link"
-                  onClick={() => onDeveloping('Cẩm nang du lịch')}
+                  onClick={() => onOpenNews?.(slug)}
                 >
-                  Xem thêm →
+                  {slug ? 'Đọc bài →' : 'Xem cẩm nang →'}
                 </button>
               </div>
             </article>
@@ -1602,23 +1538,7 @@ export default function HomePage({
             </p>
           </div>
 
-          <form
-            className="footer-newsletter-form"
-            onSubmit={(event) => {
-              event.preventDefault();
-              onDeveloping('Đăng ký nhận thông tin');
-            }}
-          >
-            <input
-              type="email"
-              placeholder="Nhập Email của bạn"
-              required
-            />
-
-            <button type="submit">
-              Gửi ngay
-            </button>
-          </form>
+          <NewsletterForm source="home" />
         </div>
 
         <div className="footer-columns">

@@ -70,29 +70,11 @@ public sealed class BookingPricingService
 
         for (var date = checkIn; date < pricingEnd; date = date.AddDays(1))
         {
-            var pricePeriod = pricePeriods
-                .Where(x => x.StartDate <= date && x.EndDate >= date)
-                .OrderByDescending(x => x.CreatedAt)
-                .FirstOrDefault();
-            var basePrice = pricePeriod?.PricePerNight ?? roomType.BasePrice;
-            var surcharge = document.SeasonalSurcharges
-                .Where(x => Applies(x, date))
-                .OrderByDescending(x => x.Percent)
-                .FirstOrDefault();
-            var surchargePercent = surcharge?.Percent ?? 0;
-            var surchargeValue = Round(basePrice * surchargePercent / 100m);
-            var finalPrice = basePrice + surchargeValue;
-            baseRoomAmount += basePrice * quantity;
-            seasonalSurcharge += surchargeValue * quantity;
-            holidayDeposit |= surcharge?.RequiresHolidayDeposit == true;
-            var isSpecial = finalPrice != roomType.BasePrice;
-            var specialName = pricePeriod?.Name ?? surcharge?.Name;
-            var label = isSpecial
-                ? string.IsNullOrWhiteSpace(specialName) ? "Giá đặc biệt"
-                    : specialName.StartsWith("Giá ", StringComparison.OrdinalIgnoreCase) ? specialName : $"Giá {specialName.ToLowerInvariant()}"
-                : null;
-            nightLines.Add(new(date, basePrice, roomType.BasePrice, finalPrice, isSpecial,
-                finalPrice > roomType.BasePrice, label, surcharge?.Code, surchargePercent, finalPrice));
+            var night = Night(roomType, date, pricePeriods, document);
+            baseRoomAmount += night.BasePrice * quantity;
+            seasonalSurcharge += (night.FinalPrice - night.BasePrice) * quantity;
+            holidayDeposit |= night.RequiresHolidayDeposit;
+            nightLines.Add(night.Line);
         }
 
         var dayUsePercent = isDayUse
@@ -144,6 +126,33 @@ public sealed class BookingPricingService
         if (ages is null || ages.Count == 0) return null;
         if (ages.Count != childCount) return "Số tuổi trẻ em phải khớp với số trẻ em đã khai báo.";
         return ages.Any(x => x is < 0 or > 17) ? "Tuổi trẻ em phải nằm trong khoảng 0–17." : null;
+    }
+
+    // Price of one night for one room before promotions: the latest price period covering the date (else the
+    // room type's base price) plus the highest seasonal surcharge. Shared by the quote and the room calendar.
+    public static (decimal BasePrice, decimal FinalPrice, bool RequiresHolidayDeposit, NightlyPriceBreakdown Line) Night(
+        RoomType roomType, DateOnly date, IReadOnlyList<RoomPricePeriod> pricePeriods, OperationalPolicyDocument document)
+    {
+        var pricePeriod = pricePeriods
+            .Where(x => x.StartDate <= date && x.EndDate >= date)
+            .OrderByDescending(x => x.CreatedAt)
+            .FirstOrDefault();
+        var basePrice = pricePeriod?.PricePerNight ?? roomType.BasePrice;
+        var surcharge = document.SeasonalSurcharges
+            .Where(x => Applies(x, date))
+            .OrderByDescending(x => x.Percent)
+            .FirstOrDefault();
+        var surchargePercent = surcharge?.Percent ?? 0;
+        var finalPrice = basePrice + Round(basePrice * surchargePercent / 100m);
+        var isSpecial = finalPrice != roomType.BasePrice;
+        var specialName = pricePeriod?.Name ?? surcharge?.Name;
+        var label = isSpecial
+            ? string.IsNullOrWhiteSpace(specialName) ? "Giá đặc biệt"
+                : specialName.StartsWith("Giá ", StringComparison.OrdinalIgnoreCase) ? specialName : $"Giá {specialName.ToLowerInvariant()}"
+            : null;
+        return (basePrice, finalPrice, surcharge?.RequiresHolidayDeposit == true,
+            new(date, basePrice, roomType.BasePrice, finalPrice, isSpecial, finalPrice > roomType.BasePrice, label,
+                surcharge?.Code, surchargePercent, finalPrice));
     }
 
     private static bool Applies(SeasonalSurchargeRule rule, DateOnly date)

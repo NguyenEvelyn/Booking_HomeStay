@@ -1,3 +1,4 @@
+using HomestayAuth.Api.Features.Notifications;
 using System.Security.Claims;
 using HomestayAuth.Api.Domain.Entities;
 using HomestayAuth.Api.Features.Bookings;
@@ -15,7 +16,7 @@ public sealed record SaveCustomerNoteRequest(string? Note);
 
 [ApiController]
 [Route("api")]
-public sealed class ReviewsController(AppDbContext db) : ControllerBase
+public sealed class ReviewsController(AppDbContext db, NotificationService notifications) : ControllerBase
 {
     private long UserId => long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
     private IQueryable<Review> HostReviews(long hostId) => db.Reviews.Where(x => db.Homestays.Any(h => h.Id == x.HomestayId && h.HostId == hostId));
@@ -84,11 +85,17 @@ public sealed class ReviewsController(AppDbContext db) : ControllerBase
         if (!ValidCriteria(request)) return BadRequest(new { message = "Điểm tiêu chí phải từ 1 đến 5." });
         var booking = await db.Bookings.AsNoTracking().SingleOrDefaultAsync(x => x.Id == request.BookingId && x.CustomerId == UserId);
         if (booking is null) return NotFound(new { message = "Không tìm thấy đơn đặt phòng." });
+        if (await db.Homestays.AnyAsync(h => h.Id == booking.HomestayId && h.HostId == UserId))
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = "Bạn không thể đánh giá homestay của chính mình." });
         if (booking.Status != BookingStatus.CheckedOut) return BadRequest(new { message = "Bạn chỉ có thể đánh giá sau khi kỳ lưu trú đã hoàn tất." });
         if (await db.Reviews.AnyAsync(x => x.BookingId == booking.Id)) return Conflict(new { message = "Đơn đặt phòng này đã được đánh giá." });
         if (BookingRules.Today > booking.ReviewCreateUntil) return BadRequest(new { message = "Thời hạn đánh giá sau khi trả phòng đã kết thúc." });
         var now = DateTime.UtcNow; var review = new Review { BookingId = booking.Id, CustomerId = UserId, HomestayId = booking.HomestayId, Rating = request.Rating, Comment = string.IsNullOrWhiteSpace(request.Comment) ? null : request.Comment.Trim(), CleanlinessRating = request.CleanlinessRating, LocationRating = request.LocationRating, HostRating = request.HostRating, ValueRating = request.ValueRating, Status = "Visible", CreatedAt = now, UpdatedAt = now };
-        db.Reviews.Add(review); await db.SaveChangesAsync(); return Created($"/api/homestays/{booking.HomestayId}/reviews", new { review.Id, message = "Đã gửi đánh giá." });
+        db.Reviews.Add(review);
+        var homestayName = await db.Homestays.Where(h => h.Id == booking.HomestayId).Select(h => h.Name).SingleAsync();
+        var reviewer = await db.Users.Where(u => u.Id == UserId).Select(u => u.FullName).SingleAsync();
+        await notifications.NotifyHostOfHomestay(booking.HomestayId, NotificationTemplates.NewReview(homestayName, request.Rating, reviewer));
+        await db.SaveChangesAsync(); return Created($"/api/homestays/{booking.HomestayId}/reviews", new { review.Id, message = "Đã gửi đánh giá." });
     }
 
     [Authorize(Roles = "Customer,Host")]

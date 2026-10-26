@@ -38,6 +38,13 @@ export const adminApi = {
   ,createVoucher: payload => apiClient('/admin/vouchers',{method:'POST',body:JSON.stringify(payload)})
   ,updateVoucher: (id,payload) => apiClient(`/admin/vouchers/${id}`,{method:'PUT',body:JSON.stringify(payload)})
   ,voucherUsages: id => apiClient(`/admin/vouchers/${id}/usages`)
+  ,news: (filters = {}) => apiClient(`/admin/news?${new URLSearchParams(Object.entries(filters).filter(([,v])=>v))}`)
+  ,createNews: payload => apiClient('/admin/news',{method:'POST',body:JSON.stringify(payload)})
+  ,updateNews: (id,payload) => apiClient(`/admin/news/${id}`,{method:'PUT',body:JSON.stringify(payload)})
+  ,setNewsStatus: (id,status) => apiClient(`/admin/news/${id}/status`,{method:'PATCH',body:JSON.stringify({status})})
+  ,deleteNews: id => apiClient(`/admin/news/${id}`,{method:'DELETE'})
+  ,uploadNewsCover: file => { const body=new FormData(); body.append('file',file); return apiClient('/admin/news/cover',{method:'POST',body}); }
+  ,newsletterSubscribers: () => apiClient('/admin/news/subscribers')
   ,banners: () => apiClient('/admin/banners')
   ,createBanner: payload => apiClient('/admin/banners',{method:'POST',body:JSON.stringify(payload)})
   ,updateBanner: (id,payload) => apiClient(`/admin/banners/${id}`,{method:'PUT',body:JSON.stringify(payload)})
