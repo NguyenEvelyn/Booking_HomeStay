@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import './HomestayPolicyModal.css';
+import { describeCancellationTiers, describeLateCheckout } from './policyExplain.js';
 
 const formatMoney = (val) => {
   if (val == null || isNaN(val)) return '0 đ';
@@ -28,20 +29,15 @@ export default function HomestayPolicyModal({ isOpen, onClose, homestayName, pol
   const breakfast = doc.breakfast || {};
   const vehicle = doc.vehicle || {};
   const assets = doc.assets || {};
-  const cancellationTiers = policies?.cancellationTiers || [
-    { minimumDays: 15, maximumDays: null, refundPercent: 100 },
-    { minimumDays: 7, maximumDays: 14, refundPercent: 70 },
-    { minimumDays: 3, maximumDays: 6, refundPercent: 50 },
-    { minimumDays: 0, maximumDays: 2, refundPercent: 0 }
-  ];
-  const lateCheckoutTiers = policies?.lateCheckoutTiers || [
-    { fromMinutes: 1, toMinutes: 180, calculationType: 'NightlyPercent', value: 30 },
-    { fromMinutes: 181, toMinutes: 360, calculationType: 'NightlyPercent', value: 50 },
-    { fromMinutes: 361, toMinutes: null, calculationType: 'NightlyPercent', value: 100 }
-  ];
+  // Only what the effective-policies API returns: no invented fallback tiers.
+  const cancellationRows = describeCancellationTiers(policies?.cancellationTiers);
+  const lateCheckoutRows = describeLateCheckout(policies?.lateCheckoutTiers);
 
-  const checkInTime = formatTime(checkInOut.checkInTime) || formatTime(defaultCheckIn) || '14:00';
-  const checkOutTime = formatTime(checkInOut.checkOutTime) || formatTime(defaultCheckOut) || '12:00';
+  // The homestay's own check-in/out times are the ones bookings and no-show deadlines use.
+  const checkInTime = formatTime(defaultCheckIn) || formatTime(checkInOut.checkInTime) || '14:00';
+  const checkOutTime = formatTime(defaultCheckOut) || formatTime(checkInOut.checkOutTime) || '12:00';
+  // The stored early check-in tiers assume the default 14:00; hide them when they do not fit this homestay.
+  const earlyCheckInTiers = (checkInOut.earlyCheckInTiers || []).filter((tier) => formatTime(tier.to) <= checkInTime);
 
   const tabs = [
     { id: 'all', label: 'Tất cả' },
@@ -146,7 +142,7 @@ export default function HomestayPolicyModal({ isOpen, onClose, homestayName, pol
               </div>
 
               {/* Early checkin table */}
-              {checkInOut.earlyCheckInTiers && checkInOut.earlyCheckInTiers.length > 0 && (
+              {earlyCheckInTiers.length > 0 && (
                 <div className="policy-sub-section">
                   <h4 className="sub-title">Biểu phí nhận phòng sớm (Early Check-in)</h4>
                   <div className="policy-table-wrapper">
@@ -159,7 +155,7 @@ export default function HomestayPolicyModal({ isOpen, onClose, homestayName, pol
                         </tr>
                       </thead>
                       <tbody>
-                        {checkInOut.earlyCheckInTiers.map((tier, idx) => (
+                        {earlyCheckInTiers.map((tier, idx) => (
                           <tr key={idx}>
                             <td><strong>{formatTime(tier.from)} — {formatTime(tier.to)}</strong></td>
                             <td>
@@ -181,7 +177,7 @@ export default function HomestayPolicyModal({ isOpen, onClose, homestayName, pol
               )}
 
               {/* Late checkout table */}
-              {lateCheckoutTiers && lateCheckoutTiers.length > 0 && (
+              {lateCheckoutRows.length > 0 && (
                 <div className="policy-sub-section">
                   <h4 className="sub-title">Biểu phí trả phòng trễ (Late Check-out)</h4>
                   <div className="policy-table-wrapper">
@@ -194,25 +190,13 @@ export default function HomestayPolicyModal({ isOpen, onClose, homestayName, pol
                         </tr>
                       </thead>
                       <tbody>
-                        {lateCheckoutTiers.map((tier, idx) => {
-                          const fromHours = Math.round(tier.fromMinutes / 60);
-                          const toHours = tier.toMinutes ? Math.round(tier.toMinutes / 60) : null;
-                          const durationLabel = toHours
-                            ? `${fromHours} đến ${toHours} tiếng (${tier.fromMinutes} - ${tier.toMinutes} phút)`
-                            : `Trên ${fromHours} tiếng (sau ${tier.fromMinutes} phút)`;
-
-                          const feeLabel = tier.calculationType === 'Fixed'
-                            ? formatMoney(tier.value)
-                            : `${tier.value}% giá phòng/đêm`;
-
-                          return (
-                            <tr key={idx}>
-                              <td><strong>{durationLabel}</strong></td>
-                              <td><span className="policy-fee-tag fee">{feeLabel}</span></td>
-                              <td>{tier.calculationType === 'Fixed' ? 'Số tiền cố định' : 'Tính theo % giá phòng'}</td>
-                            </tr>
-                          );
-                        })}
+                        {lateCheckoutRows.map((row) => (
+                          <tr key={row.label}>
+                            <td><strong>{row.label} sau {checkOutTime}</strong></td>
+                            <td><span className="policy-fee-tag fee">{row.fee.type === 'fixed' ? formatMoney(row.fee.value) : `${row.fee.value}% giá phòng/đêm`}</span></td>
+                            <td>{row.fee.type === 'fixed' ? 'Số tiền cố định' : 'Tính theo % giá phòng'}</td>
+                          </tr>
+                        ))}
                       </tbody>
                     </table>
                   </div>
@@ -253,41 +237,31 @@ export default function HomestayPolicyModal({ isOpen, onClose, homestayName, pol
               <div className="policy-sub-section">
                 <h4 className="sub-title">Chính sách hoàn tiền khi hủy phòng</h4>
                 <div className="policy-timeline">
-                  {cancellationTiers.map((tier, idx) => {
-                    const conditionLabel = tier.maximumDays == null
-                      ? `Trước ít nhất ${tier.minimumDays} ngày trước khi nhận phòng`
-                      : tier.minimumDays === 0
-                      ? `Trong vòng ${tier.maximumDays} ngày (hoặc dưới ${tier.maximumDays * 24}h)`
-                      : `Từ ${tier.minimumDays} đến ${tier.maximumDays} ngày trước khi nhận phòng`;
-
-                    const isFull = tier.refundPercent >= 100;
-                    const isNone = tier.refundPercent <= 0;
-
-                    return (
-                      <div key={idx} className="timeline-node">
-                        <div className={`timeline-marker ${isFull ? 'full' : isNone ? 'none' : 'partial'}`}>
-                          {tier.refundPercent}%
-                        </div>
-                        <div className="timeline-content">
-                          <div className="timeline-top">
-                            <strong>Hoàn lại {tier.refundPercent}% số tiền đã thanh toán</strong>
-                            <span className={`refund-badge ${isFull ? 'badge-full' : isNone ? 'badge-none' : 'badge-partial'}`}>
-                              {isFull ? 'Miễn phí hủy' : isNone ? 'Không hoàn tiền' : `Hoàn ${tier.refundPercent}%`}
-                            </span>
-                          </div>
-                          <p>{conditionLabel}</p>
-                        </div>
+                  {cancellationRows.map((row) => (
+                    <div key={row.label} className="timeline-node">
+                      <div className={`timeline-marker ${row.tone}`}>
+                        {row.refundPercent}%
                       </div>
-                    );
-                  })}
+                      <div className="timeline-content">
+                        <div className="timeline-top">
+                          <strong>Hoàn lại {row.refundPercent}% số tiền đã thanh toán</strong>
+                          <span className={`refund-badge badge-${row.tone}`}>
+                            {row.tone === 'full' ? 'Miễn phí hủy' : row.tone === 'none' ? 'Không hoàn tiền' : `Hoàn ${row.refundPercent}%`}
+                          </span>
+                        </div>
+                        <p>{row.label} trước ngày nhận phòng</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
+                <p className="policy-card-desc">Không tự hủy được trong ngày nhận phòng. Giá deal phút chót không hoàn tiền.</p>
 
                 <div className="policy-info-alert success">
                   <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
                   <span>
-                    Thời gian xử lý tiền hoàn: Từ <strong>{payment.refundProcessingMinimumBusinessDays || 3} đến {payment.refundProcessingMaximumBusinessDays || 15} ngày làm việc</strong> qua tài khoản ngân hàng ban đầu.
+                    Thời gian xử lý tiền hoàn: Từ <strong>{payment.refundProcessingMinimumBusinessDays ?? 3} đến {payment.refundProcessingMaximumBusinessDays ?? 15} ngày làm việc</strong> qua tài khoản ngân hàng ban đầu.
                   </span>
                 </div>
               </div>
@@ -300,14 +274,14 @@ export default function HomestayPolicyModal({ isOpen, onClose, homestayName, pol
                     <div className="feature-icon">🔄</div>
                     <div>
                       <b>Số lần đổi ngày:</b>
-                      <span>Tối đa {dateChange.maximumChanges || 1} lần cho mỗi mã đơn đặt phòng.</span>
+                      <span>Tối đa {dateChange.maximumChanges ?? 1} lần cho mỗi mã đơn đặt phòng.</span>
                     </div>
                   </div>
                   <div className="feature-item">
                     <div className="feature-icon">✨</div>
                     <div>
                       <b>Miễn phí đổi ngày:</b>
-                      <span>Trước ít nhất {dateChange.freeBeforeDays || 7} ngày so với ngày nhận phòng.</span>
+                      <span>Trước ít nhất {dateChange.freeBeforeDays ?? 7} ngày so với ngày nhận phòng.</span>
                     </div>
                   </div>
                   <div className="feature-item">
@@ -315,7 +289,7 @@ export default function HomestayPolicyModal({ isOpen, onClose, homestayName, pol
                     <div>
                       <b>Phí đổi ngày gấp:</b>
                       <span>
-                        Từ 3–6 ngày: +{dateChange.feeFromThreeToSixDaysPercent || 10}% · Dưới 3 ngày: +{dateChange.feeUnderThreeDaysPercent || 20}%
+                        Từ 3–6 ngày: +{dateChange.feeFromThreeToSixDaysPercent ?? 10}% · Dưới 3 ngày: +{dateChange.feeUnderThreeDaysPercent ?? 20}%
                       </span>
                     </div>
                   </div>
@@ -325,7 +299,7 @@ export default function HomestayPolicyModal({ isOpen, onClose, homestayName, pol
                       <b>Chênh lệch giá phòng:</b>
                       <span>
                         Nếu đổi sang ngày có giá thấp hơn, phần chênh lệch được hoàn lại bằng{' '}
-                        <strong>{dateChange.lowerPriceDifferenceMode === 'Voucher' ? `Voucher lưu trú (Hạn ${dateChange.voucherValidityMonths || 6} tháng)` : 'Tiền mặt/chuyển khoản'}</strong>.
+                        <strong>{dateChange.lowerPriceDifferenceMode === 'Voucher' ? `Voucher lưu trú (Hạn ${dateChange.voucherValidityMonths ?? 6} tháng)` : 'Tiền mặt/chuyển khoản'}</strong>.
                       </span>
                     </div>
                   </div>
@@ -337,10 +311,10 @@ export default function HomestayPolicyModal({ isOpen, onClose, homestayName, pol
                 <h4 className="sub-title">Quy định đổi loại phòng</h4>
                 <ul className="policy-bullets">
                   <li>
-                    <strong>Miễn phí đổi phòng:</strong> Được hỗ trợ miễn phí nếu thông báo trước ít nhất <strong>{roomChange.freeBeforeHours || 24} giờ</strong> (tùy thuộc vào tình trạng phòng trống).
+                    <strong>Miễn phí đổi phòng:</strong> Được hỗ trợ miễn phí nếu thông báo trước ít nhất <strong>{roomChange.freeBeforeHours ?? 24} giờ</strong> (tùy thuộc vào tình trạng phòng trống).
                   </li>
                   <li>
-                    <strong>Đổi phòng gấp hoặc trong thời gian lưu trú:</strong> Phụ phí xử lý {formatMoney(roomChange.lateOrDuringStayFee || 100000)}/lần đổi.
+                    <strong>Đổi phòng gấp hoặc trong thời gian lưu trú:</strong> Phụ phí xử lý {formatMoney(roomChange.lateOrDuringStayFee ?? 100000)}/lần đổi.
                   </li>
                   {roomChange.freeUpgradeForHomestayFault && (
                     <li>
@@ -371,12 +345,12 @@ export default function HomestayPolicyModal({ isOpen, onClose, homestayName, pol
               <div className="policy-deposit-cards">
                 <div className="deposit-card">
                   <span className="deposit-type">ĐẶT PHÒNG TIÊU CHUẨN</span>
-                  <div className="deposit-val">{payment.standardDepositPercent || 30}%</div>
+                  <div className="deposit-val">{payment.standardDepositPercent ?? 30}%</div>
                   <p>Tỷ lệ đặt cọc khi đặt phòng ngày thường để giữ phòng thành công trên hệ thống</p>
                 </div>
                 <div className="deposit-card highlight">
                   <span className="deposit-type">DỊP LỄ TẾT / VILLA NGUYÊN CĂN</span>
-                  <div className="deposit-val">{payment.holidayDepositPercent || payment.villaDepositPercent || 50}%</div>
+                  <div className="deposit-val">{Math.max(payment.holidayDepositPercent ?? 0, payment.villaDepositPercent ?? 0)}%</div>
                   <p>Áp dụng vào các dịp cao điểm, cuối tuần hoặc biệt thự nguyên căn</p>
                 </div>
               </div>
@@ -387,8 +361,8 @@ export default function HomestayPolicyModal({ isOpen, onClose, homestayName, pol
                 <div className="policy-info-box">
                   <p>
                     Khi nhận phòng, khách lưu trú có thể được yêu cầu đặt cọc đảm bảo tài sản từ{' '}
-                    <strong>{formatMoney(assets.minimumDeposit || 500000)}</strong> đến{' '}
-                    <strong>{formatMoney(assets.maximumDeposit || 2000000)}</strong> (tiền mặt hoặc chuyển khoản). Khoản tiền này sẽ được <strong>hoàn trả 100%</strong> ngay khi trả phòng sau khi kiểm tra phòng không có mất mát hay hư hại.
+                    <strong>{formatMoney(assets.minimumDeposit ?? 500000)}</strong> đến{' '}
+                    <strong>{formatMoney(assets.maximumDeposit ?? 2000000)}</strong> (tiền mặt hoặc chuyển khoản). Khoản tiền này sẽ được <strong>hoàn trả 100%</strong> ngay khi trả phòng sau khi kiểm tra phòng không có mất mát hay hư hại.
                   </p>
                 </div>
 
@@ -396,15 +370,15 @@ export default function HomestayPolicyModal({ isOpen, onClose, homestayName, pol
                 <div className="asset-fee-grid">
                   <div className="asset-fee-card">
                     <span>Khăn tắm / Khăn trải</span>
-                    <strong>{formatMoney(assets.towelReplacement || 150000)}</strong>
+                    <strong>{formatMoney(assets.towelReplacement ?? 150000)}</strong>
                   </div>
                   <div className="asset-fee-card">
                     <span>Remote TV / Điều hòa</span>
-                    <strong>{formatMoney(assets.tvRemoteReplacement || 300000)}</strong>
+                    <strong>{formatMoney(assets.tvRemoteReplacement ?? 300000)}</strong>
                   </div>
                   <div className="asset-fee-card">
                     <span>Mất chìa khóa / Thẻ từ</span>
-                    <strong>{formatMoney(assets.keyReplacement || 200000)}</strong>
+                    <strong>{formatMoney(assets.keyReplacement ?? 200000)}</strong>
                   </div>
                 </div>
               </div>
@@ -432,7 +406,7 @@ export default function HomestayPolicyModal({ isOpen, onClose, homestayName, pol
               <div className="policy-child-tiers">
                 <div className="age-rule-badge">
                   <span>Tiêu chuẩn người lớn:</span>
-                  <strong>Từ {guests.adultAge || 12} tuổi trở lên</strong> (hoặc cao trên {guests.heightFallbackMeters || 1.2}m)
+                  <strong>Từ {guests.adultAge ?? 12} tuổi trở lên</strong> (hoặc cao trên {guests.heightFallbackMeters ?? 1.2}m)
                 </div>
 
                 {/* Occupancy rules (backend OccupancyRules): height decides whether a child takes a capacity slot. */}
@@ -447,17 +421,17 @@ export default function HomestayPolicyModal({ isOpen, onClose, homestayName, pol
                     </thead>
                     <tbody>
                       <tr>
-                        <td><strong>Người lớn (từ {guests.adultAge || 12} tuổi)</strong></td>
+                        <td><strong>Người lớn (từ {guests.adultAge ?? 12} tuổi)</strong></td>
                         <td>Có</td>
                         <td>Không ở thêm được — đổi sang phòng lớn hơn hoặc đặt thêm phòng</td>
                       </tr>
                       <tr>
-                        <td><strong>Trẻ em cao từ {guests.heightFallbackMeters || 1.2}m</strong></td>
+                        <td><strong>Trẻ em cao từ {guests.heightFallbackMeters ?? 1.2}m</strong></td>
                         <td>Có</td>
                         <td><span className="policy-fee-tag fee">Phụ thu cố định mỗi đêm (theo loại phòng)</span></td>
                       </tr>
                       <tr>
-                        <td><strong>Trẻ em dưới {guests.heightFallbackMeters || 1.2}m</strong></td>
+                        <td><strong>Trẻ em dưới {guests.heightFallbackMeters ?? 1.2}m</strong></td>
                         <td>Không</td>
                         <td><span className="policy-fee-tag free">Miễn phí</span></td>
                       </tr>
@@ -477,15 +451,15 @@ export default function HomestayPolicyModal({ isOpen, onClose, homestayName, pol
                   </div>
                   <div className="bed-item">
                     <span>Bộ chăn gối nệm phụ:</span>
-                    <strong>{formatMoney(guests.extraBeddingFee || 50000)} / đêm</strong>
+                    <strong>{formatMoney(guests.extraBeddingFee ?? 50000)} / đêm</strong>
                   </div>
                   <div className="bed-item">
                     <span>Giường phụ trẻ em:</span>
-                    <strong>{formatMoney(guests.childExtraBedFee || 100000)} / đêm</strong>
+                    <strong>{formatMoney(guests.childExtraBedFee ?? 100000)} / đêm</strong>
                   </div>
                   <div className="bed-item">
                     <span>Giường phụ người lớn:</span>
-                    <strong>{formatMoney(guests.adultExtraBedFee || 200000)} / đêm</strong>
+                    <strong>{formatMoney(guests.adultExtraBedFee ?? 200000)} / đêm</strong>
                   </div>
                 </div>
               </div>
@@ -539,8 +513,8 @@ export default function HomestayPolicyModal({ isOpen, onClose, homestayName, pol
                     <span>
                       {pets.allowed ? (
                         <>
-                          <strong>Được phép mang theo thú cưng</strong> (Tối đa {pets.maximumPerRoom || 1} bé/phòng). Phụ phí vệ sinh{' '}
-                          <strong>{formatMoney(pets.feePerNight || 150000)}/đêm</strong>.
+                          <strong>Được phép mang theo thú cưng</strong> (Tối đa {pets.maximumPerRoom ?? 1} bé/phòng). Phụ phí vệ sinh{' '}
+                          <strong>{formatMoney(pets.feePerNight ?? 150000)}/đêm</strong>.
                         </>
                       ) : (
                         'Không cho phép mang theo thú cưng vào homestay để tránh dị ứng cho khách lưu trú tiếp theo.'
@@ -555,7 +529,7 @@ export default function HomestayPolicyModal({ isOpen, onClose, homestayName, pol
                     <b>Tổ chức tiệc & Sự kiện</b>
                     <span>
                       {houseRules.partiesRequireApproval
-                        ? `Cần xin phép và được host duyệt trước. Phí dọn dẹp vệ sinh sự kiện từ ${formatMoney(houseRules.minimumPartyFee || 300000)} đến ${formatMoney(houseRules.maximumPartyFee || 1000000)}.`
+                        ? `Cần xin phép và được host duyệt trước. Phí dọn dẹp vệ sinh sự kiện từ ${formatMoney(houseRules.minimumPartyFee ?? 300000)} đến ${formatMoney(houseRules.maximumPartyFee ?? 1000000)}.`
                         : 'Không được phép tổ chức tiệc hoặc sự kiện ồn ào.'}
                     </span>
                   </div>
@@ -566,7 +540,7 @@ export default function HomestayPolicyModal({ isOpen, onClose, homestayName, pol
                   <div className="rule-text">
                     <b>Gửi hành lý</b>
                     <span>
-                      Miễn phí gửi hành lý tối đa <strong>{houseRules.freeLuggageStorageHoursAfterCheckout || 6} tiếng</strong> sau khi trả phòng. Sau thời gian này phụ phí {formatMoney(houseRules.luggageFeePerItemPerDay || 50000)}/kiện/ngày.
+                      Miễn phí gửi hành lý tối đa <strong>{houseRules.freeLuggageStorageHoursAfterCheckout ?? 6} tiếng</strong> sau khi trả phòng. Sau thời gian này phụ phí {formatMoney(houseRules.luggageFeePerItemPerDay ?? 50000)}/kiện/ngày.
                     </span>
                   </div>
                 </div>
@@ -603,15 +577,15 @@ export default function HomestayPolicyModal({ isOpen, onClose, homestayName, pol
                   </div>
                   <div className="service-col">
                     <span className="service-meta-label">Người lớn:</span>
-                    <strong>{formatMoney(breakfast.adultPrice || 100000)} / suất</strong>
+                    <strong>{formatMoney(breakfast.adultPrice ?? 100000)} / suất</strong>
                   </div>
                   <div className="service-col">
                     <span className="service-meta-label">Trẻ em:</span>
-                    <strong>{formatMoney(breakfast.childPrice || 60000)} / suất</strong>
+                    <strong>{formatMoney(breakfast.childPrice ?? 60000)} / suất</strong>
                   </div>
                 </div>
                 <p className="service-incentive">
-                  🎁 Miễn phí ăn sáng cho trẻ em dưới {breakfast.childFreeUnderAge || 6} tuổi hoặc khách lưu trú từ {breakfast.freeFromNights || 3} đêm trở lên (hoặc villa nguyên căn).
+                  🎁 Miễn phí ăn sáng cho trẻ em dưới {breakfast.childFreeUnderAge ?? 6} tuổi hoặc khách lưu trú từ {breakfast.freeFromNights ?? 3} đêm trở lên (hoặc villa nguyên căn).
                 </p>
               </div>
 
@@ -621,23 +595,23 @@ export default function HomestayPolicyModal({ isOpen, onClose, homestayName, pol
                 <div className="vehicle-pricing-grid">
                   <div className="vehicle-card">
                     <span>🏍️ Xe máy số</span>
-                    <strong>{formatMoney(vehicle.manualMotorbikeDailyPrice || 120000)} / ngày</strong>
+                    <strong>{formatMoney(vehicle.manualMotorbikeDailyPrice ?? 120000)} / ngày</strong>
                   </div>
                   <div className="vehicle-card">
                     <span>🛵 Xe tay ga</span>
-                    <strong>{formatMoney(vehicle.scooterDailyPrice || 160000)} / ngày</strong>
+                    <strong>{formatMoney(vehicle.scooterDailyPrice ?? 160000)} / ngày</strong>
                   </div>
                   <div className="vehicle-card">
                     <span>⚡ Xe điện</span>
-                    <strong>{formatMoney(vehicle.electricBikeDailyPrice || 180000)} / ngày</strong>
+                    <strong>{formatMoney(vehicle.electricBikeDailyPrice ?? 180000)} / ngày</strong>
                   </div>
                   <div className="vehicle-card">
                     <span>✈️ Đón / Tiễn sân bay</span>
-                    <strong>{formatMoney(vehicle.airportPickupPrice || 300000)} / lượt</strong>
+                    <strong>{formatMoney(vehicle.airportPickupPrice ?? 300000)} / lượt</strong>
                   </div>
                 </div>
                 <small className="vehicle-deposit-note">
-                  * Tiền đặt cọc xe khi thuê: {formatMoney(vehicle.vehicleDeposit || 500000)}/xe (kèm giấy phép lái xe).
+                  * Tiền đặt cọc xe khi thuê: {formatMoney(vehicle.vehicleDeposit ?? 500000)}/xe (kèm giấy phép lái xe).
                 </small>
               </div>
             </div>

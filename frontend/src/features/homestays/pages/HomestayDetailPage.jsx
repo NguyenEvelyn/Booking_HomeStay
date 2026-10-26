@@ -8,6 +8,8 @@ import { freshImageUrl } from '../../../shared/utils/freshImageUrl.js';
 import { readFavoriteIds, toggleFavoriteId } from '../../../shared/utils/favorites.js';
 import { bookingApi } from '../../bookings/api/bookingApi.js';
 import { findMissingCompanionIndex } from './bookingGuestValidation.js';
+import HomestayPolicyModal from './HomestayPolicyModal.jsx';
+import { cancellationHeadline, cancellationTimeline, describeCancellationTiers, describeDeposit, describeLateCheckout, describeNoShow, estimateRefund, vietnamToday } from './policyExplain.js';
 import pineHomestayImage from '../../../../assets/f6cd6879081dc8e8d4ff18669308ea86.jpg';
 import azureHomestayImage from '../../../../assets/ecf184f6b6cd2b6e2aa898ff3195ab7e.jpg';
 import sunsetHomestayImage from '../../../../assets/2fc6b619bb0af3dc94971c099d25bbae.jpg';
@@ -299,6 +301,9 @@ export default function HomestayDetailPage({ id, initialSearch, user, onOpenHome
   const [voucherCode, setVoucherCode] = useState('');
   const [appliedVoucherCode, setAppliedVoucherCode] = useState('');
   const [showCancellationPolicy, setShowCancellationPolicy] = useState(false);
+  const [showPolicyModal, setShowPolicyModal] = useState(false);
+  // Policy details start expanded on wide screens and collapsed on phones to keep the page short.
+  const [policyDetailsOpen] = useState(() => typeof window === 'undefined' || !window.matchMedia || window.matchMedia('(min-width: 801px)').matches);
   useEffect(() => {
     const count = Math.max(0, adultCount + childCount - 1);
     setCompanions((current) => Array.from({ length: count }, (_, index) => current[index] || {
@@ -1342,7 +1347,7 @@ export default function HomestayDetailPage({ id, initialSearch, user, onOpenHome
               <div>
                 <b>Nhận phòng</b>
                 <strong>Từ {data.checkInTime.slice(0, 5)}</strong>
-                <small>Vui lòng xuất trình giấy tờ tùy thân</small>
+                <small>Mang CCCD/hộ chiếu; mọi khách, kể cả trẻ em, đều phải khai báo lưu trú</small>
               </div>
             </article>
             <article className="policy-time-card policy-checkout-card">
@@ -1350,24 +1355,15 @@ export default function HomestayDetailPage({ id, initialSearch, user, onOpenHome
               <div>
                 <b>Trả phòng</b>
                 <strong>Trước {data.checkOutTime.slice(0, 5)}</strong>
-                <small>Hỗ trợ trả phòng linh hoạt (khi có thể)</small>
+                <small>{policy?.lateCheckoutTiers?.length ? 'Trả phòng trễ tính phụ phí theo số giờ, xem bên dưới' : 'Vui lòng trả phòng đúng giờ để chủ nhà kịp dọn phòng'}</small>
               </div>
             </article>
             <article className="policy-cancellation-card">
               <i><Icon name="fileText" size={24} /></i>
               <div>
                 <b>Hủy phòng</b>
-                {policy?.cancellationTiers?.length ? (
-                  <div className="policy-refund-tiers" aria-label="Các mức hoàn tiền khi hủy phòng">
-                    {policy.cancellationTiers.map((tier, index) => (
-                      <span className={tier.refundPercent === 0 ? 'no-refund' : ''} key={`${tier.minimumDays}-${tier.maximumDays ?? 'plus'}-${index}`}>
-                        <b>{tier.maximumDays == null ? `Từ ${tier.minimumDays} ngày` : `${tier.minimumDays}–${tier.maximumDays} ngày`}</b>
-                        <strong>{tier.refundPercent === 0 ? 'Không hoàn' : `Hoàn ${tier.refundPercent}%`}</strong>
-                      </span>
-                    ))}
-                  </div>
-                ) : <strong>Xem điều kiện đặt phòng</strong>}
-                <small>Khoản hoàn được tính theo chính sách đã lưu tại thời điểm đặt phòng</small>
+                <strong>{cancellationHeadline(policy?.cancellationTiers)}</strong>
+                <small>Hoàn theo % số tiền bạn đã thanh toán, càng hủy sớm càng được hoàn nhiều</small>
               </div>
             </article>
             <article className="policy-rules-card">
@@ -1378,6 +1374,7 @@ export default function HomestayDetailPage({ id, initialSearch, user, onOpenHome
                   <li>{policy?.document?.houseRules?.smokingInRoomAllowed ? 'Cho phép hút thuốc theo khu vực quy định' : 'Không hút thuốc trong phòng'}</li>
                   <li>{policy?.document?.pets?.allowed ? `Cho phép tối đa ${policy.document.pets.maximumPerRoom} thú cưng/phòng · ${money(policy.document.pets.feePerNight)}/đêm` : 'Không mang thú cưng'}</li>
                   <li>Giữ yên tĩnh từ {String(policy?.document?.houseRules?.quietHoursFrom || '22:00').slice(0,5)} đến {String(policy?.document?.houseRules?.quietHoursTo || '07:00').slice(0,5)}</li>
+                  <li>{policy?.document?.houseRules?.partiesRequireApproval === false ? 'Không tổ chức tiệc, sự kiện' : 'Tiệc, sự kiện cần chủ nhà duyệt trước'}</li>
                 </ul>
               </div>
             </article>
@@ -1390,12 +1387,110 @@ export default function HomestayDetailPage({ id, initialSearch, user, onOpenHome
                   <li>Tối đa 3 giờ: {policy.document.dayUse.upToThreeHoursPercent}% giá phòng/đêm</li>
                   <li>Tối đa 6 giờ: {policy.document.dayUse.upToSixHoursPercent}% giá phòng/đêm</li>
                   <li>Trên 6 giờ: {policy.document.dayUse.overSixHoursPercent}% giá phòng/đêm</li>
-                  <li>Đặt cọc {policy.document.dayUse.depositPercent}%; không hoàn cọc nếu hủy trong {policy.document.dayUse.nonRefundableCancellationWindowHours} giờ trước giờ nhận</li>
+                  <li>Đặt cọc {policy.document.dayUse.depositPercent}%; hủy theo bảng hoàn tiền bên dưới, không tự hủy được trong ngày sử dụng</li>
                 </ul>
               </div>
             </article>}
           </div>
+
+          {policy && (() => {
+            const dealActive = Boolean(priceQuote?.deal);
+            const effectiveTiers = dealActive ? [{ minimumDays: 0, maximumDays: null, refundPercent: 0 }] : policy.cancellationTiers;
+            const today = vietnamToday();
+            const timeline = hasValidStayDates ? cancellationTimeline(effectiveTiers, arrival, today) : [];
+            const paidNow = priceQuote?.amountDueNow;
+            const deposit = describeDeposit(policy, priceQuote, isDayUse);
+            const noShow = describeNoShow(policy.document?.noShow, data.checkInTime);
+            const lateRows = describeLateCheckout(policy.lateCheckoutTiers);
+            const refundDays = policy.document?.payment;
+            const rangeLabel = (entry) => entry.from === entry.to ? formatDateVN(entry.from) : `${formatDateVN(entry.from)} – ${formatDateVN(entry.to)}`;
+            return <>
+              <div className="policy-explain">
+                <article className="policy-explain-card">
+                  <h3>Hủy phòng & hoàn tiền</h3>
+                  <p className="policy-explain-lead">Số ngày tính bằng ngày nhận phòng trừ ngày bạn hủy (theo giờ Việt Nam).</p>
+                  <ol className="policy-tier-list" aria-label="Các mức hoàn tiền khi hủy phòng">
+                    {describeCancellationTiers(policy.cancellationTiers).map((row) => (
+                      <li key={row.label} className={`tone-${row.tone}`}>
+                        <span>{row.label}</span>
+                        <strong>{row.result}</strong>
+                      </li>
+                    ))}
+                  </ol>
+                  <ul className="policy-notes">
+                    <li>% hoàn tính trên <b>số tiền bạn đã thanh toán</b> (tiền cọc hoặc toàn bộ), không phải trên tổng giá phòng.</li>
+                    <li>Bạn tự hủy được trên ứng dụng đến hết ngày trước ngày nhận phòng; trong ngày nhận phòng vui lòng liên hệ chủ nhà.</li>
+                    <li>Giá deal phút chót <b>không hoàn tiền</b> khi hủy.</li>
+                    {refundDays && <li>Tiền hoàn về tài khoản thanh toán ban đầu trong {refundDays.refundProcessingMinimumBusinessDays}–{refundDays.refundProcessingMaximumBusinessDays} ngày làm việc.</li>}
+                  </ul>
+                </article>
+
+                <article className="policy-explain-card policy-estimate-card">
+                  <h3>Tính thử theo ngày bạn chọn</h3>
+                  {timeline.length ? <>
+                    <p className="policy-explain-lead">
+                      Nhận phòng <b>{formatDateVN(arrival)}</b>
+                      {paidNow != null && <> · thanh toán khi đặt <b>{money(paidNow)}</b> ({priceQuote.paymentOption === 'Full' ? 'toàn bộ' : `cọc ${Number(priceQuote.depositPercent)}%`})</>}
+                    </p>
+                    {dealActive && <p className="policy-estimate-alert">Bạn đang chọn giá deal phút chót: hủy vào bất kỳ ngày nào cũng không được hoàn tiền.</p>}
+                    <ol className="policy-timeline-list">
+                      {timeline.map((entry) => entry.checkInDay ? (
+                        <li key="check-in" className="tone-none">
+                          <span>{formatDateVN(entry.from)} <em>ngày nhận phòng</em></span>
+                          <strong>Không tự hủy được; nếu không đến, áp dụng quy định không đến nhận phòng</strong>
+                        </li>
+                      ) : (
+                        <li key={entry.from} className={`tone-${entry.tone}`}>
+                          <span>{rangeLabel(entry)}{entry.isToday && <em>gồm hôm nay</em>}</span>
+                          <strong>
+                            {entry.refundPercent >= 100 ? 'Hoàn 100%' : entry.refundPercent <= 0 ? 'Không hoàn tiền' : `Hoàn ${entry.refundPercent}%`}
+                            {paidNow != null && entry.refundPercent > 0 && <> · ≈ {money(estimateRefund(paidNow, entry.refundPercent))}</>}
+                          </strong>
+                        </li>
+                      ))}
+                    </ol>
+                    <small className="policy-estimate-note">Số tiền là ước tính theo báo giá hiện tại; khi đặt, chính sách được lưu lại cùng đơn và dùng để tính tiền hoàn thực tế.</small>
+                  </> : <p className="policy-estimate-empty">Chọn ngày nhận phòng ở khung đặt phòng để xem bạn được hủy miễn phí đến ngày nào và được hoàn bao nhiêu nếu hủy muộn hơn.</p>}
+                </article>
+              </div>
+
+              <div className="policy-more">
+                <details open={policyDetailsOpen}>
+                  <summary>Thanh toán & giữ phòng</summary>
+                  <ul>
+                    <li>Sau khi bấm đặt, phòng được giữ <b>{policy.holdMinutes} phút</b> để bạn thanh toán. Quá thời gian này đơn tự hết hiệu lực, bạn có thể đặt lại.</li>
+                    {deposit && (deposit.fromQuote
+                      ? <li>Phòng bạn chọn cần đặt cọc <b>{deposit.percent}%</b> tổng tiền, hoặc bạn có thể thanh toán toàn bộ.</li>
+                      : <li>Đặt cọc từ <b>{deposit.percent}%</b> tổng tiền, hoặc thanh toán toàn bộ. Một số loại phòng, biệt thự nguyên căn hoặc dịp lễ có thể yêu cầu cọc cao hơn; con số chính xác hiện trong báo giá.</li>)}
+                    <li>Giá cuối cùng là giá trong báo giá khi bạn bấm đặt (đã gồm phụ thu cuối tuần/lễ, phụ thu thêm người và ưu đãi).</li>
+                  </ul>
+                </details>
+                <details open={policyDetailsOpen}>
+                  <summary>Không đến nhận phòng</summary>
+                  <ul>
+                    <li>Nếu đến <b>{noShow.deadline}</b> ngày nhận phòng (giờ nhận phòng + {noShow.graceHours} giờ) bạn chưa đến và chưa hủy, chủ nhà có thể giải phóng phòng.</li>
+                    <li>Đến muộn? Báo giờ đến dự kiến trong đơn (chậm nhất 06:00 sáng hôm sau) để được giữ phòng thêm.</li>
+                    <li>Khi bị tính là không đến: chủ nhà giữ lại {noShow.penalty}; phần đã trả còn lại được hoàn {noShow.remainingRefundPercent}%.</li>
+                    <li>Bạn có 48 giờ để khiếu nại nếu không đồng ý với quyết định của chủ nhà.</li>
+                  </ul>
+                </details>
+                {lateRows.length > 0 && <details open={policyDetailsOpen}>
+                  <summary>Trả phòng trễ</summary>
+                  <ul>
+                    {lateRows.map((row) => <li key={row.label}>{row.label} sau {data.checkOutTime.slice(0, 5)}: <b>{row.fee.type === 'fixed' ? money(row.fee.value) : `${row.fee.value}% giá 1 đêm`}</b></li>)}
+                    <li>{policy.autoApproveLateCheckoutWithoutNextBooking ? 'Yêu cầu trả trễ được tự động duyệt nếu sau đó chưa có khách nhận phòng.' : 'Yêu cầu trả trễ cần chủ nhà duyệt.'}</li>
+                  </ul>
+                </details>}
+              </div>
+
+              <div className="policy-footer">
+                <small>Chính sách trên được lưu kèm đơn tại thời điểm đặt phòng; nếu homestay thay đổi chính sách sau đó, đơn của bạn không bị ảnh hưởng.</small>
+                <button type="button" className="policy-full-btn" onClick={() => setShowPolicyModal(true)}>Xem toàn bộ chính sách →</button>
+              </div>
+            </>;
+          })()}
         </section>
+        <HomestayPolicyModal isOpen={showPolicyModal} onClose={() => setShowPolicyModal(false)} homestayName={data.name} policies={policy} defaultCheckIn={data.checkInTime} defaultCheckOut={data.checkOutTime} />
 
         <section id="reviews" className="detail-box review-section">
           <header className="section-title review-title">
