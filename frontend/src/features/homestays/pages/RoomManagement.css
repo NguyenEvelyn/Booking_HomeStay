@@ -1760,3 +1760,20 @@
     white-space: normal;
   }
 }
+
+/* Inline room type creation in the add-room modal */
+.room-form-grid .room-new-type {
+  grid-column: 1 / -1;
+  min-width: 0;
+  margin: 0;
+  padding: 16px 18px 18px;
+  border: 1.5px dashed #b9c9ea;
+  border-radius: 14px;
+  background: #f7f9fe;
+}
+.room-new-type legend { padding: 0 6px; color: #0b4ae6; font-size: 13px; font-weight: 800; }
+.room-new-type > p { margin: 0 0 14px; color: #53647d; font-size: 12.5px; font-weight: 500; line-height: 1.55; }
+.room-new-type-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.room-new-type-grid label.wide { grid-column: 1 / -1; }
+.room-new-type-grid small { color: #7a879b; font-size: 11px; font-weight: 500; }
+@media (max-width: 640px) { .room-new-type-grid { grid-template-columns: 1fr; } }

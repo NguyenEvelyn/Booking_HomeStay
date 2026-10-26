@@ -1,3 +1,4 @@
+using HomestayAuth.Api.Features.Notifications;
 using System.Security.Claims;
 using System.Text.Json;
 using System.Data;
@@ -27,7 +28,7 @@ public sealed record UpdateBookingContactRequest(string ContactName, string Phon
 [Route("api/bookings")]
 public sealed class BookingsController(AppDbContext db, VnPayService vnPay, PaymentService paymentService, RoomInventoryService inventory,
     PolicyService policyService, BookingPricingService pricingService, VoucherService voucherService, DealService dealService,
-    OccupancySuggestionService occupancySuggestions) : ControllerBase
+    OccupancySuggestionService occupancySuggestions, NotificationService notifications) : ControllerBase
 {
     private static string? ValidateGuest(BookingGuestInput guest, bool primary)
     {
@@ -46,6 +47,23 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
         if (guest.Type == "child" && string.IsNullOrWhiteSpace(guest.AccompanyingAdult)) return "Trẻ em phải khai báo người đi cùng.";
         return null;
     }
+    // Guest and host learn that a booking is paid and confirmed (bell + email).
+    private async Task NotifyBookingConfirmed(Booking booking)
+    {
+        var homestay = await db.Homestays.AsNoTracking().Where(h => h.Id == booking.HomestayId).Select(h => new { h.Name, h.HostId }).SingleAsync();
+        var guest = booking.ContactName ?? await db.Users.Where(u => u.Id == booking.CustomerId).Select(u => u.FullName).SingleAsync();
+        notifications.Notify(booking.CustomerId, NotificationTemplates.BookingConfirmed(booking.Id, booking.BookingCode, homestay.Name, booking.CheckInDate, booking.CheckOutDate));
+        notifications.Notify(homestay.HostId, NotificationTemplates.NewBookingForHost(booking.Id, booking.BookingCode, homestay.Name, guest, booking.CheckInDate, booking.CheckOutDate));
+    }
+
+    private async Task<bool> BooksOwnHomestay(long homestayId)
+    {
+        if (!long.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return false;
+        var hostId = await db.Homestays.AsNoTracking().Where(h => h.Id == homestayId).Select(h => h.HostId).SingleAsync();
+        return BookingRules.IsOwnHomestay(hostId, userId);
+    }
+    private ObjectResult OwnHomestayForbidden() => StatusCode(StatusCodes.Status403Forbidden, new { message = BookingRules.OwnHomestayMessage });
+
     private static object CancellationQuote(Booking booking, decimal paidAmount)
     {
         var daysBeforeCheckIn = booking.CheckInDate.DayNumber - BookingRules.Today.DayNumber;
@@ -113,6 +131,7 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
         if (childAgeError is not null) return BadRequest(new { message = childAgeError });
         var roomType = await db.RoomTypes.AsNoTracking().SingleOrDefaultAsync(x => x.Id == request.RoomTypeId && x.Status == "Active" && x.Homestay.Status == "Approved");
         if (roomType is null) return NotFound(new { message = "Không tìm thấy loại phòng đang kinh doanh." });
+        if (await BooksOwnHomestay(roomType.HomestayId)) return OwnHomestayForbidden();
         var policy = await policyService.Resolve(roomType.HomestayId, DateTime.UtcNow);
         if (isDayUse && (policy.Document?.DayUse.Enabled != true || request.DayUseHours is < 1 or > 12))
             return BadRequest(new { message = "Chính sách đặt phòng trong ngày không khả dụng hoặc thời lượng không hợp lệ." });
@@ -338,7 +357,14 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
             db.Payments.Add(new Payment { BookingId = booking.Id, TransactionCode = refundCode, PaymentMethod = "Original", TransactionType = "Refund", Amount = result.Refund, Status = "Pending", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
             db.OutboxMessages.Add(new OutboxMessage { Type = "refund.requested", PayloadJson = JsonSerializer.Serialize(new { bookingId = booking.Id, paymentTransactionCode = refundCode, amount = result.Refund, reason }), Status = "Pending", AvailableAt = DateTime.UtcNow, CreatedAt = DateTime.UtcNow });
         }
+        var wasConfirmed = booking.Status == BookingStatus.Confirmed;
         booking.Status = BookingStatus.Cancelled; booking.PaymentStatus = result.Refund > 0 ? PaymentStatus.RefundPending : booking.PaymentStatus; booking.UpdatedAt = DateTime.UtcNow;
+        if (wasConfirmed)
+        {
+            var homestayName = await db.Homestays.Where(h => h.Id == booking.HomestayId).Select(h => h.Name).SingleAsync();
+            var guest = booking.ContactName ?? await db.Users.Where(u => u.Id == userId).Select(u => u.FullName).SingleAsync();
+            await notifications.NotifyHostOfHomestay(booking.HomestayId, NotificationTemplates.CancelledByGuest(booking.Id, booking.BookingCode, homestayName, guest, booking.CheckInDate));
+        }
         await db.AdditionalCharges.Where(x => x.BookingId == bookingId && !x.IsPaid).ExecuteUpdateAsync(x => x.SetProperty(c => c.Status, ChargeStatus.Waived).SetProperty(c => c.TotalPrice, 0));
         await db.BookingRoomStays.Where(x => x.BookingId == bookingId && x.Status == "Active").ExecuteUpdateAsync(x => x.SetProperty(s => s.Status, "Cancelled"));
         await db.SaveChangesAsync();
@@ -385,6 +411,7 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
         var roomType = await db.RoomTypes.Include(x => x.Rooms)
             .SingleOrDefaultAsync(x => x.Id == request.RoomTypeId && x.Status == "Active" && x.Homestay.Status == "Approved");
         if (roomType is null) return NotFound(new { message = "Loại phòng không tồn tại hoặc Homestay chưa được duyệt." });
+        if (await BooksOwnHomestay(roomType.HomestayId)) return OwnHomestayForbidden();
         var policy = await policyService.Resolve(roomType.HomestayId, DateTime.UtcNow);
         if (isDayUse && (policy.Document?.DayUse.Enabled != true || request.DayUseHours is < 1 or > 12))
             return BadRequest(new { message = "Chính sách đặt phòng trong ngày không khả dụng hoặc thời lượng không hợp lệ." });
@@ -498,6 +525,7 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
         var roomType = await db.RoomTypes.Include(x => x.Rooms)
             .SingleOrDefaultAsync(x => x.Id == roomTypeId && x.Status == "Active" && x.Homestay.Status == "Approved");
         if (roomType is null) return BadRequest(new { message = "Loại phòng không còn được kinh doanh." });
+        if (await BooksOwnHomestay(roomType.HomestayId)) return OwnHomestayForbidden();
         if (booking.RoomDealId is { } retryDealId)
         {
             // The deal price is only honoured while the deal is on sale and still has a room for this booking.
@@ -614,6 +642,7 @@ public sealed class BookingsController(AppDbContext db, VnPayService vnPay, Paym
                 ? payment.Amount >= payment.Booking.TotalAmount ? PaymentStatus.Paid : PaymentStatus.Deposited
                 : PaymentStatus.Unpaid;
             payment.Booking.UpdatedAt = now;
+            if (success) await NotifyBookingConfirmed(payment.Booking);
             if (success && payment.Booking.RecommendationSessionId is not null
                 && !await db.RecommendationEvents.AnyAsync(e => e.BookingId == payment.BookingId))
                 db.RecommendationEvents.Add(new RecommendationEvent

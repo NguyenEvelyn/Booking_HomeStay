@@ -1,3 +1,4 @@
+using HomestayAuth.Api.Features.Notifications;
 using System.Security.Claims;
 using HomestayAuth.Api.Features.Admin.Audit;
 using HomestayAuth.Api.Features.Admin.Authorization;
@@ -14,7 +15,7 @@ public sealed record AdminFeaturedRequest(bool IsFeatured);
 public sealed record AdminChangeRoleRequest(string Role, string? Reason = null);
 
 [ApiController, Route("api/admin"), Authorize(Policy = AdminPolicies.Access)]
-public sealed class AdminController(AppDbContext db, IAuditLogService audit, IAuthService authService) : ControllerBase
+public sealed class AdminController(AppDbContext db, IAuditLogService audit, IAuthService authService, NotificationService notifications) : ControllerBase
 {
     [HttpGet("overview")]
     public async Task<IActionResult> Overview() => Ok(new {
@@ -81,6 +82,7 @@ public sealed class AdminController(AppDbContext db, IAuditLogService audit, IAu
         if ((reason?.Length ?? 0) > 500) return BadRequest(new { message = "Lý do tối đa 500 ký tự." });
         var before = new { item.Status, item.IsFeatured, item.RejectionReason, item.ReviewedBy, item.ReviewedAt };
         item.Status = status; if (status != "Approved") item.IsFeatured = false; item.RejectionReason = status is "Rejected" or "Suspended" ? reason : null; item.ReviewedBy = long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!); item.ReviewedAt = DateTime.UtcNow; item.UpdatedAt = DateTime.UtcNow;
+        notifications.Notify(item.HostId, NotificationTemplates.HomestayDecision(item.Name, status, reason));
         audit.Add(HttpContext, $"homestay.{decision.ToLowerInvariant()}", "homestay", id, before, new { item.Status, item.IsFeatured, item.RejectionReason, item.ReviewedBy, item.ReviewedAt }, reason);
         await db.SaveChangesAsync(); await transaction.CommitAsync();
         return Ok(new { message = decision.Equals("restore", StringComparison.OrdinalIgnoreCase) ? "Đã khôi phục homestay." : status == "Approved" ? "Đã duyệt homestay." : status == "Rejected" ? "Đã từ chối homestay." : "Đã ẩn homestay." });

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import '../styles/admin.css';
+import NotificationBell from '../../../shared/components/NotificationBell.jsx';
 
 const paths = {
   overview:<><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>,
@@ -15,14 +16,15 @@ const paths = {
   settings:<><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .33 1.82l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-2.9 1.18V21h-4v-.09a1.7 1.7 0 0 0-2.9-1.18l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 3.09 14H3v-4h.09A1.7 1.7 0 0 0 4.27 7.1l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 10 3.09V3h4v.09a1.7 1.7 0 0 0 2.9 1.18l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 20.91 10H21v4h-.09A1.7 1.7 0 0 0 19.4 15z"/></>,
   'no-show-disputes':<><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2M5 5l14 14"/></>,
   banners:<><rect x="3" y="5" width="18" height="12" rx="2"/><path d="m3 15 5-5 4 4 3-3 6 6M8 21h8"/></>,
+  news:<><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8M15 18h-5M10 6h8v4h-8z"/></>,
   audit:<><path d="M4 4h16v16H4zM8 8h8M8 12h8M8 16h5"/></>,
   logout:<><path d="M10 17l5-5-5-5M15 12H3M21 19V5a2 2 0 0 0-2-2h-6"/></>,
   menu:<path d="M4 6h16M4 12h16M4 18h16"/>, collapse:<path d="m15 18-6-6 6-6"/>,
   key:<><circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 8.8-8.8M15 8l3 3M17 6l2 2"/></>,
 };
 function Icon({name,size=19}){return <svg className="admin-icon" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>}
-const items=[['overview','Tổng quan'],['host-registrations','Duyệt làm Host'],['users','Người dùng'],['homestays','Homestay'],['vouchers','Voucher'],['banners','Banner trang chủ'],['bookings','Đặt phòng'],['no-show-disputes','Khiếu nại no-show'],['payments','Thanh toán'],['tax','Thuế mô phỏng'],['reviews','Đánh giá'],['ai','Thống kê AI'],['settings','Cấu hình'],['audit','Nhật ký hoạt động']];
-export default function AdminLayout({user,tab,onTab,onLogout,onChangePassword,children}){
+const items=[['overview','Tổng quan'],['host-registrations','Duyệt làm Host'],['users','Người dùng'],['homestays','Homestay'],['vouchers','Voucher'],['banners','Banner trang chủ'],['news','Tin tức'],['bookings','Đặt phòng'],['no-show-disputes','Khiếu nại no-show'],['payments','Thanh toán'],['tax','Thuế mô phỏng'],['reviews','Đánh giá'],['ai','Thống kê AI'],['settings','Cấu hình'],['audit','Nhật ký hoạt động']];
+export default function AdminLayout({user,tab,onTab,onLogout,onChangePassword,onNotificationLink,children}){
  const[open,setOpen]=useState(false),[collapsed,setCollapsed]=useState(false);
  useEffect(()=>{const close=e=>e.key==='Escape'&&setOpen(false);document.addEventListener('keydown',close);return()=>document.removeEventListener('keydown',close)},[]);
  const visibleItems=user?.role==='Admin'?items:items.filter(([key])=>key!=='vouchers');
@@ -38,7 +40,7 @@ export default function AdminLayout({user,tab,onTab,onLogout,onChangePassword,ch
   <section className="admin-main"><header className="admin-header">
    <button className="admin-menu" aria-label="Mở menu quản trị" onClick={()=>setOpen(true)}><Icon name="menu" size={21}/></button>
    <div className="admin-header-titles"><p><i aria-hidden="true"/> QUẢN TRỊ TRIPIO</p><h1>{current}</h1></div>
-   <div className="admin-account"><button onClick={onChangePassword}><Icon name="key" size={17}/><span>Đổi mật khẩu</span></button><span className="admin-account-avatar" aria-hidden="true">{name[0]?.toUpperCase()}</span><div><b>{name}</b><small>{user?.role==='Support'?'Nhân viên hỗ trợ':'Quản trị viên'}</small></div></div>
+   <div className="admin-account"><NotificationBell user={user} tone="light" onNavigate={link=>link.type==='AdminTab'?onTab(link.extra||'overview'):onNotificationLink?.(link)}/><button onClick={onChangePassword}><Icon name="key" size={17}/><span>Đổi mật khẩu</span></button><span className="admin-account-avatar" aria-hidden="true">{name[0]?.toUpperCase()}</span><div><b>{name}</b><small>{user?.role==='Support'?'Nhân viên hỗ trợ':'Quản trị viên'}</small></div></div>
   </header><div className="admin-content">{children}</div></section>
  </main>
 }

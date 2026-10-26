@@ -1,3 +1,4 @@
+using HomestayAuth.Api.Features.Notifications;
 using HomestayAuth.Api.Features.Bookings;
 using System.Security.Claims;
 using System.Text.Json;
@@ -151,6 +152,8 @@ public sealed partial class HostHomestaysController
         paymentService.QueueRefund(bookingId, refundToQueue,
             $"Host hủy đơn đặt phòng ({daysBeforeCheckIn} ngày trước check-in). Hoàn tiền {finalRefundAmount:N0}đ (Phí hủy: {finalCancellationFee:N0}đ)");
         if (finalRefundAmount > 0) booking.PaymentStatus = PaymentStatus.RefundPending;
+        notifications.Notify(booking.CustomerId, NotificationTemplates.CancelledByHost(booking.Id, booking.BookingCode,
+            await db.Homestays.Where(h => h.Id == booking.HomestayId).Select(h => h.Name).SingleAsync(), finalRefundAmount));
 
         await LogAudit("CancelBooking", bookingId,
             beforeJson: $"{{\"status\": \"{oldStatus}\", \"paidAmount\": {paidAmount}}}",

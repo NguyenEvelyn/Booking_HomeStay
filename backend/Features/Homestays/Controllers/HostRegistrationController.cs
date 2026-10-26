@@ -1,3 +1,4 @@
+using HomestayAuth.Api.Features.Notifications;
 using System.Security.Claims;
 using System.Text.Json;
 using HomestayAuth.Api.Domain.Entities;
@@ -23,7 +24,7 @@ public sealed record RegisterHostRequest(
 public sealed record HostRegistrationDecisionRequest(string? Reason);
 
 [ApiController]
-public sealed class HostRegistrationController(AppDbContext db, IAuditLogService audit, SupabaseStorageService storage) : ControllerBase
+public sealed class HostRegistrationController(AppDbContext db, IAuditLogService audit, SupabaseStorageService storage, NotificationService notifications) : ControllerBase
 {
     private long UserId => long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
@@ -89,6 +90,7 @@ public sealed class HostRegistrationController(AppDbContext db, IAuditLogService
             db.HostRegistrations.Add(reg);
         }
 
+        await notifications.NotifyStaff(NotificationTemplates.StaffNewHostRegistration(user.FullName));
         await db.SaveChangesAsync();
         return Ok(new
         {
@@ -256,9 +258,9 @@ public sealed class HostRegistrationController(AppDbContext db, IAuditLogService
                         Province = province.Trim(),
                         CheckInTime = new TimeOnly(14, 0),
                         CheckOutTime = new TimeOnly(12, 0),
-                        Status = "Approved",
-                        ReviewedBy = adminId,
-                        ReviewedAt = now,
+                        // The application has no rooms yet: the host adds room types/rooms and submits it, then an
+                        // admin approves it like any other homestay (DecideHomestay requires images and rooms).
+                        Status = "Draft",
                         CreatedAt = now,
                         UpdatedAt = now,
                     };
@@ -329,6 +331,7 @@ public sealed class HostRegistrationController(AppDbContext db, IAuditLogService
 
         audit.Add(HttpContext, "host_registration.approve", "user", user.Id,
             new { Role = beforeRole }, new { Role = user.Role, HostRegistrationId = id });
+        notifications.Notify(user.Id, NotificationTemplates.HostRegistrationResult(true, null));
 
         await db.SaveChangesAsync();
         await tx.CommitAsync();
@@ -357,6 +360,7 @@ public sealed class HostRegistrationController(AppDbContext db, IAuditLogService
 
         audit.Add(HttpContext, "host_registration.reject", "host_registration", id,
             new { reg.Status }, new { reg.Status, reg.RejectionReason }, reason);
+        notifications.Notify(reg.UserId, NotificationTemplates.HostRegistrationResult(false, reason));
 
         await db.SaveChangesAsync();
         await tx.CommitAsync();

@@ -62,7 +62,8 @@ public sealed class RecommendationService(AppDbContext db, RecommendationWeights
             .Select(i => new { i.RoomTypeId, i.ImageUrl }).ToListAsync();
 
         var now = DateTime.UtcNow;
-        var futureCheckIn = query.CheckIn > BookingRules.Today;
+        // Same as the catalog: without dates (or for a future stay) Occupied/Cleaning rooms still count.
+        var futureCheckIn = !query.CheckIn.HasValue || query.CheckIn > BookingRules.Today;
         var blocked = query.CheckIn.HasValue && query.CheckOut.HasValue
             ? await BookingAvailability.BlockingDetails(db, query.CheckIn.Value, query.CheckOut.Value, now)
                 .Where(d => typeIds.Contains(d.RoomTypeId))

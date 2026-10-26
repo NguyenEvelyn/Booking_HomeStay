@@ -98,11 +98,7 @@ export const paymentLabel = {
 };
 
 // Guest-entered text must not start a spreadsheet formula when the host opens the export in Excel.
-export const csvCell = value => {
-  const text = String(value ?? '');
-  const safe = /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
-  return `"${safe.replaceAll('"', '""')}"`;
-};
+export { csvCell } from '../../../shared/utils/csv.js';
 
 // --- POLICY-DRIVEN PRICING HELPERS ---
 export const calcEarlyCheckInPolicy = (timeStr, nightlyPrice, policyCheckInOut) => {

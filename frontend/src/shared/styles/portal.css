@@ -1386,28 +1386,143 @@
 .policy-refund-tiers span.no-refund { border-color: #f1d0cd; background: #fff5f4; }
 .policy-refund-tiers span.no-refund strong { color: #b5352c; }
 
-.policy-explain {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
-  margin-top: 26px;
+.policy-tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
 }
 
-.policy-explain-card {
-  padding: 22px 24px;
+.policy-tile {
+  flex: 1 1 230px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px 16px 16px 14px;
   border: 1px solid #dce6f4;
   border-radius: 14px;
   background: #fff;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .15s, box-shadow .15s, transform .15s;
 }
 
-.policy-explain-card h3 {
-  margin: 0 0 6px;
-  color: #09275f;
-  font-size: 16px;
+.policy-tile:hover { border-color: #9db8f2; transform: translateY(-1px); box-shadow: 0 6px 18px rgba(11, 74, 230, .08); }
+.policy-tile:focus-visible { outline: 3px solid #93b4ff; outline-offset: 2px; }
+.policy-tile.active { border-color: #0b4ae6; box-shadow: 0 0 0 1px #0b4ae6, 0 8px 22px rgba(11, 74, 230, .12); }
+
+.policy-tile i {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #eef4ff;
+  color: #0b4ae6;
 }
+
+.policy-tile.tone-green i { background: #e8f8f0; color: #087a52; }
+.policy-tile.tone-amber i { background: #fff3cd; color: #8a6100; }
+
+.policy-tile > span {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.policy-tile b { color: #09275f; font-size: 13.5px; }
+.policy-tile strong { color: #0b4ae6; font-size: 13.5px; font-weight: 700; line-height: 1.35; }
+.policy-tile.tone-green strong { color: #087a52; }
+.policy-tile.tone-amber strong { color: #8a6100; }
+.policy-tile small { color: #7885a0; font-size: 11.5px; line-height: 1.45; }
+
+.policy-tile em {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #f1f5fb;
+  color: #0b4ae6;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.policy-tile.active em { background: #0b4ae6; color: #fff; }
+
+.policy-tiles-hint {
+  margin: 14px 0 0;
+  color: #7885a0;
+  font-size: 12.5px;
+}
+
+.policy-detail-panel {
+  margin-top: 16px;
+  padding: 22px 24px;
+  border: 1px solid #c9d8f5;
+  border-radius: 16px;
+  background: #fff;
+  animation: policy-panel-in .18s ease-out;
+}
+
+@keyframes policy-panel-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+.policy-detail-panel > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.policy-detail-panel h3 { margin: 0; color: #09275f; font-size: 17px; }
+
+.policy-detail-panel > header button {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #dce6f4;
+  border-radius: 50%;
+  background: #fff;
+  color: #475569;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.policy-detail-list {
+  margin: 0;
+  padding-left: 18px;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.policy-detail-list b { color: #09275f; }
+.policy-detail-list + .policy-tier-list { margin-top: 14px; }
+
+.policy-detail-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.policy-estimate-card {
+  padding: 18px;
+  border-radius: 14px;
+  background: #f6f9ff;
+}
+
+.policy-estimate-card h4 { margin: 0 0 6px; color: #09275f; font-size: 14.5px; }
 
 .policy-explain-lead {
-  margin: 0 0 14px;
+  margin: 0 0 12px;
   color: #64748b;
   font-size: 12.5px;
   line-height: 1.55;
@@ -1490,45 +1605,11 @@
 }
 
 .policy-estimate-empty {
-  margin: 8px 0 0;
-  padding: 18px;
-  border: 1px dashed #b9c8e3;
-  border-radius: 12px;
+  margin: 4px 0 0;
   color: #53647d;
   font-size: 13px;
   line-height: 1.6;
 }
-
-.policy-more {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
-  margin-top: 18px;
-}
-
-.policy-more details {
-  padding: 18px 20px;
-  border: 1px solid #dce6f4;
-  border-radius: 14px;
-  background: #fff;
-}
-
-.policy-more summary {
-  color: #09275f;
-  font-size: 14.5px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.policy-more ul {
-  margin: 10px 0 0;
-  padding-left: 18px;
-  color: #475569;
-  font-size: 12.5px;
-  line-height: 1.65;
-}
-
-.policy-more ul b { color: #09275f; }
 
 .policy-footer {
   display: flex;
@@ -1558,18 +1639,21 @@
 
 .policy-full-btn:hover { background: #0b4ae6; color: #fff; }
 
-@media(max-width:1050px) {
-  .policy-more { grid-template-columns: 1fr; }
-}
-
 @media(max-width:800px) {
-  .policy-explain { grid-template-columns: 1fr; }
-  .policy-explain-card { padding: 18px 16px; }
+  .policy-tile { flex-basis: calc(50% - 7px); padding: 14px 12px; }
+  .policy-tile i { width: 36px; height: 36px; }
+  .policy-tile em { display: none; }
+  .policy-detail-panel { padding: 18px 16px; }
+  .policy-detail-split { grid-template-columns: 1fr; }
   .policy-tier-list li,
   .policy-timeline-list li { flex-direction: column; align-items: flex-start; gap: 4px; }
   .policy-tier-list li strong,
   .policy-timeline-list li strong { text-align: left; }
   .policy-footer { flex-direction: column; align-items: stretch; }
+}
+
+@media(max-width:420px) {
+  .policy-tile { flex-basis: 100%; }
 }
 
 @media(max-width:700px) {
@@ -3724,6 +3808,18 @@
 .calendar-days button.selected { background:#0b4ae6 !important; border-color:#0b4ae6 !important; color:#fff !important; }
 .calendar-days button.in-range { background:#e0e7ff !important; border-color:#c7d2fe !important; color:#1e40af !important; }
 .calendar-days button:disabled:not(.booked) { background:#f8fafc !important; border-color:transparent !important; color:#cbd5e1 !important; opacity:.55; }
+/* Nightly price under each bookable day */
+.calendar-days button { display:flex !important; flex-direction:column; align-items:center; justify-content:center; gap:1px; height:auto !important; min-height:44px; }
+.calendar-days .calendar-day-number { line-height:1.1; }
+.calendar-days .calendar-day-price { font-size:9.5px; font-weight:600; line-height:1.1; color:#475569; letter-spacing:-.2px; white-space:nowrap; }
+.calendar-days .calendar-day-price.higher { color:#c2410c; }
+.calendar-days .calendar-day-price.lower { color:#047857; }
+.calendar-days button.selected .calendar-day-price,
+.calendar-days button.selected .calendar-day-price.higher,
+.calendar-days button.selected .calendar-day-price.lower { color:#dbeafe; }
+.calendar-price-note { margin:8px 0 0; color:#64748b; font-size:11px; line-height:1.5; text-align:center; }
+.calendar-price-note .higher { color:#c2410c; font-weight:700; }
+.calendar-price-note .lower { color:#047857; font-weight:700; }
 .room-availability-calendar footer { display:flex; justify-content:center; flex-wrap:wrap; gap:12px; margin-top:10px; padding-top:9px; border-top:1px solid #f1f5f9; font-size:10px; color:#475569; }
 .room-availability-calendar footer span { display:flex; align-items:center; gap:4px; }
 .room-availability-calendar footer i { width:9px; height:9px; border-radius:3px; }
@@ -3810,3 +3906,126 @@
 .occupancy-suggestions button { display: grid; gap: 2px; text-align: left; padding: 10px 12px; border-radius: 10px; border: 1px solid #fcd34d; background: #fff; color: #0f172a; cursor: pointer; }
 .occupancy-suggestions button:hover, .occupancy-suggestions button:focus-visible { border-color: #f59e0b; box-shadow: 0 0 0 3px rgba(245, 158, 11, .2); }
 .occupancy-suggestions small { color: #92400e; }
+
+/* Payment summary: voucher ticket after the total, then what is paid today vs at the homestay */
+.payment-summary > .payment-grand-total { margin: 4px 0 14px; color: #15356e; font-size: 13.5px; font-weight: 700; }
+.payment-summary > .payment-grand-total strong { color: #07368f; font-size: 20px; }
+
+.payment-summary > .pay-voucher {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 14px;
+  padding: 14px;
+  border: 1.5px dashed #b9c9ea;
+  border-radius: 12px;
+  background: #f7f9fe;
+  color: #3b4a63;
+  font-size: 12.5px;
+}
+
+.pay-voucher > label { color: #0b2a5b; font-size: 13px; font-weight: 700; }
+.pay-voucher > small { color: #7a879b; font-size: 12px; }
+.pay-voucher.blocked { border-color: #e3e8f0; background: #f8fafc; }
+
+.pay-voucher-input { display: flex; gap: 8px; margin: 0; }
+.pay-voucher-input input {
+  flex: 1;
+  min-width: 0;
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid #cfd9ea;
+  border-radius: 10px;
+  background: #fff;
+  color: #0b2a5b;
+  font: inherit;
+  font-weight: 700;
+  letter-spacing: .4px;
+}
+.pay-voucher-input input::placeholder { color: #9aa6b8; font-weight: 500; letter-spacing: 0; }
+.pay-voucher-input input:focus { outline: none; border-color: #0b4ae6; box-shadow: 0 0 0 3px rgba(11, 74, 230, .12); }
+.pay-voucher-input button {
+  flex-shrink: 0;
+  height: 42px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 10px;
+  background: #0b4ae6;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.pay-voucher-input button:disabled { background: #c3cee3; cursor: not-allowed; }
+
+.pay-voucher-clear {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #b5352c;
+  font: inherit;
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.payment-summary > .pay-voucher.applied {
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  border-color: #8fd5b3;
+  border-style: dashed;
+  background: #effbf5;
+}
+.pay-voucher.applied > i {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #16a36b;
+  color: #fff;
+  font-style: normal;
+  font-weight: 800;
+}
+.pay-voucher.applied > span { display: grid; gap: 2px; min-width: 0; }
+.pay-voucher.applied b { color: #087a52; font-size: 13.5px; letter-spacing: .4px; }
+.pay-voucher.applied small { color: #3f6b57; font-size: 12px; line-height: 1.4; }
+.pay-voucher.applied > button {
+  padding: 6px 10px;
+  border: 1px solid #b7e2cc;
+  border-radius: 999px;
+  background: #fff;
+  color: #087a52;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.payment-summary > .pay-due {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 14px;
+  padding: 16px;
+  border: 1px solid #dce6f4;
+  border-radius: 14px;
+  background: #fff;
+}
+.pay-due-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.pay-due-row span { color: #53647d; font-size: 12.5px; }
+.pay-due-row.now span { color: #0b2a5b; font-weight: 700; }
+.pay-due-row.now strong { color: #0b4ae6; font-size: 22px; font-weight: 800; white-space: nowrap; }
+.pay-due-row.later strong { color: #334155; font-size: 14px; white-space: nowrap; }
+.pay-due-bar { height: 6px; overflow: hidden; border-radius: 999px; background: #e8eef8; }
+.pay-due-bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #0b4ae6, #4f7cff); }
+.pay-due > small { color: #7a879b; font-size: 12px; }
+
+/* Booking box replaced for the homestay's own host */
+.own-homestay-notice { display: grid; gap: 10px; justify-items: start; padding: 6px 2px; }
+.own-homestay-notice > i { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: #eef4ff; color: #0b4ae6; font-size: 22px; font-style: normal; }
+.own-homestay-notice > b { color: #0b2a5b; font-size: 17px; }
+.own-homestay-notice > p { margin: 0; color: #53647d; font-size: 13px; line-height: 1.6; }
+.own-homestay-notice > p strong { color: #0b2a5b; }
+.own-homestay-notice > button { width: 100%; height: 46px; border: 0; border-radius: 12px; background: #0b4ae6; color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+.own-homestay-notice > button:hover { background: #0a3fc4; }

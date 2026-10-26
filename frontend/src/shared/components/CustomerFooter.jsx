@@ -1,4 +1,5 @@
 import React from 'react';
+import NewsletterForm from './NewsletterForm.jsx';
 
 const logoWhite = '/assets/figma/tripio-logo-white.png';
 
@@ -10,10 +11,7 @@ export default function CustomerFooter({ onHome, onDeveloping = () => {} }) {
           <h3>ĐĂNG KÝ NHẬN THÔNG TIN</h3>
           <p>Luôn được cập nhật về các lời khuyên du lịch và khuyến mãi mới nhất</p>
         </div>
-        <form className="footer-newsletter-form" onSubmit={(event) => { event.preventDefault(); onDeveloping('Đăng ký nhận thông tin'); }}>
-          <input type="email" placeholder="Nhập Email của bạn" required />
-          <button type="submit">Gửi ngay</button>
-        </form>
+        <NewsletterForm source="footer" />
       </div>
       <div className="footer-columns">
         <div className="footer-col footer-col-brand">

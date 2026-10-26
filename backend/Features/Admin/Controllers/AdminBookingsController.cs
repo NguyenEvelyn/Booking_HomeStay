@@ -1,3 +1,4 @@
+using HomestayAuth.Api.Features.Notifications;
 using System.Security.Claims;
 using HomestayAuth.Api.Domain.Entities;
 using HomestayAuth.Api.Features.Admin.Audit;
@@ -13,7 +14,7 @@ namespace HomestayAuth.Api.Features.Admin.Controllers;
 public sealed record AdminBookingDecision(string Reason, string? Status = null);
 
 [ApiController, Route("api/admin/bookings"), Authorize(Policy = AdminPolicies.Access)]
-public sealed class AdminBookingsController(AppDbContext db, IAuditLogService audit) : ControllerBase
+public sealed class AdminBookingsController(AppDbContext db, IAuditLogService audit, NotificationService notifications) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> List([FromQuery] int page = 1, [FromQuery] int pageSize = 20,
@@ -107,6 +108,7 @@ public sealed class AdminBookingsController(AppDbContext db, IAuditLogService au
         var now = DateTime.UtcNow;
         var before = new { booking.Status };
         booking.Status = BookingStatus.Cancelled; booking.PaymentStatus = refund > 0 ? PaymentStatus.RefundPending : booking.PaymentStatus; booking.UpdatedAt = now;
+        notifications.Notify(booking.CustomerId, NotificationTemplates.CancelledByAdmin(booking.Id, booking.BookingCode, refund));
         db.Cancellations.Add(new Cancellation { BookingId = id, CancelledBy = actorId, Reason = reason,
             CancelledAt = now, CancellationFee = fee, RefundAmount = refund, Status = refund > 0 ? "Approved" : "Refunded",
             ProcessedBy = actorId, ProcessedAt = now });

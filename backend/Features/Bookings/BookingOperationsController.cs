@@ -1,3 +1,4 @@
+using HomestayAuth.Api.Features.Notifications;
 using System.Data;
 using System.Security.Claims;
 using System.Text.Json;
@@ -26,7 +27,7 @@ public sealed record CheckoutRequest(decimal PaymentAmount = 0, string PaymentMe
 [Route("api")]
 [Authorize]
 public sealed class BookingOperationsController(AppDbContext db, RoomInventoryService inventory, PaymentService payments, AdditionalChargeService chargeService,
-    IdempotencyService idempotency, PolicyService policyService, BookingPricingService pricingService) : ControllerBase
+    IdempotencyService idempotency, PolicyService policyService, BookingPricingService pricingService, NotificationService notifications) : ControllerBase
 {
     private long UserId => long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
     private string Role => User.FindFirstValue(ClaimTypes.Role) ?? "Customer";
@@ -114,6 +115,8 @@ public sealed class BookingOperationsController(AppDbContext db, RoomInventorySe
         booking.Status = BookingStatus.Confirmed;
         booking.PaymentStatus = amount >= booking.TotalAmount ? PaymentStatus.Paid : PaymentStatus.Deposited;
         booking.UpdatedAt = DateTime.UtcNow;
+        notifications.Notify(booking.CustomerId, NotificationTemplates.BookingConfirmed(booking.Id, booking.BookingCode,
+            await db.Homestays.Where(h => h.Id == booking.HomestayId).Select(h => h.Name).SingleAsync(), booking.CheckInDate, booking.CheckOutDate));
         var response = new { booking.Status, booking.PaymentStatus, paid = amount }; StoreIdempotency("pay-deposit", request, response);
         await db.SaveChangesAsync(); await tx.CommitAsync(); return Ok(response);
     }
@@ -242,7 +245,9 @@ public sealed class BookingOperationsController(AppDbContext db, RoomInventorySe
         var refund = await db.Payments.Include(x => x.Booking).SingleOrDefaultAsync(x => x.Id == paymentId && x.TransactionType == "Refund" && x.Status == "Pending" && x.Booking.Homestay.HostId == UserId);
         if (refund is null) return NotFound(new { message = "Không tìm thấy khoản hoàn tiền đang chờ." });
         refund.Status = "Success"; refund.PaidAt = DateTime.UtcNow; refund.UpdatedAt = DateTime.UtcNow; refund.GatewayResponse = string.IsNullOrWhiteSpace(request.Reason) ? refund.GatewayResponse : request.Reason;
-        await payments.RefreshPaymentStatus(refund.Booking); AddAudit("refund.confirmed", "Payment", paymentId, new { refund.BookingId, refund.Amount, refund.PaymentMethod }, request.Reason);
+        await payments.RefreshPaymentStatus(refund.Booking);
+        notifications.Notify(refund.Booking.CustomerId, NotificationTemplates.RefundCompleted(refund.BookingId, refund.Booking.BookingCode, refund.Amount));
+        AddAudit("refund.confirmed", "Payment", paymentId, new { refund.BookingId, refund.Amount, refund.PaymentMethod }, request.Reason);
         await db.SaveChangesAsync(); return Ok(new { refund.Id, refund.Amount, refund.Status, refund.PaidAt });
     }
 

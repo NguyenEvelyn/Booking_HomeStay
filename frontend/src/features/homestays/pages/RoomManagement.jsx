@@ -5,7 +5,11 @@ import './RoomManagement.css';
 import { confirmDialog, toast } from '../../../shared/feedback/feedback.js';
 
 const money = v => `${new Intl.NumberFormat('vi-VN').format(v || 0)}đ`;
-const empty = { homestayId: '', roomTypeId: '', roomNumber: '', floorNumber: '', status: 'Available', note: '', images: [] };
+// Sentinel room type id: the room is saved together with a new room type created from the inline fields.
+const NEW_TYPE = '__new__';
+const emptyNewType = { name: '', basePrice: '', baseCapacity: 2, maxCapacity: 2, bedType: '', roomSize: '', description: '' };
+const empty = { homestayId: '', roomTypeId: '', roomNumber: '', floorNumber: '', status: 'Available', note: '', images: [], newType: emptyNewType };
+const defaultTypeId = homestay => homestay?.roomTypes?.[0]?.id || NEW_TYPE;
 const statusLabel = { Available: 'Còn trống', Occupied: 'Đang sử dụng', Cleaning: 'Đang dọn', Maintenance: 'Bảo trì', Inactive: 'Ngưng hoạt động' };
 const cleanLabel = { Clean: 'Sạch sẵn sàng', NeedCleaning: 'Cần dọn', InProgress: 'Đang dọn', Inspection: 'Chờ kiểm tra' };
 const emptyChecklist = { linenChanged: false, bathroomCleaned: false, amenitiesRestocked: false, equipmentChecked: false, note: '' };
@@ -79,7 +83,7 @@ export default function RoomManagement({ data, run }) {
 
   const openAdd = () => {
     const target = activeHomestay || data.homestays[0];
-    setForm({ ...empty, homestayId: target?.id || '', roomTypeId: target?.roomTypes?.[0]?.id || '' });
+    setForm({ ...empty, homestayId: target?.id || '', roomTypeId: target ? defaultTypeId(target) : '' });
     setFiles([]);
     setImageError('');
     setModal('add');
@@ -104,9 +108,37 @@ export default function RoomManagement({ data, run }) {
       note: form.note
     };
 
+    const creatingType = adding && form.roomTypeId === NEW_TYPE;
+    if (creatingType && Number(form.newType.maxCapacity) < Number(form.newType.baseCapacity)) {
+      setBusy(false);
+      toast.error('Sức chứa tối đa phải lớn hơn hoặc bằng sức chứa tiêu chuẩn.');
+      return;
+    }
+
     const result = await run(async () => {
+      let roomTypeId = form.roomTypeId;
+      if (creatingType) {
+        const t = form.newType;
+        const baseCapacity = Number(t.baseCapacity);
+        const maxCapacity = Number(t.maxCapacity);
+        const created = await homestayApi.addRoomType(form.homestayId, {
+          name: t.name.trim(),
+          description: t.description.trim() || `${t.name.trim()} cho ${baseCapacity} khách`,
+          basePrice: Number(t.basePrice),
+          maxAdults: maxCapacity,
+          maxChildren: 0,
+          bedType: t.bedType.trim(),
+          roomSize: t.roomSize ? Number(t.roomSize) : null,
+          baseCapacity,
+          maxCapacity,
+          extraGuestAllowed: maxCapacity > baseCapacity
+        });
+        roomTypeId = created.id;
+        // A retry after a failed room save must reuse this room type instead of creating a duplicate.
+        setForm(current => ({ ...current, roomTypeId: String(created.id) }));
+      }
       const saved = adding
-        ? await homestayApi.addRoom(form.homestayId, form.roomTypeId, payload)
+        ? await homestayApi.addRoom(form.homestayId, roomTypeId, payload)
         : await homestayApi.updateRoom(form.homestayId, form.id, payload);
       const roomId = adding ? saved.id : form.id;
       if (adding) {
@@ -117,7 +149,7 @@ export default function RoomManagement({ data, run }) {
         await homestayApi.uploadRoomImages(form.homestayId, roomId, files.map(x => x.file));
       }
       setFiles([]);
-      return { message: adding ? 'Đã thêm phòng và bộ ảnh riêng.' : 'Đã cập nhật phòng và ảnh.' };
+      return { message: creatingType ? `Đã tạo loại phòng “${form.newType.name.trim()}” và thêm phòng.` : adding ? 'Đã thêm phòng và bộ ảnh riêng.' : 'Đã cập nhật phòng và ảnh.' };
     }, false);
 
     setBusy(false);
@@ -372,7 +404,7 @@ export default function RoomManagement({ data, run }) {
                   value={form.homestayId}
                   onChange={e => {
                     const h = data.homestays.find(x => String(x.id) === e.target.value);
-                    setForm({ ...form, homestayId: e.target.value, roomTypeId: h?.roomTypes?.[0]?.id || '' });
+                    setForm({ ...form, homestayId: e.target.value, roomTypeId: h ? defaultTypeId(h) : '' });
                   }}
                 >
                   <option value="">Chọn Homestay</option>
@@ -388,10 +420,33 @@ export default function RoomManagement({ data, run }) {
                   value={form.roomTypeId}
                   onChange={e => setForm({ ...form, roomTypeId: e.target.value })}
                 >
-                  <option value="">Chọn loại phòng</option>
+                  <option value="">{types.length ? 'Chọn loại phòng' : 'Chưa có loại phòng'}</option>
                   {types.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
+                  {modal === 'add' && form.homestayId && <option value={NEW_TYPE}>+ Tạo loại phòng mới…</option>}
                 </select>
               </label>
+
+              {modal === 'add' && form.roomTypeId === NEW_TYPE && (() => {
+                const t = form.newType;
+                const setType = patch => setForm(current => ({ ...current, newType: { ...current.newType, ...patch } }));
+                return (
+                  <fieldset className="room-new-type wide">
+                    <legend>Loại phòng mới</legend>
+                    <p>{types.length
+                      ? 'Loại phòng mới sẽ được tạo cùng lúc với phòng này.'
+                      : `${formStay?.name || 'Homestay này'} chưa có loại phòng nào. Khai báo loại phòng (giá, sức chứa) trước — phòng ${form.roomNumber || 'mới'} sẽ thuộc loại này. Bạn có thể chỉnh chi tiết sau ở mục Loại phòng.`}</p>
+                    <div className="room-new-type-grid">
+                      <label className="wide">Tên loại phòng<input required maxLength="100" placeholder="VD: Phòng đôi hướng biển" value={t.name} onChange={e => setType({ name: e.target.value })} /></label>
+                      <label>Giá / đêm (đ)<input required type="number" min="1000" step="1000" placeholder="VD: 800000" value={t.basePrice} onChange={e => setType({ basePrice: e.target.value })} /></label>
+                      <label>Loại giường<input required maxLength="50" placeholder="VD: 1 giường đôi" value={t.bedType} onChange={e => setType({ bedType: e.target.value })} /></label>
+                      <label>Sức chứa tiêu chuẩn<input required type="number" min="1" max="30" value={t.baseCapacity} onChange={e => setType({ baseCapacity: e.target.value })} /><small>Số khách đã gồm trong giá</small></label>
+                      <label>Sức chứa tối đa<input required type="number" min={t.baseCapacity || 1} max="30" value={t.maxCapacity} onChange={e => setType({ maxCapacity: e.target.value })} /><small>Tính cả khách ở thêm</small></label>
+                      <label>Diện tích (m²)<input type="number" min="1" placeholder="VD: 25" value={t.roomSize} onChange={e => setType({ roomSize: e.target.value })} /></label>
+                      <label className="wide">Mô tả ngắn<input maxLength="300" placeholder="Để trống sẽ tự tạo từ tên và sức chứa" value={t.description} onChange={e => setType({ description: e.target.value })} /></label>
+                    </div>
+                  </fieldset>
+                );
+              })()}
 
               <label>
                 Mã/số phòng

@@ -1,3 +1,4 @@
+using HomestayAuth.Api.Features.Notifications;
 using System.Security.Claims;
 using HomestayAuth.Api.Domain.Entities;
 using HomestayAuth.Api.Features.Admin.Audit;
@@ -16,7 +17,7 @@ public sealed record BannerRequest(string Title, string? Subtitle, string ImageU
 public sealed record BannerStatusRequest(string Status, string? Note);
 
 [ApiController, Route("api/admin/banners"), Authorize(Policy = AdminPolicies.Access)]
-public sealed class AdminBannersController(AppDbContext db, IAuditLogService audit, SupabaseStorageService storage) : ControllerBase
+public sealed class AdminBannersController(AppDbContext db, IAuditLogService audit, SupabaseStorageService storage, NotificationService notifications) : ControllerBase
 {
     private long UserId => long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
@@ -88,6 +89,9 @@ public sealed class AdminBannersController(AppDbContext db, IAuditLogService aud
         if (request.Status == BannerStatus.Rejected && string.IsNullOrWhiteSpace(request.Note)) return BadRequest(new { message = "Vui lòng ghi lý do từ chối." });
         var before = banner.Status;
         banner.Status = request.Status; banner.ReviewNote = request.Note?.Trim(); banner.UpdatedAt = DateTime.UtcNow;
+        // A host proposal is decided once: tell the host whether the deal made it onto the home page.
+        if (banner.RequestedBy is { } hostId && before == BannerStatus.Pending && request.Status is BannerStatus.Active or BannerStatus.Rejected)
+            notifications.Notify(hostId, NotificationTemplates.BannerDecision(banner.Title, request.Status == BannerStatus.Active, banner.ReviewNote));
         audit.Add(HttpContext, $"banner.{request.Status.ToLowerInvariant()}", "banner", id.ToString(), before, banner.Status, request.Note);
         await db.SaveChangesAsync();
         return Ok(new { message = request.Status switch { BannerStatus.Active => "Banner đang hiển thị.", BannerStatus.Rejected => "Đã từ chối đề xuất.", _ => "Đã ẩn banner." } });

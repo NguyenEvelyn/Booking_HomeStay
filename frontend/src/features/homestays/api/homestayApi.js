@@ -12,6 +12,7 @@ export const homestayApi = {
   },
   detail: (id) => apiClient(`/homestays/${id}`),
   effectivePolicies: (id) => apiClient(`/homestays/${id}/effective-policies`),
+  ownership: (id) => apiClient(`/homestays/${id}/ownership`),
   availability: (id, { checkIn, checkOut, guests, rooms }) => apiClient(`/homestays/${id}/availability?${new URLSearchParams({ checkIn, checkOut, guests, rooms })}`),
   recommendations: ({ search = '', location = '', checkIn = '', checkOut = '', guests = 2, adults = 2, children = 0, rooms = 1, totalBudget = '', amenities = [], roomType = '', minRating = 0, topK = 3, tallChildren, smallChildren } = {}) => {
     const params = new URLSearchParams({ search, location, guests, adults, children, rooms, roomType, minRating, topK, sessionId: recommendationSessionId() });

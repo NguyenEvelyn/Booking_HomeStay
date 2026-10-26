@@ -1,7 +1,10 @@
+using System.Security.Claims;
 using HomestayAuth.Api.Features.Bookings;
 using HomestayAuth.Api.Features.Homestays.Services;
 using HomestayAuth.Api.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace HomestayAuth.Api.Features.Homestays.Controllers;
 
@@ -45,6 +48,14 @@ public sealed class HomestaysController(IHomestayQueryService service, AppDbCont
     {
         var result = await service.GetApprovedDetailAsync(homestayId);
         return result is null ? NotFound(new { message = "Không tìm thấy homestay." }) : Ok(result);
+    }
+
+    // Lets the detail page replace the booking box for the homestay's own host (see BookingRules.IsOwnHomestay).
+    [Authorize, HttpGet("{homestayId:long}/ownership")]
+    public async Task<IActionResult> GetOwnership(long homestayId)
+    {
+        var userId = long.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var parsed) ? parsed : 0;
+        return Ok(new { isOwner = await db.Homestays.AsNoTracking().AnyAsync(h => h.Id == homestayId && h.HostId == userId) });
     }
 
     [HttpGet("{homestayId:long}/room-types")]

@@ -7,6 +7,11 @@ public static class BookingRules
     public static readonly string[] InventoryStatuses = ["Available", "Occupied", "Cleaning"];
     public static DateOnly Today => DateOnly.FromDateTime(DateTime.UtcNow.AddHours(7));
 
+    // A host never books (or reviews) their own homestay as a guest: it would fake reviews, demand and
+    // platform-funded voucher reimbursements. Bookings for real guests go through the host manual booking.
+    public const string OwnHomestayMessage = "Bạn là chủ homestay này nên không thể tự đặt phòng. Hãy dùng chức năng Đặt phòng hộ khách trong trang quản lý.";
+    public static bool IsOwnHomestay(long homestayHostId, long? userId) => userId is > 0 && homestayHostId == userId;
+
     public static bool IsActiveHold(string status, DateTime holdExpiresAt, DateTime now) =>
         status == BookingStatus.Hold && holdExpiresAt > now;
 

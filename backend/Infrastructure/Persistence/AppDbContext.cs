@@ -20,6 +20,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<BookingNoShow> BookingNoShows => Set<BookingNoShow>();
     public DbSet<RoomDeal> RoomDeals => Set<RoomDeal>();
     public DbSet<Banner> Banners => Set<Banner>();
+    public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<NewsPost> NewsPosts => Set<NewsPost>();
+    public DbSet<NewsletterSubscriber> NewsletterSubscribers => Set<NewsletterSubscriber>();
     public DbSet<BookingDetail> BookingDetails => Set<BookingDetail>();
     public DbSet<BookingGuest> BookingGuests => Set<BookingGuest>();
     public DbSet<Payment> Payments => Set<Payment>();
@@ -424,6 +427,34 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         banner.Property(x => x.RequestedBy).HasColumnName("requested_by"); banner.Property(x => x.ReviewNote).HasColumnName("review_note").HasMaxLength(500);
         banner.Property(x => x.CreatedBy).HasColumnName("created_by");
         banner.Property(x => x.CreatedAt).HasColumnName("created_at"); banner.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+
+        var notification = modelBuilder.Entity<Notification>();
+        notification.ToTable("notifications"); notification.HasKey(x => x.Id);
+        notification.Property(x => x.Id).HasColumnName("notification_id"); notification.Property(x => x.UserId).HasColumnName("user_id");
+        notification.Property(x => x.Type).HasColumnName("type").HasMaxLength(60);
+        notification.Property(x => x.Title).HasColumnName("title").HasMaxLength(150); notification.Property(x => x.Body).HasColumnName("body").HasMaxLength(500);
+        notification.Property(x => x.LinkType).HasColumnName("link_type").HasMaxLength(20); notification.Property(x => x.LinkId).HasColumnName("link_id");
+        notification.Property(x => x.LinkExtra).HasColumnName("link_extra").HasMaxLength(160);
+        notification.Property(x => x.ReadAt).HasColumnName("read_at"); notification.Property(x => x.CreatedAt).HasColumnName("created_at");
+
+        var news = modelBuilder.Entity<NewsPost>();
+        news.ToTable("news_posts"); news.HasKey(x => x.Id);
+        news.Property(x => x.Id).HasColumnName("post_id"); news.Property(x => x.Slug).HasColumnName("slug").HasMaxLength(160);
+        news.HasIndex(x => x.Slug).IsUnique();
+        news.Property(x => x.Title).HasColumnName("title").HasMaxLength(150); news.Property(x => x.Summary).HasColumnName("summary").HasMaxLength(300);
+        news.Property(x => x.Content).HasColumnName("content"); news.Property(x => x.CoverImageUrl).HasColumnName("cover_image_url").HasMaxLength(500);
+        news.Property(x => x.Category).HasColumnName("category").HasMaxLength(20); news.Property(x => x.Status).HasColumnName("status").HasMaxLength(20);
+        news.Property(x => x.IsFeatured).HasColumnName("is_featured"); news.Property(x => x.PublishedAt).HasColumnName("published_at");
+        news.Property(x => x.AuthorId).HasColumnName("author_id"); news.Property(x => x.ViewCount).HasColumnName("view_count");
+        news.Property(x => x.CreatedAt).HasColumnName("created_at"); news.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+
+        var subscriber = modelBuilder.Entity<NewsletterSubscriber>();
+        subscriber.ToTable("newsletter_subscribers"); subscriber.HasKey(x => x.Id);
+        subscriber.Property(x => x.Id).HasColumnName("subscriber_id"); subscriber.Property(x => x.Email).HasColumnName("email").HasMaxLength(254);
+        subscriber.HasIndex(x => x.Email).IsUnique();
+        subscriber.Property(x => x.Status).HasColumnName("status").HasMaxLength(20); subscriber.Property(x => x.Source).HasColumnName("source").HasMaxLength(20);
+        subscriber.Property(x => x.UnsubscribeToken).HasColumnName("unsubscribe_token").HasMaxLength(64);
+        subscriber.Property(x => x.CreatedAt).HasColumnName("created_at"); subscriber.Property(x => x.UnsubscribedAt).HasColumnName("unsubscribed_at");
 
         var deal = modelBuilder.Entity<RoomDeal>();
         deal.ToTable("room_deals"); deal.HasKey(x => x.Id);
