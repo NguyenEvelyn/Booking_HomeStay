@@ -127,7 +127,7 @@ public sealed partial class HostHomestaysController
                 RefundAmount = finalRefundAmount,
                 RefundPercent = refundPercent,
                 PaidAmountAtCancellation = paidAmount,
-                Status = finalRefundAmount > 0 ? "Approved" : "Cancelled",
+                Status = "Approved",
                 ProcessedBy = HostId,
                 ProcessedAt = now
             });
@@ -141,7 +141,7 @@ public sealed partial class HostHomestaysController
             cancellation.RefundAmount = finalRefundAmount;
             cancellation.RefundPercent = refundPercent;
             cancellation.PaidAmountAtCancellation = paidAmount;
-            cancellation.Status = finalRefundAmount > 0 ? "Approved" : "Cancelled";
+            cancellation.Status = "Approved";
             cancellation.ProcessedBy = HostId;
             cancellation.ProcessedAt = now;
         }
