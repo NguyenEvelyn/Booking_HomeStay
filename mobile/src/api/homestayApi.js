@@ -7,5 +7,6 @@ export const homestayApi = {
     if (checkOut) params.set('checkOut', checkOut);
     return apiClient(`/homestays?${params}`);
   },
-  detail: (id) => apiClient(`/homestays/${id}`)
+  detail: (id) => apiClient(`/homestays/${id}`),
+  reviews: (id) => apiClient(`/homestays/${id}/reviews`)
 };
