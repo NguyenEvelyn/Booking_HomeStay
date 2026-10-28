@@ -1,11 +1,11 @@
 import { Image, StyleSheet, Text, View } from 'react-native';
-import { Card } from './ui.js';
+import { Button, Card } from './ui.js';
 import { colors, font, radius, spacing } from '../theme.js';
 import { money } from '../utils/format.js';
 
 // One room type on the homestay detail screen. Capacity wording follows OccupancyRules: the standard
 // capacity counts adults and children from 1.2 m; extra tall children may be allowed for a fee.
-export default function RoomTypeCard({ room }) {
+export default function RoomTypeCard({ room, onSelect }) {
   const facts = [
     room.bedType,
     room.roomSize ? `${room.roomSize} m²` : null,
@@ -28,6 +28,7 @@ export default function RoomTypeCard({ room }) {
           </Text>
           <Text style={styles.price}><Text style={styles.priceValue}>{money(room.basePrice)}</Text>/đêm</Text>
         </View>
+        {onSelect ? <Button title={soldOut ? 'Hết phòng' : 'Chọn phòng này'} onPress={onSelect} disabled={soldOut} style={{ marginTop: spacing.sm }} /> : null}
       </View>
     </Card>
   );

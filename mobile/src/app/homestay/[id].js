@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Stack, useLocalSearchParams } from 'expo-router';
-import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { homestayApi } from '../../api/homestayApi.js';
@@ -46,10 +46,7 @@ export default function HomestayDetailScreen() {
   const fromPrice = rooms.length ? Math.min(...rooms.map(r => r.basePrice)) : null;
   const images = [...(homestay.images ?? [])].sort((a, b) => (b.isThumbnail - a.isThumbnail) || (a.sortOrder - b.sortOrder));
 
-  const book = () => {
-    const message = 'Chức năng đặt phòng trên app đang được xây dựng.';
-    if (Platform.OS === 'web') window.alert(message); else Alert.alert('Sắp có', message);
-  };
+  const scrollToRooms = () => scrollRef.current?.scrollTo({ y: roomsY, animated: true });
 
   return (
     <View style={{ flex: 1 }}>
@@ -99,7 +96,10 @@ export default function HomestayDetailScreen() {
         <View style={styles.section} onLayout={e => setRoomsY(e.nativeEvent.layout.y)}>
           <Text style={styles.heading}>Loại phòng ({rooms.length})</Text>
           {rooms.length
-            ? rooms.map(room => <RoomTypeCard key={room.id} room={room} />)
+            ? rooms.map(room => (
+              <RoomTypeCard key={room.id} room={room}
+                onSelect={() => router.push({ pathname: '/booking/new', params: { homestayId: homestay.id, roomTypeId: room.id } })} />
+            ))
             : <Text style={styles.muted}>Homestay chưa mở bán phòng nào.</Text>}
         </View>
 
@@ -117,8 +117,7 @@ export default function HomestayDetailScreen() {
           <Text style={styles.muted}>Giá chỉ từ</Text>
           <Text style={styles.bottomPrice}>{fromPrice != null ? `${money(fromPrice)}/đêm` : 'Liên hệ'}</Text>
         </View>
-        <Button title="Xem phòng" variant="outline" onPress={() => scrollRef.current?.scrollTo({ y: roomsY, animated: true })} style={{ marginRight: spacing.sm }} />
-        <Button title="Đặt phòng" onPress={book} disabled={!rooms.length} />
+        <Button title="Chọn phòng" onPress={scrollToRooms} disabled={!rooms.length} />
       </View>
     </View>
   );
