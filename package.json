@@ -2,9 +2,12 @@
   "name": "homestay-auth",
   "private": true,
   "scripts": {
-    "install:all": "dotnet restore backend && npm install --prefix frontend",
+    "install:all": "dotnet restore backend && npm install --prefix frontend && npm install --prefix mobile",
     "dev": "concurrently \"dotnet run --project backend\" \"npm run dev --prefix frontend\"",
-    "verify": "powershell -ExecutionPolicy Bypass -File scripts/verify.ps1"
+    "verify": "powershell -ExecutionPolicy Bypass -File scripts/verify.ps1",
+    "mobile": "npm start --prefix mobile"
   },
-  "devDependencies": { "concurrently": "^9.1.2" }
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
 }

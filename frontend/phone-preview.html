@@ -65,6 +65,10 @@
 <body>
   <div class="toolbar">
     <span class="title">📱 Tripio – Xem trên điện thoại</span>
+    <select id="source" aria-label="Chọn ứng dụng">
+      <option value="/">Web (Vite :5173)</option>
+      <option value="http://localhost:8081">App mobile (Expo :8081)</option>
+    </select>
     <select id="device" aria-label="Chọn thiết bị"></select>
     <select id="zoom" aria-label="Thu phóng">
       <option value="fit">Vừa màn hình</option>
@@ -87,7 +91,7 @@
             <svg width="26" height="12" viewBox="0 0 26 12"><rect x=".5" y=".5" width="22" height="11" rx="3" fill="none" stroke="#000" opacity=".4"/><rect x="2" y="2" width="17" height="8" rx="1.8"/><rect x="23.5" y="4" width="1.8" height="4" rx=".9" opacity=".4"/></svg>
           </span>
         </div>
-        <iframe id="app" title="Tripio" src="/"></iframe>
+        <iframe id="app" title="Tripio"></iframe>
         <div id="cutout"></div>
         <div class="home" id="home"></div>
       </div>
@@ -121,6 +125,15 @@
     $('device').value = state.device;
     $('zoom').value = state.zoom;
 
+    // ?app=expo opens the Expo app directly.
+    const sources = [...$('source').options].map(o => o.value);
+    const fromQuery = new URLSearchParams(location.search).get('app') === 'expo' ? 'http://localhost:8081' : null;
+    let source = fromQuery || read('phone-preview.source', '/');
+    if (!sources.includes(source)) source = '/';
+    $('source').value = source;
+    $('app').src = source;
+    $('source').onchange = e => { save('phone-preview.source', e.target.value); $('app').src = e.target.value; };
+
     function render() {
       const d = devices[state.device], s = styles[d.kind];
       const w = state.landscape ? d.h : d.w, h = state.landscape ? d.w : d.h;
@@ -149,7 +162,8 @@
     $('device').onchange = e => { state.device = e.target.value; save('phone-preview.device', state.device); render(); };
     $('zoom').onchange = e => { state.zoom = e.target.value; save('phone-preview.zoom', state.zoom); render(); };
     $('rotate').onclick = () => { state.landscape = !state.landscape; save('phone-preview.landscape', state.landscape ? '1' : '0'); render(); };
-    $('reload').onclick = () => $('app').contentWindow.location.reload();
+    // Reassigning src also works for the cross-origin Expo app, where contentWindow.location is off-limits.
+    $('reload').onclick = () => { $('app').src = $('app').src; };
     window.addEventListener('resize', render);
 
     const tick = () => { const n = new Date(); $('clock').textContent = `${n.getHours()}:${String(n.getMinutes()).padStart(2, '0')}`; };
