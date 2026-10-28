@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:phone": "vite --open /phone-preview.html",
     "build": "vite build",
     "test": "node --test src/**/*.test.js",
     "build:mobile": "vite build --mode mobile",

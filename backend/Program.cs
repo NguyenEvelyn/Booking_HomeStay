@@ -242,7 +242,7 @@ builder.Services.AddCors(options => options.AddPolicy("Frontend", policy =>
         // credentialed request from an arbitrary local web server must not be accepted.
         if (builder.Environment.IsDevelopment() && Uri.TryCreate(origin, UriKind.Absolute, out var uri))
         {
-            return uri.Host == "localhost" || uri.Host == "127.0.0.1";
+            return uri.Host == "localhost" || uri.Host == "127.0.0.1" || IsPrivateLanAddress(uri.Host);
         }
         return false;
     })
@@ -824,3 +824,11 @@ app.MapGet("/api/health/database", async (AppDbContext db) =>
     return Results.Ok(new { status = "ok", database = "connected", schema = "ready" });
 });
 app.Run();
+
+// Private IPv4 ranges (10/8, 172.16/12, 192.168/16): a phone or emulator reaching the dev machine over Wi-Fi.
+static bool IsPrivateLanAddress(string host)
+{
+    if (!System.Net.IPAddress.TryParse(host, out var address) || address.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork) return false;
+    var b = address.GetAddressBytes();
+    return b[0] == 10 || (b[0] == 172 && b[1] is >= 16 and <= 31) || (b[0] == 192 && b[1] == 168);
+}
