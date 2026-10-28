@@ -13,6 +13,7 @@ export default function RootLayout() {
         <Stack.Screen name="homestay/[id]" options={{ title: '', headerBackTitle: 'Quay lại' }} />
         <Stack.Screen name="booking/new" options={{ title: 'Chọn ngày & khách', headerBackTitle: 'Quay lại' }} />
         <Stack.Screen name="booking/guest" options={{ title: 'Thông tin đặt phòng', headerBackTitle: 'Quay lại' }} />
+        <Stack.Screen name="booking/[id]" options={{ title: 'Chi tiết đơn', headerBackTitle: 'Quay lại' }} />
         <Stack.Screen name="booking/result" options={{ title: 'Kết quả đặt phòng', headerBackVisible: false, gestureEnabled: false }} />
       </Stack>
     </AuthProvider>
