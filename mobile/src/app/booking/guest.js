@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { router } from 'expo-router';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { Text } from '../../components/Text.js';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { bookingApi } from '../../api/bookingApi.js';
 import { useAuth } from '../../auth/AuthContext.js';

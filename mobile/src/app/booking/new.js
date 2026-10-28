@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
+import { Text } from '../../components/Text.js';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { homestayApi } from '../../api/homestayApi.js';
 import { bookingApi } from '../../api/bookingApi.js';

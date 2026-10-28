@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { router, useFocusEffect } from 'expo-router';
-import { FlatList, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Image, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { Text } from '../../components/Text.js';
 import { bookingApi } from '../../api/bookingApi.js';
 import { useAuth } from '../../auth/AuthContext.js';
 import { GROUPS } from '../../booking/bookingStatus.js';

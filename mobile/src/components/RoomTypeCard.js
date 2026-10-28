@@ -1,4 +1,5 @@
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
+import { Text } from './Text.js';
 import { Button, Card } from './ui.js';
 import { colors, font, radius, spacing } from '../theme.js';
 import { money } from '../utils/format.js';

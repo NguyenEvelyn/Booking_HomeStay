@@ -1,4 +1,5 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { Text, TextInput } from './Text.js';
 import { colors, font, radius, spacing } from '../theme.js';
 
 // Shared building blocks that replace the web app's CSS classes.

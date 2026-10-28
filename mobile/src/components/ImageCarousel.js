@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Image, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Image, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Text } from './Text.js';
 import { colors } from '../theme.js';
 
 // Full-width swipeable photo strip with a page counter, like the gallery on booking apps.

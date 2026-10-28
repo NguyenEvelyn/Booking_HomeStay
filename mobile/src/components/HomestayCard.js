@@ -1,4 +1,5 @@
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, View } from 'react-native';
+import { Text } from './Text.js';
 import { router } from 'expo-router';
 import { Card } from './ui.js';
 import { colors, font, spacing } from '../theme.js';

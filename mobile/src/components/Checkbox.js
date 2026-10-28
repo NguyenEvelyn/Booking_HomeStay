@@ -1,4 +1,5 @@
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
+import { Text } from './Text.js';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors, font, spacing } from '../theme.js';
 

@@ -1,4 +1,5 @@
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet } from 'react-native';
+import { Text } from './Text.js';
 import { STATUS } from '../booking/bookingStatus.js';
 import { radius } from '../theme.js';
 

@@ -1,69 +1,53 @@
 import { useCallback, useEffect, useState } from 'react';
-import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
-import { homestayApi } from '../../api/homestayApi.js';
-import HomestayCard from '../../components/HomestayCard.js';
-import { EmptyState, ErrorMessage, Loading } from '../../components/ui.js';
-import { useAuth } from '../../auth/AuthContext.js';
-import { colors, font, spacing } from '../../theme.js';
+import { RefreshControl, ScrollView } from 'react-native';
+import { homeApi } from '../../api/homeApi.js';
+import HomeHero from '../../components/home/HomeHero.js';
+import SearchPanel from '../../components/home/SearchPanel.js';
+import About from '../../components/home/About.js';
+import HotDeals from '../../components/home/HotDeals.js';
+import StaySlider from '../../components/home/StaySlider.js';
+import Destinations from '../../components/home/Destinations.js';
+import Offers from '../../components/home/Offers.js';
+import { colors } from '../../theme.js';
 
-const PAGE_SIZE = 10;
-
+// Mirrors the web home page on a phone: hero with AI picks, search, about, hot deals, favourite
+// homestays, trending destinations and vouchers. Every section loads on its own and hides when empty.
 export default function HomeScreen() {
-  const { user } = useAuth();
-  const [items, setItems] = useState([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(true);
+  const [picks, setPicks] = useState([]);
+  const [picksLoading, setPicksLoading] = useState(true);
+  const [stays, setStays] = useState([]);
+  const [banners, setBanners] = useState([]);
+  const [deals, setDeals] = useState([]);
+  const [vouchers, setVouchers] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState('');
 
-  const load = useCallback(async (nextPage, mode) => {
-    if (mode === 'refresh') setRefreshing(true);
-    else if (mode === 'more') setLoadingMore(true);
-    else setLoading(true);
-    setError('');
-    try {
-      const data = await homestayApi.list({ page: nextPage, pageSize: PAGE_SIZE });
-      setItems(prev => (nextPage === 1 ? data.items : [...prev, ...data.items]));
-      setTotal(data.total);
-      setPage(nextPage);
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setLoading(false); setRefreshing(false); setLoadingMore(false);
-    }
+  const load = useCallback(async () => {
+    const items = (promise) => promise.then(r => r.items ?? []).catch(() => []);
+    const [picked, rated, b, d, v] = await Promise.all([
+      items(homeApi.heroPicks()), items(homeApi.topRated()), items(homeApi.banners()), items(homeApi.deals()), items(homeApi.vouchers())
+    ]);
+    // Like the web: fall back to the top-rated homestays when the recommender has nothing.
+    setPicks(picked.length ? picked : rated.slice(0, 4).map(s => ({ ...s, score: (Number(s.averageRating) || 4.8) * 20 })));
+    setPicksLoading(false);
+    setStays(rated); setBanners(b); setDeals(d); setVouchers(v);
   }, []);
 
-  useEffect(() => { load(1); }, [load]);
+  useEffect(() => { load(); }, [load]);
 
-  if (loading) return <Loading label="Đang tải homestay…" />;
-  if (error && items.length === 0) return <ErrorMessage message={error} onRetry={() => load(1)} />;
+  const refresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 
   return (
-    <FlatList
-      data={items}
-      keyExtractor={item => String(item.id)}
-      renderItem={({ item }) => <HomestayCard item={item} />}
-      contentContainerStyle={styles.list}
-      ListHeaderComponent={
-        <View style={styles.header}>
-          <Text style={styles.greeting}>{user ? `Xin chào, ${user.fullName}` : 'Xin chào!'}</Text>
-          <Text style={styles.subtitle}>Khám phá {total} homestay trên Tripio</Text>
-        </View>
-      }
-      ListEmptyComponent={<EmptyState title="Chưa có homestay" description="Hiện chưa có homestay nào đang hoạt động." />}
-      ListFooterComponent={loadingMore ? <Loading label="Đang tải thêm…" /> : null}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(1, 'refresh')} tintColor={colors.primary} />}
-      onEndReachedThreshold={0.4}
-      onEndReached={() => { if (!loadingMore && items.length < total) load(page + 1, 'more'); }}
-    />
+    <ScrollView
+      style={{ backgroundColor: colors.background }}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor="#fff" />}
+    >
+      <HomeHero picks={picks} loading={picksLoading} />
+      <SearchPanel />
+      <HotDeals banners={banners} deals={deals} />
+      <StaySlider stays={stays} />
+      <Destinations />
+      <Offers vouchers={vouchers} />
+      <About />
+    </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  list: { padding: spacing.lg },
-  header: { marginBottom: spacing.lg },
-  greeting: { fontSize: font.heading, fontWeight: '800', color: colors.navy },
-  subtitle: { fontSize: font.body, color: colors.textMuted, marginTop: spacing.xs }
-});

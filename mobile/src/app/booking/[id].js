@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Stack, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { Image, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Linking, ScrollView, StyleSheet, View } from 'react-native';
+import { Text } from '../../components/Text.js';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { bookingApi } from '../../api/bookingApi.js';
 import { canAnnounceLateArrival, canCancel, canPay } from '../../booking/bookingStatus.js';

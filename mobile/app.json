@@ -25,7 +25,8 @@
       "expo-router",
       "expo-status-bar",
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-font"
     ],
     "scheme": "tripio"
   }

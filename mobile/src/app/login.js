@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { router } from 'expo-router';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet } from 'react-native';
+import { Text } from '../components/Text.js';
 import { Button, ErrorMessage, TextField } from '../components/ui.js';
 import { useAuth } from '../auth/AuthContext.js';
 import { colors, font, spacing } from '../theme.js';
