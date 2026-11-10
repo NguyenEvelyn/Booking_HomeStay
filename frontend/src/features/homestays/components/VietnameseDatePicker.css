@@ -1,0 +1,20 @@
+.vi-date-picker { position:relative; display:grid; align-content:start; gap:7px; min-width:0; color:#64728a; font-size:11px; }
+.vi-date-picker>label { color:#64728a; font-size:11px; }
+.vi-date-picker-input-row { display:grid; grid-template-columns:minmax(0,1fr) 48px; gap:6px; }
+.payment-form-grid .vi-date-picker-input-row input { width:100%; height:48px; box-sizing:border-box; padding:0 14px; border:1px solid #b9c3d2; border-radius:9px; color:#23324b; background:#fff; font:inherit; font-size:13px; cursor:pointer; }
+.vi-date-picker-input-row input:focus { border-color:#1853c7; outline:none; box-shadow:0 0 0 3px rgba(24,83,199,.12); }
+.vi-date-picker-input-row button { min-height:0; padding:0; border:1px solid #b9c3d2; border-radius:9px; color:#23324b; background:#fff; font-size:18px; cursor:pointer; }
+.vi-date-picker-popover { position:absolute; z-index:50; top:calc(100% + 5px); left:0; width:min(300px,calc(100vw - 64px)); padding:12px; border:1px solid #dbe3ef; border-radius:12px; background:#fff; box-shadow:0 14px 34px rgba(15,23,42,.18); color:#23324b; }
+.vi-date-picker-popover>header { display:grid; grid-template-columns:36px 1fr 36px; align-items:center; gap:6px; margin:0 0 10px; }
+.vi-date-picker-popover>header .vi-date-picker-month-title { min-height:0; padding:0; border:0; color:#0b2a6f; background:transparent; font-size:14px; font-weight:700; text-align:center; text-transform:capitalize; cursor:pointer; }
+.vi-date-picker-popover>header button { height:34px; border:1px solid #dbe3ef; border-radius:8px; color:#0b2a6f; background:#fff; cursor:pointer; }
+.vi-date-picker-popover>header button:disabled { opacity:.4; cursor:not-allowed; }
+.vi-date-picker-grid { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:4px; text-align:center; }
+.vi-date-picker-weekdays { margin-bottom:5px; color:#64748b; font-size:11px; }
+.vi-date-picker-grid button,.vi-date-picker-grid span { display:grid; place-items:center; min-width:0; height:34px; border:0; border-radius:8px; color:#172b55; background:#fff; font:inherit; font-size:12px; }
+.vi-date-picker-grid button { cursor:pointer; }
+.vi-date-picker-grid button:hover:not(:disabled),.vi-date-picker-grid button[aria-pressed="true"] { color:#fff; background:#0b4ae6; }
+.vi-date-picker-grid button:disabled { color:#cbd5e1; cursor:not-allowed; }
+.vi-date-picker-year-list { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; max-height:250px; overflow:auto; padding:2px; }
+.vi-date-picker-year-list button { min-height:36px; border:1px solid #dbe3ef; border-radius:8px; color:#172b55; background:#fff; font:inherit; cursor:pointer; }
+.vi-date-picker-year-list button:hover,.vi-date-picker-year-list button[aria-selected="true"] { border-color:#0b4ae6; color:#fff; background:#0b4ae6; }

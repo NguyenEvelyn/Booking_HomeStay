@@ -7,7 +7,11 @@ import GuestPickerDropdown from '../../../shared/components/GuestPickerDropdown.
 import { freshImageUrl } from '../../../shared/utils/freshImageUrl.js';
 import { readFavoriteIds, toggleFavoriteId } from '../../../shared/utils/favorites.js';
 import { bookingApi } from '../../bookings/api/bookingApi.js';
+import { accountApi } from '../../profile/api/accountApi.js';
 import { findMissingCompanionIndex } from './bookingGuestValidation.js';
+import AddressPicker from '../components/AddressPicker.jsx';
+import VietnameseDatePicker from '../components/VietnameseDatePicker.jsx';
+import { confirmDialog } from '../../../shared/feedback/feedback.js';
 import HomestayPolicyModal from './HomestayPolicyModal.jsx';
 import HomestayPolicySection from './HomestayPolicySection.jsx';
 import pineHomestayImage from '../../../../assets/f6cd6879081dc8e8d4ff18669308ea86.jpg';
@@ -230,11 +234,11 @@ const groupNightlyPrices = (nights = []) => {
     .filter((night) => night.date >= run.start && night.date <= run.end)
     .map((night) => ({ start: night.date, end: night.date, count: 1, price: Number(night.price ?? night.finalPrice ?? night.basePrice ?? 0), label: night.label || '', isSpecial: Boolean(night.isSpecial), isHigher: Boolean(night.isHigherThanDefault), grouped: false })));
 };
-// Short nightly price for a calendar cell: 560K, 1,06tr.
-const compactPrice = (value) => {
+// Compact nightly price that always retains its unit.
+const formatShortPrice = (value) => {
   const amount = Number(value) || 0;
-  if (amount >= 1_000_000) return `${(Math.round(amount / 10_000) / 100).toLocaleString('vi-VN')}tr`;
-  return `${Math.round(amount / 1000)}K`;
+  if (amount >= 1_000_000) return `${Number((amount / 1_000_000).toFixed(1)).toLocaleString('vi-VN', { maximumFractionDigits: 1 })}tr`;
+  return `${Math.round(amount / 1000)}k`;
 };
 const calendarDays = (year, month) => {
   const firstWeekday = (new Date(year, month, 1).getDay() + 6) % 7;
@@ -296,8 +300,10 @@ export default function HomestayDetailPage({ id, initialSearch, user, onOpenHome
   const [guestInfo, setGuestInfo] = useState({
     firstName: nameParts.slice(0, -1).join(' '), lastName: nameParts.at(-1) || '',
     email: user?.email || '', country: 'Việt Nam', countryCode: profilePhone.countryCode, phone: profilePhone.phone, arrivalTime: '',
-    birthDate: '', gender: '', documentType: 'CCCD', documentNumber: '', address: '', note: ''
+    birthDate: '', gender: '', documentType: 'CCCD', documentNumber: '',
+    provinceCode: '', provinceName: '', wardCode: '', wardName: '', street: '', address: '', note: ''
   });
+  const [travelDocumentStorageConsented, setTravelDocumentStorageConsented] = useState(false);
   const [companions, setCompanions] = useState([]);
   const [openCompanion, setOpenCompanion] = useState(0);
   const [declareLater, setDeclareLater] = useState(false);
@@ -326,11 +332,34 @@ export default function HomestayDetailPage({ id, initialSearch, user, onOpenHome
     }));
   }, [adultCount, childCount]);
   useEffect(() => {
-    if (!showPaymentPage) return;
-    const { documentNumber: _privateDocument, ...safeGuest } = guestInfo;
-    const safeCompanions = companions.map(({ documentNumber: _privateCompanionDocument, ...item }) => item);
-    try { localStorage.setItem(`booking_draft_${id}`, JSON.stringify({ guest: safeGuest, companions: safeCompanions, declareLater, paymentOption })); } catch { /* storage may be unavailable */ }
-  }, [showPaymentPage, guestInfo, companions, declareLater, paymentOption, id]);
+    try { localStorage.removeItem(`booking_draft_${id}`); } catch { /* storage may be unavailable */ }
+    if (!user?.id) return undefined;
+    let active = true;
+    accountApi.travelProfile().then((profile) => {
+      if (!active) return;
+      setGuestInfo((current) => ({
+        ...current,
+        firstName: profile.firstName ?? current.firstName,
+        lastName: profile.lastName ?? current.lastName,
+        email: profile.email ?? current.email,
+        country: profile.country ?? current.country,
+        countryCode: profile.countryCode ?? current.countryCode,
+        phone: profile.phone ?? current.phone,
+        birthDate: profile.birthDate ?? current.birthDate,
+        gender: profile.gender ?? current.gender,
+        documentType: profile.documentType ?? current.documentType,
+        documentNumber: profile.documentNumber ?? current.documentNumber,
+        provinceCode: profile.provinceCode ?? current.provinceCode,
+        provinceName: profile.provinceName ?? current.provinceName,
+        wardCode: profile.wardCode ?? current.wardCode,
+        wardName: profile.wardName ?? current.wardName,
+        street: profile.street ?? current.street,
+        address: profile.address ?? current.address,
+      }));
+      setTravelDocumentStorageConsented(Boolean(profile.documentStorageConsented));
+    }).catch(() => { /* The account defaults remain usable if the optional travel profile is unavailable. */ });
+    return () => { active = false; };
+  }, [id, user?.id]);
   const [isSaved, setIsSaved] = useState(() => readFavoriteIds().includes(Number(id)));
   const toggleSave = () => {
     setIsSaved(toggleFavoriteId(id).includes(Number(id)));
@@ -706,8 +735,24 @@ export default function HomestayDetailPage({ id, initialSearch, user, onOpenHome
   const todayValue = toDateStr(new Date());
   const daysInCalendar = calendarDays(calendarMonth.getFullYear(), calendarMonth.getMonth());
   const isBookedDate = (value) => roomCalendarData?.dailyStatus?.[value]?.status === 'booked';
+  const nearestBookedAfterArrival = arrival
+    ? Object.keys(roomCalendarData?.dailyStatus || {}).filter((value) => value > arrival && isBookedDate(value)).sort()[0]
+    : null;
+  const calendarMonthDays = daysInCalendar.filter((item) => item.current);
+  const monthFullyUnavailable = calendarMonthDays.length > 0
+    && calendarMonthDays.every((item) => item.value < todayValue || isBookedDate(item.value));
+  const calendarWeeks = Array.from({ length: daysInCalendar.length / 7 }, (_, index) => daysInCalendar.slice(index * 7, index * 7 + 7))
+    .filter((week) => week.some((item) => item.current)
+      && !(calendarMonth.getFullYear() === new Date().getFullYear()
+        && calendarMonth.getMonth() === new Date().getMonth()
+        && week.filter((item) => item.current).every((item) => item.value < todayValue)));
+  const formatCalendarAriaLabel = (item, status, price) => {
+    const date = new Date(`${item.value}T00:00:00`);
+    const weekday = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'][date.getDay()];
+    return `${weekday}, ${item.day} tháng ${date.getMonth() + 1}${price ? `, ${formatShortPrice(price)}` : ''}, ${status}`;
+  };
   const chooseCalendarDate = (value) => {
-    if (value < todayValue || isBookedDate(value)) return;
+    if (value < todayValue || isBookedDate(value) || (nearestBookedAfterArrival && value >= nearestBookedAfterArrival)) return;
     if (!arrival || departure || value < arrival) { setArrival(value); setDeparture(''); setBookingError(''); return; }
     if (value === arrival && policy?.document?.dayUse?.enabled) { setDeparture(value); setCalendarOpen(false); setBookingError(''); return; }
     if (value === arrival) { setBookingError('Homestay chưa bật chính sách đặt và trả phòng trong ngày.'); return; }
@@ -739,6 +784,14 @@ export default function HomestayDetailPage({ id, initialSearch, user, onOpenHome
     setGuestInfo((current) => ({ ...current, [field]: event.target.value }));
     setBookingError('');
   };
+  const removeStoredTravelDocument = async () => {
+    if (!await confirmDialog({ title: 'Xóa số giấy tờ đã lưu?', message: 'Số CCCD/hộ chiếu sẽ bị xóa khỏi hồ sơ tài khoản. Thông tin trên đơn hiện tại vẫn được giữ.', variant: 'danger', confirmText: 'Xóa khỏi hồ sơ', cancelText: 'Giữ lại' })) return;
+    try {
+      await accountApi.deleteTravelDocument();
+      setTravelDocumentStorageConsented(false);
+      setBookingError('Số giấy tờ đã được xóa khỏi hồ sơ. Thông tin trên đơn hiện tại vẫn được giữ.');
+    } catch (error) { setBookingError(error.message); }
+  };
   const payWithVnPay = async () => {
     if (!user) { setBookingError('Vui lòng đăng nhập tài khoản khách hàng trước khi đặt phòng.'); return; }
     if (!arrival || !departure) { setBookingError('Vui lòng chọn ngày nhận và trả phòng.'); return; }
@@ -754,7 +807,7 @@ export default function HomestayDetailPage({ id, initialSearch, user, onOpenHome
       return;
     }
     if (!/^\d{8,15}$/.test(guestInfo.phone.replace(/\s/g, ''))) { setBookingError('Số điện thoại phải có 8–15 chữ số.'); document.querySelector('.payment-guest-card')?.scrollIntoView({ behavior:'smooth' }); return; }
-    if (!guestInfo.birthDate || !guestInfo.gender || !guestInfo.documentNumber.trim() || !guestInfo.address.trim()) { setBookingError('Vui lòng hoàn tất ngày sinh, giới tính, giấy tờ và địa chỉ của khách chính.'); document.querySelector('.payment-guest-card')?.scrollIntoView({ behavior:'smooth' }); return; }
+    if (!guestInfo.birthDate || !guestInfo.gender || !guestInfo.documentNumber.trim() || !guestInfo.provinceCode || !guestInfo.wardCode || !guestInfo.street.trim()) { setBookingError('Vui lòng hoàn tất ngày sinh, giới tính, giấy tờ và địa chỉ thường trú của khách chính.'); document.querySelector('.payment-guest-card')?.scrollIntoView({ behavior:'smooth' }); return; }
     if (guestInfo.documentType === 'CCCD' && !/^\d{12}$/.test(guestInfo.documentNumber)) { setBookingError('Số CCCD phải gồm đúng 12 chữ số.'); document.querySelector('.payment-guest-card')?.scrollIntoView({ behavior:'smooth' }); return; }
     const missingCompanion = findMissingCompanionIndex(companions, declareLater);
     if (missingCompanion >= 0) { setOpenCompanion(missingCompanion); setBookingError('Vui lòng hoàn tất thông tin khách đi cùng hoặc chọn khai báo sau.'); document.querySelector('.companion-card')?.scrollIntoView({ behavior:'smooth' }); return; }
@@ -773,8 +826,20 @@ export default function HomestayDetailPage({ id, initialSearch, user, onOpenHome
       return;
     }
     const guestCount = adultCount + childCount;
+    const allowDocumentNumberStorage = travelDocumentStorageConsented
+      || await confirmDialog({ title: 'Lưu số giấy tờ vào hồ sơ?', message: 'Bạn có đồng ý lưu số CCCD/hộ chiếu đã nhập vào hồ sơ tài khoản để tự điền cho lần đặt sau không? Số giấy tờ được mã hóa khi lưu. Nếu không đồng ý, bạn vẫn tiếp tục đặt phòng được.', variant: 'warning', confirmText: 'Đồng ý lưu', cancelText: 'Không lưu' });
     setBookingBusy(true); setBookingError('');
     try {
+      await accountApi.saveTravelProfile({
+        firstName: guestInfo.firstName.trim(), lastName: guestInfo.lastName.trim(), email: guestInfo.email.trim(),
+        country: guestInfo.country, countryCode: guestInfo.countryCode, phone: guestInfo.phone.trim(),
+        birthDate: guestInfo.birthDate || null, gender: guestInfo.gender, documentType: guestInfo.documentType,
+        documentNumber: allowDocumentNumberStorage ? guestInfo.documentNumber.trim() : '',
+        provinceCode: Number(guestInfo.provinceCode), provinceName: guestInfo.provinceName,
+        wardCode: Number(guestInfo.wardCode), wardName: guestInfo.wardName, street: guestInfo.street.trim(),
+        allowDocumentNumberStorage,
+      });
+      if (allowDocumentNumberStorage) setTravelDocumentStorageConsented(true);
       const contactNote = [`Email: ${guestInfo.email.trim()}`, `Điện thoại: ${guestInfo.countryCode} ${guestInfo.phone.trim()}`, guestInfo.arrivalTime ? `Giờ nhận phòng dự kiến: ${guestInfo.arrivalTime}` : 'Giờ nhận phòng dự kiến: Chưa biết', guestInfo.note.trim() ? `Ghi chú: ${guestInfo.note.trim()}` : ''].filter(Boolean).join('\n');
       const primaryGuest = { type:'adult', fullName:`${guestInfo.firstName.trim()} ${guestInfo.lastName.trim()}`, birthDate:guestInfo.birthDate, gender:guestInfo.gender, nationality:guestInfo.country, documentType:guestInfo.documentType, documentNumber:guestInfo.documentNumber, address:guestInfo.address, accompanyingAdult:null };
       const guestDeclarations = companions.map(item=>({ type:item.type, fullName:item.fullName, birthDate:item.birthDate||null, gender:item.gender, nationality:item.nationality, documentType:item.documentType, documentNumber:item.documentNumber||null, address:item.sameAddress?guestInfo.address:null, accompanyingAdult:item.type==='child'?item.accompanyingAdult:null }));
@@ -816,13 +881,13 @@ export default function HomestayDetailPage({ id, initialSearch, user, onOpenHome
               </div>
               <span className="payment-phone-title">Số điện thoại di động</span>
               <div className="payment-phone-row"><label><span>Mã quốc gia/vùng</span><select value={guestInfo.countryCode} onChange={updateGuestInfo('countryCode')}><option>+84</option><option>+1</option><option>+81</option><option>+82</option></select></label><label><span>Số điện thoại</span><input type="tel" inputMode="numeric" maxLength={20} autoComplete="tel-national" value={guestInfo.phone} onChange={updateGuestInfo('phone')} placeholder="Số điện thoại di động" /></label></div>
-              {user?.phoneNumber && <p className="payment-profile-prefill">✓ Đã điền từ hồ sơ của bạn. Bạn vẫn có thể sửa số dùng cho đơn đặt phòng này.</p>}
+              {user?.phoneNumber && <p className="field-hint field-hint-success payment-profile-prefill">✓ Đã điền từ hồ sơ của bạn. Bạn vẫn có thể sửa số dùng cho đơn đặt phòng này.</p>}
               <div className="payment-form-grid payment-identity-grid">
-                <label><span>Ngày sinh *</span><input type="date" value={guestInfo.birthDate} onChange={updateGuestInfo('birthDate')} /></label>
+                <VietnameseDatePicker value={guestInfo.birthDate} onChange={(value) => setGuestInfo((current) => ({ ...current, birthDate: value }))} />
                 <label><span>Giới tính *</span><select value={guestInfo.gender} onChange={updateGuestInfo('gender')}><option value="">Chọn giới tính</option><option>Nam</option><option>Nữ</option><option>Khác</option></select></label>
                 <label><span>Loại giấy tờ *</span><select value={guestInfo.documentType} onChange={updateGuestInfo('documentType')}><option>CCCD</option><option>Hộ chiếu</option></select></label>
-                <label><span>Số giấy tờ *</span><input value={guestInfo.documentNumber} onChange={updateGuestInfo('documentNumber')} placeholder={guestInfo.documentType==='CCCD'?'12 chữ số':'Số hộ chiếu'} /></label>
-                <label className="payment-field-wide"><span>Địa chỉ thường trú *</span><input value={guestInfo.address} onChange={updateGuestInfo('address')} placeholder="Số nhà, đường, phường/xã, tỉnh/thành" /></label>
+                <div className="payment-document-field"><label><span>Số giấy tờ *</span><input value={guestInfo.documentNumber} onChange={updateGuestInfo('documentNumber')} placeholder={guestInfo.documentType==='CCCD'?'12 chữ số':'Số hộ chiếu'} /></label>{travelDocumentStorageConsented ? <button type="button" onClick={removeStoredTravelDocument}>Xóa số giấy tờ đã lưu khỏi hồ sơ</button> : <small className="field-hint">Trước khi lưu số giấy tờ cho lần sau, Tripio sẽ hỏi ý kiến bạn.</small>}</div>
+                <AddressPicker value={guestInfo} onChange={(address) => setGuestInfo((current) => ({ ...current, ...address, address: address.fullAddress }))} />
               </div>
               <p className="payment-form-help">Vui lòng đảm bảo thông tin liên hệ của quý khách là chính xác. Chúng tôi sẽ sử dụng thông tin này để gửi xác nhận và thông báo về đặt phòng.</p>
             </section>
@@ -1333,28 +1398,37 @@ export default function HomestayDetailPage({ id, initialSearch, user, onOpenHome
                 </button>
                 {calendarOpen && <div className="room-availability-calendar">
                   <header>
-                    <button type="button" onClick={() => setCalendarMonth((date) => new Date(date.getFullYear(), date.getMonth() - 1, 1))}>‹</button>
+                    <button type="button" aria-label="Tháng trước" disabled={calendarMonth.getFullYear() === new Date().getFullYear() && calendarMonth.getMonth() === new Date().getMonth()} onClick={() => setCalendarMonth((date) => new Date(date.getFullYear(), date.getMonth() - 1, 1))}>‹</button>
                     <b>Tháng {calendarMonth.getMonth() + 1}/{calendarMonth.getFullYear()}</b>
-                    <button type="button" onClick={() => setCalendarMonth((date) => new Date(date.getFullYear(), date.getMonth() + 1, 1))}>›</button>
+                    <button type="button" aria-label="Tháng sau" onClick={() => setCalendarMonth((date) => new Date(date.getFullYear(), date.getMonth() + 1, 1))}>›</button>
                   </header>
                   {calendarLoading && <p>Đang tải lịch phòng…</p>}
-                  <div className="calendar-weekdays">{['T2','T3','T4','T5','T6','T7','CN'].map((day) => <b key={day}>{day}</b>)}</div>
-                  <div className="calendar-days">{daysInCalendar.map((item) => {
-                    const booked = isBookedDate(item.value); const past = item.value < todayValue;
-                    const selected = item.value === arrival || item.value === departure;
-                    const inRange = arrival && departure && item.value > arrival && item.value < departure;
-                    const dayInfo = roomCalendarData?.dailyStatus?.[item.value];
-                    const showPrice = item.current && !past && !booked && dayInfo?.price != null;
-                    return <button type="button" key={item.value} disabled={!item.current || past || booked}
-                      className={`${booked ? 'booked' : 'available'} ${selected ? 'selected' : ''} ${inRange ? 'in-range' : ''}`}
-                      title={showPrice ? `${formatDateVN(item.value)}: ${money(dayInfo.price)}/đêm${dayInfo.label ? ` · ${dayInfo.label}` : ''}` : undefined}
-                      onClick={() => chooseCalendarDate(item.value)}>
-                      <span className="calendar-day-number">{item.day}</span>
-                      {showPrice && <small className={`calendar-day-price ${dayInfo.isSpecial ? (dayInfo.isHigher ? 'higher' : 'lower') : ''}`}>{compactPrice(dayInfo.price)}</small>}
-                    </button>;
-                  })}</div>
-                  <footer><span><i className="available" /> Còn trống</span><span><i className="booked" /> Đã kín</span><span><i className="selected" /> Đang chọn</span></footer>
-                  {roomCalendarData?.dailyStatus && <p className="calendar-price-note">Giá 1 phòng/đêm, chưa gồm ưu đãi · <span className="higher">cam</span>: cao hơn giá thường · <span className="lower">xanh</span>: thấp hơn</p>}
+                  {monthFullyUnavailable ? <div className="calendar-month-unavailable"><b>Tháng này đã kín phòng</b><button type="button" onClick={() => setCalendarMonth((date) => new Date(date.getFullYear(), date.getMonth() + 1, 1))}>Xem tháng sau →</button></div> : <>
+                    <div className="calendar-weekdays">{['T2','T3','T4','T5','T6','T7','CN'].map((day) => <b key={day}>{day}</b>)}</div>
+                    <div className="calendar-days">{calendarWeeks.map((week, weekIndex) => <div className="calendar-week" key={`week-${weekIndex}`}>{week.map((item) => {
+                      if (!item.current) return <span key={item.value} className="calendar-day-blank" aria-hidden="true" />;
+                      const booked = isBookedDate(item.value); const past = item.value < todayValue;
+                      const selected = item.value === arrival || item.value === departure;
+                      const inRange = arrival && departure && item.value > arrival && item.value < departure;
+                      const dayInfo = roomCalendarData?.dailyStatus?.[item.value];
+                      const showPrice = !past && !booked && dayInfo?.price != null;
+                      const blockedByBooked = Boolean(nearestBookedAfterArrival && item.value >= nearestBookedAfterArrival && item.value !== arrival);
+                      const unavailable = past || booked || blockedByBooked;
+                      const priceClass = dayInfo?.isSpecial ? (dayInfo.isHigher ? 'higher' : 'lower') : '';
+                      const ariaStatus = booked ? 'hết phòng' : past ? 'đã qua' : unavailable ? 'không thể chọn' : 'còn trống';
+                      return <button type="button" key={item.value} disabled={unavailable}
+                        aria-disabled={unavailable ? 'true' : undefined}
+                        aria-label={formatCalendarAriaLabel(item, ariaStatus, showPrice ? dayInfo.price : null)}
+                        className={`calendar-day ${booked ? 'booked' : ''} ${past ? 'past' : ''} ${blockedByBooked ? 'blocked-by-booking' : ''} ${selected ? 'selected' : ''} ${inRange ? 'in-range' : ''}`}
+                        title={booked ? 'Hết phòng' : showPrice ? `${formatDateVN(item.value)}: ${money(dayInfo.price)}/đêm${dayInfo.label ? ` · ${dayInfo.label}` : ''}` : undefined}
+                        onClick={() => chooseCalendarDate(item.value)}>
+                        <span className="calendar-day-number">{item.day}</span>
+                        {booked ? <small className="calendar-day-price sold-out-label">Hết</small> : showPrice && <small className={`calendar-day-price ${priceClass}`}>{formatShortPrice(dayInfo.price)}</small>}
+                      </button>;
+                    })}</div>)}</div>
+                  </>}
+                  {nearestBookedAfterArrival && <p className="calendar-booking-hint">Ngày {new Date(`${nearestBookedAfterArrival}T00:00:00`).getDate()} đã kín, vui lòng chọn ngày trả trước ngày {new Date(`${nearestBookedAfterArrival}T00:00:00`).getDate()}.</p>}
+                  <footer className="calendar-legend"><span><i className="selected" /> Đang chọn</span><span><i className="booked" /> Đã kín</span><span>· Giá/đêm, chưa gồm ưu đãi <button type="button" className="calendar-price-info" aria-label="Thông tin giá" title="Giá 1 phòng/đêm, chưa gồm ưu đãi. Màu vàng cam: cao hơn giá thường. Màu xanh lá: thấp hơn giá thường." data-tooltip="Giá 1 phòng/đêm, chưa gồm ưu đãi. Màu vàng cam: cao hơn giá thường. Màu xanh lá: thấp hơn giá thường.">ⓘ</button></span></footer>
                 </div>}
                 {isDayUse&&<div className="day-use-duration"><div><b>Thời lượng sử dụng</b><small>Trong khung {String(policy.document.dayUse.from).slice(0,5)}–{String(policy.document.dayUse.to).slice(0,5)}</small></div><select aria-label="Thời lượng đặt phòng trong ngày" value={dayUseHours} onChange={e=>setDayUseHours(Number(e.target.value))}><option value="3">Tối đa 3 giờ · {policy.document.dayUse.upToThreeHoursPercent}%</option><option value="6">Tối đa 6 giờ · {policy.document.dayUse.upToSixHoursPercent}%</option><option value="9">Trên 6 giờ · {policy.document.dayUse.overSixHoursPercent}%</option></select></div>}
                 <div className="booking-steppers">

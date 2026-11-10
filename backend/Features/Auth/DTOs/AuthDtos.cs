@@ -7,10 +7,10 @@ public sealed class RegisterRequest
     [Required, MinLength(2), MaxLength(100)]
     public string FullName { get; init; } = "";
 
-    [Required, EmailAddress, MaxLength(255)]
+    [Required, EmailAddress, MaxLength(255), RegularExpression(@"^(?!\.)(?!.*\.\.)[A-Za-z0-9_%+-]+(?:\.[A-Za-z0-9_%+-]+)*@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*\.[A-Za-z]{2,}$", ErrorMessage = "Email không hợp lệ.")]
     public string Email { get; init; } = "";
 
-    [Required, RegularExpression(@"^(0|\+84)(3|5|7|8|9)\d{8}$", ErrorMessage = "Số điện thoại Việt Nam không hợp lệ.")]
+    [Required, RegularExpression(@"^(0[35789]\d{8}|\+84[35789]\d{8})$", ErrorMessage = "Số điện thoại Việt Nam không hợp lệ.")]
     public string PhoneNumber { get; init; } = "";
 
     [Required, MinLength(8), MaxLength(32), RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$", ErrorMessage = "Mật khẩu phải có chữ hoa, chữ thường, số và ký tự đặc biệt.")]

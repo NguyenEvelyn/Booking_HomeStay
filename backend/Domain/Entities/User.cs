@@ -10,6 +10,23 @@ public class User
     public string? CoverUrl { get; set; }
     public string? Bio { get; set; }
     public string? Address { get; set; }
+    public string? TravelFirstName { get; set; }
+    public string? TravelLastName { get; set; }
+    public string? TravelEmail { get; set; }
+    public string? TravelCountry { get; set; }
+    public string? TravelPhoneCountryCode { get; set; }
+    public string? TravelPhone { get; set; }
+    public DateOnly? TravelBirthDate { get; set; }
+    public string? TravelGender { get; set; }
+    public string? TravelDocumentType { get; set; }
+    public string? ProtectedTravelDocumentNumber { get; set; }
+    public int? TravelProvinceCode { get; set; }
+    public string? TravelProvinceName { get; set; }
+    public int? TravelWardCode { get; set; }
+    public string? TravelWardName { get; set; }
+    public string? TravelStreet { get; set; }
+    public string? TravelAddress { get; set; }
+    public DateTime? TravelDocumentStorageConsentAt { get; set; }
     public string? PasswordHash { get; set; }
     public required string Role { get; set; }
     public required string Status { get; set; }

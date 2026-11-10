@@ -4,7 +4,7 @@ import HostIcon from './HostIcon.jsx';
 import { NumberStepper, BookingActionMenu } from './HostBookingControls.jsx';
 import HostNoShowModal from './HostNoShowModal.jsx';
 import HostDealModal from './HostDealModal.jsx';
-import { toast } from '../../../shared/feedback/feedback.js';
+import { toast, confirmDialog } from '../../../shared/feedback/feedback.js';
 import { money, date, dateTime, day, plainDate, labels, paymentState, calcEarlyCheckInPolicy, calcLateCheckOutPolicy, calcExtraGuestSurcharge, occupancyCheck } from './hostBookingUtils.js';
 import HostAddGuestsModal from './HostAddGuestsModal.jsx';
 
@@ -48,7 +48,7 @@ export default function BookingDetail({ item: initialItem, initialStage = null, 
     else if (tab === 'stay' || tab === 'STAYING') setActiveStage('STAYING');
     else if (tab === 'checkout' || tab === 'CHECK_OUT') {
       if (item.status === 'Confirmed') {
-        alert('Vui lòng hoàn tất thủ tục Check-in trước khi trả phòng.');
+        toast.warning('Vui lòng hoàn tất thủ tục Check-in trước khi trả phòng.');
         return;
       }
       setActiveStage('CHECK_OUT');
@@ -303,7 +303,7 @@ export default function BookingDetail({ item: initialItem, initialStage = null, 
   // 1. Thao tác Check-in (Đối chiếu CCCD & Thu cọc tài sản & Phụ thu phát sinh)
   const handleCheckIn = async () => {
     if (!guestIdentityNumber.trim()) {
-      alert('Vui lòng nhập số CCCD hoặc Hộ chiếu của khách để đối chiếu trước khi xác nhận check-in.');
+      toast.warning('Vui lòng nhập số CCCD hoặc Hộ chiếu của khách để đối chiếu trước khi xác nhận check-in.');
       return;
     }
     setCheckInSaving(true);
@@ -349,7 +349,7 @@ export default function BookingDetail({ item: initialItem, initialStage = null, 
       setActiveStage('STAYING');
       run(homestayApi.hostBookings, false);
     } catch (err) {
-      alert(err.message || 'Lỗi khi xác nhận check-in.');
+      toast.error(err.message || 'Lỗi khi xác nhận check-in.');
     } finally {
       setCheckInSaving(false);
     }
@@ -365,7 +365,7 @@ export default function BookingDetail({ item: initialItem, initialStage = null, 
     };
 
     if (!payload.description || payload.quantity <= 0) {
-      alert('Vui lòng nhập tên dịch vụ và số lượng hợp lệ.');
+      toast.warning('Vui lòng nhập tên dịch vụ và số lượng hợp lệ.');
       return;
     }
     setChargeSaving(true);
@@ -387,7 +387,7 @@ export default function BookingDetail({ item: initialItem, initialStage = null, 
       setShowIncidentalModal(false);
       run(homestayApi.hostBookings, false);
     } catch (err) {
-      alert(err.message || 'Lỗi khi thêm khoản phát sinh.');
+      toast.error(err.message || 'Lỗi khi thêm khoản phát sinh.');
     } finally {
       setChargeSaving(false);
     }
@@ -395,7 +395,7 @@ export default function BookingDetail({ item: initialItem, initialStage = null, 
 
   // 3. Thao tác Xóa khoản phụ phí
   const handleRemoveCharge = async (chargeId) => {
-    if (!window.confirm('Bạn có chắc muốn xóa khoản phụ phí này khỏi hóa đơn?')) return;
+    if (!await confirmDialog({ title: 'Xóa khoản phụ phí?', message: 'Khoản phụ phí này sẽ bị xóa khỏi hóa đơn.', variant: 'danger', confirmText: 'Xóa khoản phí', cancelText: 'Giữ lại' })) return;
     try {
       const res = await homestayApi.removeAdditionalCharge(item.id, chargeId);
       setItem(prev => ({
@@ -406,14 +406,14 @@ export default function BookingDetail({ item: initialItem, initialStage = null, 
       }));
       run(homestayApi.hostBookings, false);
     } catch (err) {
-      alert(err.message || 'Lỗi khi xóa khoản phụ phí.');
+      toast.error(err.message || 'Lỗi khi xóa khoản phụ phí.');
     }
   };
 
   // 4. Thao tác Gia hạn lưu trú (Module V)
   const handleExtendStay = async () => {
     if (!extendNewDate || extendNewDate <= item.checkOutDate) {
-      alert(`Vui lòng chọn ngày trả phòng mới sau ngày ${item.checkOutDate}.`);
+      toast.warning(`Vui lòng chọn ngày trả phòng mới sau ngày ${item.checkOutDate}.`);
       return;
     }
     setExtendSaving(true);
@@ -452,7 +452,7 @@ export default function BookingDetail({ item: initialItem, initialStage = null, 
       const res = await homestayApi.getAvailableRoomsForChange(item.id);
       setAvailableRooms(res.availableRooms || []);
     } catch (err) {
-      alert(err.message || 'Lỗi khi tải danh sách phòng trống.');
+      toast.error(err.message || 'Lỗi khi tải danh sách phòng trống.');
     } finally {
       setLoadingRooms(false);
     }
@@ -460,7 +460,7 @@ export default function BookingDetail({ item: initialItem, initialStage = null, 
 
   const handleChangeRoom = async () => {
     if (!selectedNewRoomId) {
-      alert('Vui lòng chọn phòng mới muốn chuyển sang.');
+      toast.warning('Vui lòng chọn phòng mới muốn chuyển sang.');
       return;
     }
     setRoomChangeSaving(true);
@@ -516,7 +516,7 @@ export default function BookingDetail({ item: initialItem, initialStage = null, 
 
   const handleChangeDates = async () => {
     if (!dateChangeInDate || !dateChangeOutDate || dateChangeOutDate <= dateChangeInDate) {
-      alert('Vui lòng chọn ngày nhận phòng và ngày trả phòng hợp lệ.');
+      toast.warning('Vui lòng chọn ngày nhận phòng và ngày trả phòng hợp lệ.');
       return;
     }
     setDateChangeSaving(true);
@@ -541,7 +541,7 @@ export default function BookingDetail({ item: initialItem, initialStage = null, 
       run(homestayApi.hostBookings, false);
       setTimeout(() => setShowDateChangeModal(false), 1200);
     } catch (err) {
-      alert(err.message || 'Lỗi khi đổi ngày lưu trú.');
+      toast.error(err.message || 'Lỗi khi đổi ngày lưu trú.');
     } finally {
       setDateChangeSaving(false);
     }
@@ -572,14 +572,14 @@ export default function BookingDetail({ item: initialItem, initialStage = null, 
       setCancelQuote(res);
       setCancelOverrideRefund(String(res.refundAmount || 0));
     } catch (err) {
-      alert(err.message || 'Lỗi khi tính toán hoàn tiền hủy đơn.');
+      toast.error(err.message || 'Lỗi khi tính toán hoàn tiền hủy đơn.');
     } finally {
       setLoadingCancelQuote(false);
     }
   };
 
   const handleCancelBooking = async () => {
-    if (!window.confirm(`Bạn có chắc chắn muốn HỦY đơn đặt phòng ${item.bookingCode}?\nThao tác này sẽ chuyển đơn sang trạng thái ĐÃ HỦY và giải phóng phòng.`)) return;
+    if (!await confirmDialog({ title: `Hủy đơn ${item.bookingCode}?`, message: 'Đơn sẽ chuyển sang trạng thái Đã hủy và phòng được giải phóng.', variant: 'danger', confirmText: 'Hủy đơn đặt phòng', cancelText: 'Giữ đơn' })) return;
     setCancelSaving(true);
     setCancelMessage('');
     try {
@@ -600,7 +600,7 @@ export default function BookingDetail({ item: initialItem, initialStage = null, 
       run(homestayApi.hostBookings, false);
       setTimeout(() => setShowCancelModal(false), 1200);
     } catch (err) {
-      alert(err.message || 'Lỗi khi hủy đơn đặt phòng.');
+      toast.error(err.message || 'Lỗi khi hủy đơn đặt phòng.');
     } finally {
       setCancelSaving(false);
     }
@@ -627,7 +627,7 @@ export default function BookingDetail({ item: initialItem, initialStage = null, 
       ? `Phương thức: Tiền mặt.\nXác nhận hoàn tất và giải phóng phòng?`
       : `Phương thức: VNPay.\nHệ thống sẽ mở lại cổng VNPay; chỉ hoàn tất và giải phóng phòng sau khi thanh toán thành công.`;
 
-    if (!window.confirm(confirmMsg)) return;
+    if (!await confirmDialog({ title: 'Xác nhận quyết toán trả phòng', message: confirmMsg, variant: 'warning', confirmText: 'Xác nhận trả phòng', cancelText: 'Kiểm tra lại' })) return;
 
     setCheckoutSaving(true);
     setCheckoutMessage('');
@@ -681,7 +681,7 @@ export default function BookingDetail({ item: initialItem, initialStage = null, 
       setHostNoteMessage(res.message || 'Đã lưu ghi chú nội bộ thành công!');
       run(homestayApi.hostBookings, false);
     } catch (err) {
-      alert(err.message || 'Lỗi khi lưu ghi chú nội bộ.');
+      toast.error(err.message || 'Lỗi khi lưu ghi chú nội bộ.');
     } finally {
       setHostNoteSaving(false);
     }
@@ -1132,7 +1132,7 @@ export default function BookingDetail({ item: initialItem, initialStage = null, 
               className={`stepper-step ${activeStage === 'CHECK_OUT' ? 'is-active-view' : ''} ${['CheckedOut', 'Completed'].includes(item.status) ? 'is-completed' : ''}`}
               onClick={() => {
                 if (item.status === 'Confirmed') {
-                  alert('Vui lòng hoàn tất thủ tục Check-in trước khi trả phòng.');
+                  toast.warning('Vui lòng hoàn tất thủ tục Check-in trước khi trả phòng.');
                   return;
                 }
                 setActiveStage('CHECK_OUT');

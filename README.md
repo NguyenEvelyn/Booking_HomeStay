@@ -143,6 +143,7 @@ GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 FACEBOOK_APP_ID=
 FACEBOOK_APP_SECRET=
+FACEBOOK_GRAPH_API_VERSION=v26.0
 ```
 
 Khai báo callback URL trong trang quản trị của từng nhà cung cấp:
