@@ -57,6 +57,67 @@ export default function App() {
   const [hostTarget, setHostTarget] = useState(null);
   const [adminTarget, setAdminTarget] = useState(null);
 
+  // Keep native form validation localized and in place without clearing any
+  // controlled field values when the browser blocks an invalid submission.
+  useEffect(() => {
+    const localizedFields = new WeakSet();
+    const getLabel = (field) => {
+      const label = field.labels?.[0]?.textContent?.replace(/\s+/g, ' ').trim();
+      return label || field.getAttribute('aria-label') || field.placeholder || 'thông tin này';
+    };
+    const onInvalid = (event) => {
+      const field = event.target;
+      if (!(field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement || field instanceof HTMLSelectElement)) return;
+      if (field.validity.customError) return;
+
+      const label = getLabel(field);
+      const validity = field.validity;
+      let message = '';
+      if (validity.valueMissing) {
+        message = field instanceof HTMLSelectElement ? `Vui lòng chọn ${label}.` : `Vui lòng nhập ${label}.`;
+      } else if (validity.typeMismatch && field.type === 'email') {
+        message = 'Vui lòng nhập địa chỉ email hợp lệ.';
+      } else if (validity.typeMismatch && field.type === 'url') {
+        message = 'Vui lòng nhập đường dẫn hợp lệ.';
+      } else if (validity.patternMismatch && /phone|tel|điện thoại/i.test(`${field.name} ${label}`)) {
+        message = 'Số điện thoại chưa đúng định dạng.';
+      } else if (validity.patternMismatch) {
+        message = `${label} chưa đúng định dạng.`;
+      } else if (validity.tooShort) {
+        message = `${label} cần có ít nhất ${field.minLength} ký tự.`;
+      } else if (validity.tooLong) {
+        message = `${label} chỉ được tối đa ${field.maxLength} ký tự.`;
+      } else if (validity.rangeUnderflow) {
+        message = `${label} phải từ ${field.min} trở lên.`;
+      } else if (validity.rangeOverflow) {
+        message = `${label} không được lớn hơn ${field.max}.`;
+      } else if (validity.stepMismatch) {
+        message = `${label} chưa đúng bước giá trị.`;
+      }
+
+      if (message) {
+        field.setCustomValidity(message);
+        localizedFields.add(field);
+      }
+    };
+    const clearInvalid = (event) => {
+      const field = event.target;
+      if (localizedFields.has(field)) {
+        field.setCustomValidity('');
+        localizedFields.delete(field);
+      }
+    };
+
+    document.addEventListener('invalid', onInvalid, true);
+    document.addEventListener('input', clearInvalid, true);
+    document.addEventListener('change', clearInvalid, true);
+    return () => {
+      document.removeEventListener('invalid', onInvalid, true);
+      document.removeEventListener('input', clearInvalid, true);
+      document.removeEventListener('change', clearInvalid, true);
+    };
+  }, []);
+
   /* =========================================================
      ERROR PAGE CHECK
      ========================================================= */
@@ -70,6 +131,8 @@ export default function App() {
      ========================================================= */
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    const authResult = params.get('auth');
+    const authProvider = params.get('provider');
 
     if (params.has('payment')) {
       const status = params.get('payment');
@@ -85,26 +148,44 @@ export default function App() {
       .me()
       .then(({ user: currentUser }) => {
         setUser(currentUser);
+        if (authResult === 'success') {
+          setShowHome(true);
+        }
         if (currentUser.role === 'Host' && params.has('homestay')) {
           setView('host');
         }
-        if (params.has('auth')) {
+        if (authResult) {
           window.history.replaceState({}, '', window.location.pathname);
         }
       })
       .catch(() => {
-        if (params.get('auth') === 'error') {
+        if (authResult === 'success') {
+          setShowHome(false);
+          setMode('login');
           setNotice({
             type: 'error',
-            text: 'Đăng nhập mạng xã hội không thành công.',
+            text: 'Nhà cung cấp đã xác thực nhưng Tripio chưa tạo được phiên đăng nhập. Vui lòng thử lại.',
           });
         }
-        if (params.get('auth') === 'locked') {
+        if (authResult === 'error') {
+          setShowHome(false);
+          setMode('login');
+          setNotice({
+            type: 'error',
+            text: authProvider === 'facebook'
+              ? 'Facebook không hoàn tất xác thực. Hãy kiểm tra cấu hình Facebook Login và URL callback rồi thử lại.'
+              : 'Đăng nhập Google/Facebook không thành công. Hãy kiểm tra quyền truy cập và thử lại.',
+          });
+        }
+        if (authResult === 'locked') {
+          setShowHome(false);
+          setMode('login');
           setNotice({
             type: 'error',
             text: 'Tài khoản đã bị khóa. Vui lòng liên hệ hỗ trợ.',
           });
         }
+        if (authResult) window.history.replaceState({}, '', window.location.pathname);
       });
   }, []);
 

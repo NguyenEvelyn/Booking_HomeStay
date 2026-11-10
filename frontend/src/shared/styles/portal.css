@@ -2684,13 +2684,17 @@
 .payment-page { min-height:100vh; color:#0a2e75; background:#f5f7fb; }.payment-page .customer-nav { position:relative; }.payment-shell { width:min(1120px,calc(100% - 48px)); margin:0 auto; padding:30px 0 80px; }.payment-shell>header { margin:8px 0 26px; }.payment-shell>header small { color:#e0a500; font-size:10px; font-weight:800; letter-spacing:.14em; }.payment-shell>header h1 { margin:7px 0 8px; font-family:'Be Vietnam Pro',Arial,sans-serif; font-size:34px; }.payment-shell>header p { margin:0; color:#74819a; font-size:13px; }.payment-layout { display:grid; grid-template-columns:minmax(0,1fr) 350px; gap:24px; align-items:start; }.payment-main { display:grid; gap:18px; }.payment-card,.payment-summary { padding:25px; border:1px solid #e1e6ee; border-radius:14px; background:#fff; box-shadow:0 8px 28px rgba(6,31,75,.055); }.payment-card h2,.payment-summary h2 { margin:0 0 20px; color:#092e7c; font-family:'Be Vietnam Pro',Arial,sans-serif; font-size:19px; }.payment-stay-card { display:grid; grid-template-columns:180px 1fr; gap:22px; align-items:center; }.payment-stay-card img { width:180px; height:125px; border-radius:10px; object-fit:cover; }.payment-stay-card small { color:#d79e00; font-size:10px; font-weight:800; text-transform:uppercase; }.payment-stay-card h2 { margin:7px 0 13px; font-size:23px; }.payment-stay-card p { margin:0; color:#687995; font-size:11px; }.payment-dates { display:grid; grid-template-columns:1fr auto 1fr; gap:20px; align-items:center; }.payment-dates>div { display:grid; gap:6px; padding:15px; border-radius:9px; background:#f5f8fd; }.payment-dates small { color:#7b879b; font-size:9px; font-weight:800; }.payment-dates strong { color:#123b87; font-size:13px; }.payment-dates span { color:#738099; font-size:10px; }.payment-dates>b { color:#e1a500; font-size:11px; white-space:nowrap; }.payment-method { display:grid; grid-template-columns:auto 62px 1fr auto; gap:14px; align-items:center; padding:16px; border:2px solid #1853c7; border-radius:10px; cursor:pointer; }.payment-method input { width:17px; height:17px; accent-color:#1350c1; }.vnpay-mark { color:#174996; font-size:16px; font-weight:900; font-style:italic; }.vnpay-mark span { color:#e92639; }.payment-method div { display:grid; gap:4px; }.payment-method div strong { font-size:12px; }.payment-method div small { color:#77849b; font-size:9px; }.payment-method i { width:24px; height:24px; display:grid; place-items:center; border-radius:50%; color:#fff; background:#1750bf; font-size:11px; font-style:normal; }.payment-note { margin:13px 0 0; color:#738099; font-size:10px; }.payment-summary { position:sticky; top:20px; }.payment-summary>div { display:flex; justify-content:space-between; gap:15px; margin:16px 0; color:#687790; font-size:11px; }.payment-summary>div strong { color:#173875; }.payment-summary hr { height:1px; margin:20px 0; border:0; background:#e0e6ef; }.payment-summary .payment-grand-total { align-items:end; color:#15356e; font-size:13px; font-weight:700; }.payment-summary .payment-grand-total strong { color:#07368f; font-size:23px; }.payment-summary>button { width:100%; height:52px; margin-top:10px; border:0; border-radius:8px; color:#09285f; background:#ffbd00; font-weight:800; cursor:pointer; }.payment-summary>button:disabled { color:#fff; background:#aeb6c3; }.payment-summary>small { display:block; margin-top:14px; color:#7a879b; font-size:9px; text-align:center; }
 .payment-countdown { min-height:52px; display:flex; align-items:center; justify-content:center; gap:12px; padding:0 20px; color:#4a4542; background:#fff0e9; box-shadow:0 2px 8px rgba(48,35,30,.12); font-size:13px; }.payment-countdown i { color:#e63b36; font-size:20px; font-style:normal; }.payment-countdown strong { min-width:58px; color:#d83c35; font-size:15px; font-variant-numeric:tabular-nums; }.payment-countdown.urgent { background:#ffe5df; }.payment-countdown.urgent strong { animation:countdown-pulse 1s ease-in-out infinite; }@keyframes countdown-pulse{50%{opacity:.45}}
 .payment-required { margin:-11px 0 20px; color:#d64535; font-size:12px; }
-.payment-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.payment-form-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; align-items:start; }
 .payment-form-grid label,.payment-phone-row label,.payment-extra-card label { display:grid; gap:7px; color:#64728a; font-size:11px; }
 .payment-form-grid input,.payment-form-grid select,.payment-phone-row input,.payment-phone-row select,.payment-extra-card select { width:100%; height:48px; box-sizing:border-box; padding:0 14px; border:1px solid #b9c3d2; border-radius:9px; outline:none; color:#23324b; background:#fff; font:inherit; font-size:13px; }
 .payment-form-grid input:focus,.payment-form-grid select:focus,.payment-phone-row input:focus,.payment-phone-row select:focus,.payment-extra-card select:focus { border-color:#1853c7; box-shadow:0 0 0 3px rgba(24,83,199,.12); }
 .payment-phone-title { display:block; margin:18px 0 8px; color:#64728a; font-size:11px; }
-.payment-phone-row { display:grid; grid-template-columns:155px minmax(0,1fr); gap:16px; max-width:520px; }
-.payment-profile-prefill { margin:8px 0 0; color:#15805f; font-size:11px; line-height:1.45; }
+.payment-phone-row { display:grid; width:100%; max-width:none; grid-template-columns:155px minmax(0,1fr); gap:16px; align-items:start; }
+.field-hint { display:block; margin:6px 0 0; color:#64748B; font-size:13px; line-height:1.4; }
+.field-hint-success { color:#15805f; }
+.payment-profile-prefill { margin:6px 0 0; }
+.payment-document-field { display:grid; align-content:start; gap:6px; min-width:0; }
+.payment-document-field>button { justify-self:start; padding:0 !important; border:0 !important; color:#0b4ae6 !important; background:transparent !important; font-size:11px; font-weight:600; text-decoration:underline; cursor:pointer; }
 .payment-form-help { margin:18px 0 0; color:#718098; font-size:11px; line-height:1.55; }
 .payment-extra-card>p { margin:-10px 0 22px; color:#596980; font-size:12px; }
 .payment-extra-card label>span { color:#263956; font-size:12px; }
@@ -3826,6 +3830,57 @@
 .room-availability-calendar footer i.available { background:#22c55e; }
 .room-availability-calendar footer i.booked { background:#ef4444; }
 .room-availability-calendar footer i.selected { background:#0b4ae6; }
+
+/* Compact customer booking calendar */
+.room-availability-calendar { padding:15px; }
+.room-availability-calendar header { margin-bottom:12px; }
+.room-availability-calendar header b { color:#0f172a; font-size:18px; font-weight:600; }
+.room-availability-calendar header button { width:32px; height:32px; border-radius:8px !important; }
+.room-availability-calendar header button:disabled { opacity:.35; cursor:not-allowed; }
+.room-availability-calendar .calendar-weekdays,.room-availability-calendar .calendar-week { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:4px; text-align:center; }
+.room-availability-calendar .calendar-weekdays { margin-bottom:4px; }
+.room-availability-calendar .calendar-weekdays b { padding:4px 0; font-size:12px; }
+.room-availability-calendar .calendar-days { display:flex; flex-direction:column; gap:4px; }
+.room-availability-calendar .calendar-day-blank { display:block; min-width:0; height:44px; border:0; background:transparent; }
+.room-availability-calendar .calendar-days button.calendar-day,
+.room-availability-calendar .calendar-days button.calendar-day.available { display:flex !important; flex-direction:column; justify-content:center; align-items:center; gap:1px; width:100%; min-width:0; height:44px !important; min-height:44px; padding:0 !important; border:1px solid #e5e7eb !important; border-radius:8px !important; color:#0f172a !important; background:#fff !important; cursor:pointer; }
+.room-availability-calendar .calendar-days button.calendar-day { align-items:center !important; justify-content:center !important; padding:0 !important; text-align:center !important; }
+.room-availability-calendar .calendar-day-number { display:block; width:100%; text-align:center; font-size:14px; font-weight:600; line-height:1; font-variant-numeric:tabular-nums; }
+.room-availability-calendar .calendar-day-price { color:#64748b !important; font-size:10px; font-weight:400; line-height:1; letter-spacing:0; text-align:center; text-transform:none !important; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.room-availability-calendar .calendar-days button.calendar-day:hover:not(:disabled) { border-color:#0b2a6f !important; background:#f1f5f9 !important; }
+.room-availability-calendar .calendar-day-price.higher { color:#d97706 !important; }
+.room-availability-calendar .calendar-day-price.lower { color:#15803d !important; }
+.room-availability-calendar .calendar-days button.calendar-day.booked { border:1px solid #fca5a5 !important; color:#b91c1c !important; background:#fee2e2 !important; cursor:not-allowed; }
+.room-availability-calendar .calendar-day.booked .calendar-day-price { color:#b91c1c !important; }
+.room-availability-calendar .calendar-days button.calendar-day.past { border-color:transparent !important; color:#cbd5e1 !important; background:#f8fafc !important; cursor:not-allowed; }
+.room-availability-calendar .calendar-day.past .calendar-day-price { display:none; }
+.room-availability-calendar .calendar-days button.calendar-day.blocked-by-booking { opacity:.4; cursor:not-allowed; }
+.room-availability-calendar .calendar-days button.calendar-day.selected { border-color:#0b2a6f !important; color:#fff !important; background:#0b2a6f !important; }
+.room-availability-calendar .calendar-days button.calendar-day.selected .calendar-day-number,
+.room-availability-calendar .calendar-days button.calendar-day.selected .calendar-day-price,
+.room-availability-calendar .calendar-days button.calendar-day.selected .calendar-day-price.higher,
+.room-availability-calendar .calendar-days button.calendar-day.selected .calendar-day-price.lower { color:#fff !important; }
+.room-availability-calendar .calendar-days button.calendar-day.in-range { border-color:transparent !important; color:#0b2a6f !important; background:#e0e7ff !important; }
+.room-availability-calendar .calendar-day.in-range .calendar-day-price { color:#0b2a6f !important; }
+.room-availability-calendar .calendar-booking-hint { margin:9px 0 0; color:#b91c1c; font-size:11px; line-height:1.4; text-align:left; }
+.room-availability-calendar .calendar-month-unavailable { display:grid; justify-items:center; gap:10px; padding:20px 8px; color:#64748b; font-size:13px; }
+.room-availability-calendar .calendar-month-unavailable button { border:0 !important; color:#0b2a6f !important; background:transparent !important; font-size:12px; font-weight:700; cursor:pointer; }
+.room-availability-calendar footer.calendar-legend { display:flex; justify-content:center; align-items:center; flex-wrap:wrap; gap:6px 12px; margin-top:12px; padding:0; border:0; color:#64748b; font-size:12px; line-height:1.35; }
+.room-availability-calendar .calendar-legend span { display:inline-flex; align-items:center; gap:4px; }
+.room-availability-calendar .calendar-legend span::before { content:none !important; display:none !important; }
+.room-availability-calendar .calendar-legend i { width:8px; height:8px; border-radius:50%; }
+.room-availability-calendar .calendar-legend i.selected { background:#0b2a6f; }
+.room-availability-calendar .calendar-legend i.booked { background:#ef4444; }
+.room-availability-calendar .calendar-price-info { position:relative; display:inline-grid; place-items:center; width:20px; height:20px; padding:0 !important; border:0 !important; color:#64748b !important; background:transparent !important; font-size:13px !important; cursor:help; }
+.room-availability-calendar .calendar-price-info::after { position:absolute; z-index:20; right:0; bottom:calc(100% + 8px); width:230px; padding:8px 10px; border-radius:7px; color:#fff; background:#0f172a; content:attr(data-tooltip); font-size:11px; font-weight:400; line-height:1.45; text-align:left; opacity:0; pointer-events:none; }
+.room-availability-calendar .calendar-price-info:hover::after,.room-availability-calendar .calendar-price-info:focus::after,.room-availability-calendar .calendar-price-info:focus-visible::after { opacity:1; }
+@media(max-width:399px) {
+  .room-availability-calendar .calendar-day-blank,
+  .room-availability-calendar .calendar-days button.calendar-day,
+  .room-availability-calendar .calendar-days button.calendar-day.available { height:40px !important; min-height:40px; }
+  .room-availability-calendar .calendar-day-price { font-size:10px; }
+  .room-availability-calendar { padding:14px; }
+}
 
 /* Booking card refresh: accessible contrast, transparent pricing and touch-friendly controls. */
 .inline-room-detail .booking-card-redesign{padding:24px;border:1px solid #e3e8f0;border-radius:16px;background:#fff;box-shadow:0 8px 24px rgba(11,42,91,.08);font-family:'Be Vietnam Pro',Arial,sans-serif;color:#0b2a5b}

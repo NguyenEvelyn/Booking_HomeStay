@@ -42,5 +42,7 @@ function staticAssets() {
 }
 
 export default defineConfig({
-  plugins: [react(), staticAssets()]
+  plugins: [react(), staticAssets()],
+  // Listen on the LAN too, so phones and emulators can open the dev server by the machine's IP.
+  server: { host: true }
 });

@@ -215,8 +215,22 @@ if (!string.IsNullOrWhiteSpace(facebookAppId) && !string.IsNullOrWhiteSpace(face
         options.AppId = facebookAppId;
         options.AppSecret = facebookAppSecret;
         options.SignInScheme = "External";
+        // ASP.NET Core 9 defaults these endpoints to retired Graph API v14.0.
+        // Keep all three endpoints on the same supported version; allow deployments
+        // to move versions through configuration as Meta releases new versions.
+        var graphApiVersion = Environment.GetEnvironmentVariable("FACEBOOK_GRAPH_API_VERSION") ?? "v26.0";
+        options.AuthorizationEndpoint = $"https://www.facebook.com/{graphApiVersion}/dialog/oauth";
+        options.TokenEndpoint = $"https://graph.facebook.com/{graphApiVersion}/oauth/access_token";
+        options.UserInformationEndpoint = $"https://graph.facebook.com/{graphApiVersion}/me";
         options.Scope.Add("email");
         options.Fields.Add("email");
+        options.Events.OnRemoteFailure = context =>
+        {
+            context.HandleResponse();
+            var clientUrl = Environment.GetEnvironmentVariable("CLIENT_URL") ?? "http://localhost:5173";
+            context.Response.Redirect($"{clientUrl.TrimEnd('/')}?auth=error&provider=facebook");
+            return Task.CompletedTask;
+        };
     });
 builder.Services.AddAuthorization(options =>
 {
@@ -242,7 +256,7 @@ builder.Services.AddCors(options => options.AddPolicy("Frontend", policy =>
         // credentialed request from an arbitrary local web server must not be accepted.
         if (builder.Environment.IsDevelopment() && Uri.TryCreate(origin, UriKind.Absolute, out var uri))
         {
-            return uri.Host == "localhost" || uri.Host == "127.0.0.1";
+            return uri.Host == "localhost" || uri.Host == "127.0.0.1" || IsPrivateLanAddress(uri.Host);
         }
         return false;
     })
@@ -263,6 +277,23 @@ if (!string.Equals(Environment.GetEnvironmentVariable("SKIP_SCHEMA_SYNC"), "true
         ALTER TABLE users ADD COLUMN IF NOT EXISTS cover_url VARCHAR(500);
         ALTER TABLE users ADD COLUMN IF NOT EXISTS bio VARCHAR(1000);
         ALTER TABLE users ADD COLUMN IF NOT EXISTS address VARCHAR(255);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS travel_first_name VARCHAR(100);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS travel_last_name VARCHAR(100);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS travel_email VARCHAR(255);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS travel_country VARCHAR(80);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS travel_phone_country_code VARCHAR(6);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS travel_phone VARCHAR(20);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS travel_birth_date DATE;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS travel_gender VARCHAR(20);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS travel_document_type VARCHAR(30);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS protected_travel_document_number VARCHAR(500);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS travel_province_code INTEGER;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS travel_province_name VARCHAR(100);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS travel_ward_code INTEGER;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS travel_ward_name VARCHAR(100);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS travel_street VARCHAR(255);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS travel_address VARCHAR(500);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS travel_document_storage_consent_at TIMESTAMPTZ;
         DO $role$
         BEGIN
           IF EXISTS (
@@ -824,3 +855,11 @@ app.MapGet("/api/health/database", async (AppDbContext db) =>
     return Results.Ok(new { status = "ok", database = "connected", schema = "ready" });
 });
 app.Run();
+
+// Private IPv4 ranges (10/8, 172.16/12, 192.168/16): a phone or emulator reaching the dev machine over Wi-Fi.
+static bool IsPrivateLanAddress(string host)
+{
+    if (!System.Net.IPAddress.TryParse(host, out var address) || address.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork) return false;
+    var b = address.GetAddressBytes();
+    return b[0] == 10 || (b[0] == 172 && b[1] is >= 16 and <= 31) || (b[0] == 192 && b[1] == 168);
+}

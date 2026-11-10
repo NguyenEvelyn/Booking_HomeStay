@@ -1,13 +1,18 @@
 const configuredApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
+const LOOPBACK_HOSTS = ['localhost', '127.0.0.1'];
+const PRIVATE_LAN_HOST = /^(10\.\d{1,3}|192\.168|172\.(1[6-9]|2\d|3[01]))\.\d{1,3}\.\d{1,3}$/;
+
+// A localhost API URL only works on the dev machine itself. When the page is opened by a LAN IP
+// (a phone or emulator on the same Wi-Fi), point the API at that same machine instead.
 function localApiUrl(value) {
   if (typeof window === 'undefined') return value;
   const pageHost = window.location.hostname;
-  if (!['localhost', '127.0.0.1'].includes(pageHost)) return value;
+  if (!LOOPBACK_HOSTS.includes(pageHost) && !PRIVATE_LAN_HOST.test(pageHost)) return value;
 
   try {
     const url = new URL(value);
-    if (['localhost', '127.0.0.1'].includes(url.hostname)) {
+    if (LOOPBACK_HOSTS.includes(url.hostname)) {
       url.hostname = pageHost;
       return url.toString().replace(/\/$/, '');
     }
